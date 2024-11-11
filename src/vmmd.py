@@ -1,9 +1,9 @@
 import torch
 from collections import defaultdict
-from .models.Generator import Generator, Generator_big
 import torch_two_sample as tts
-from .models.Mmd_loss import MMDLoss
-from .models.Mmd_loss_constrained import MMDLossConstrained
+
+from models.Generator import Generator_big
+from models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
@@ -126,7 +126,24 @@ class VMMD:
             img_size=ndims, latent_size=latent_size).to(device)
         return generator
 
-    def fit(self, X):
+    def flatten_images_3d(self, dataset: torch.utils.data.Dataset):
+        flattened_images = []
+        for image, _ in dataset:
+            images_flat = image.view(-1)
+            flattened_images.append(images_flat)
+        return torch.stack(flattened_images)
+
+    def unflatten_images_3d(self, flattened_dataset: torch.Tensor, height: int, width: int, channels: int):
+        reshaped_images = []
+        for flattened_image in flattened_dataset:
+            image_3d = flattened_image.view(channels, height, width)
+            reshaped_images.append(image_3d)
+        return torch.stack(reshaped_images)
+
+    def fit(self, X, embedding_function = lambda x: x):
+
+        X = self.flatten_images_3d(X)
+        X = X[:100]
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -151,7 +168,8 @@ class VMMD:
             generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.generator_optimizer = optimizer.__class__.__name__
         # loss_function =  tts.MMDStatistic(self.batch_size, self.batch_size)
-        loss_function = MMDLossConstrained(weight=10)
+
+        loss_function = MMDLossConstrained(weight=10, kernel=RBF(embedding_function=embedding_function))
 
         for epoch in range(epochs):
             print(f'\rEpoch {epoch} of {epochs}')
@@ -192,10 +210,15 @@ class VMMD:
                 # OPTIMIZATION STEP#
                 optimizer.zero_grad()
                 fake_subspaces = generator(noise_tensor)
+
+                unflattened_fake_subspaces = self.unflatten_images_3d(fake_subspaces*batch + torch.less(
+                     batch, 1/batch.shape[1])*torch.mean(batch, dim=0), 224, 224, 3)
+                unflattened_batch = self.unflatten_images_3d(batch, 224, 224, 3)
                 # batch_loss = loss_function(batch, fake_subspaces*batch + (fake_subspaces == 1e-08)*torch.mean(batch,dim=0), alphas=[0.1]) #Upper_lower_softmax
                 # batch_loss = loss_function(batch, fake_subspaces*batch + torch.less(batch,1/batch.shape[1])*torch.mean(batch,dim=0), alphas=[0.1]) #Upper softmax
-                batch_loss = loss_function(batch, fake_subspaces*batch + torch.less(
-                    batch, 1/batch.shape[1])*torch.mean(batch, dim=0), fake_subspaces)  # Constrained MMD Loss
+                # batch_loss = loss_function(batch, fake_subspaces*batch + torch.less(
+                #     batch, 1/batch.shape[1])*torch.mean(batch, dim=0), fake_subspaces)  # Constrained MMD Loss
+                batch_loss = loss_function(unflattened_batch, unflattened_fake_subspaces, fake_subspaces)
                 self.bandwidth = loss_function.bandwidth
                 batch_loss.backward()
                 optimizer.step()
@@ -237,9 +260,8 @@ if __name__ == "__main__":
     cov = [[1, 0, 0, 0, 0, 0, 0, 0, 500, 500], [0, 1, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0], [500, 0, 0, 0, 0, 0, 0, 0, 1, 500], [500, 0, 0, 0, 0, 0, 0, 0, 500, 1]]
     X_data = np.random.multivariate_normal(mean, cov, 2000)
-
-    model = VMMD(epochs=1500, path_to_directory=Path() / "experiments" /
-                 f"Example_normal_{datetime.datetime.now()}_vmmd", lr=0.01)
+    model = VMMD(epochs=1500, path_to_directory=Path(os.getcwd()).parent / "experiments" /
+                 f"Example_normal_{datetime.datetime.now()}_vmmd", lr=0.01, batch_size=1)
     model.fit(X_data)
 
     X_sample = torch.mps.Tensor(pd.DataFrame(

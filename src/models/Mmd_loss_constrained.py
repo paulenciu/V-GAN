@@ -4,8 +4,9 @@ from torch import nn
 
 class RBF(nn.Module):
 
-    def __init__(self, n_kernels=5, mul_factor=2.0, bandwidth=None):
+    def __init__(self, embedding_function = lambda x: x, n_kernels=5, mul_factor=2.0, bandwidth=None):
         super().__init__()
+        self.embedding_function = embedding_function
         device = torch.device('cuda:0' if torch.cuda.is_available(
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
@@ -22,8 +23,13 @@ class RBF(nn.Module):
         return self.bandwidth
 
     def forward(self, X):
+        X = self.embedding_function(X)
+        X = X.view(X.size(0), -1)
         L2_distances = torch.cdist(X, X) ** 2
-        return torch.exp(-L2_distances[None, ...] / (self.get_bandwidth(L2_distances) * self.bandwidth_multipliers)[:, None, None]).sum(dim=0)
+        bandwidth = self.get_bandwidth(L2_distances)
+        multipliers = self.bandwidth_multipliers
+        p = bandwidth * multipliers
+        return torch.exp(-L2_distances[None, ...] / (bandwidth * multipliers)[:, None, None]).sum(dim=0)
 
 
 class MMDLossConstrained(nn.Module):
@@ -35,7 +41,7 @@ class MMDLossConstrained(nn.Module):
         super().__init__()
         self.kernel = kernel
         self.weight = weight
-        device = torch.device('cuda:0' if torch.cuda.is_available(
+        self.device = torch.device('cuda:0' if torch.cuda.is_available(
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
     def forward(self, X, Y, U):
