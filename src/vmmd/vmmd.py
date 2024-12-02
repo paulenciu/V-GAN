@@ -1,9 +1,5 @@
 import torch
 from collections import defaultdict
-import torch_two_sample as tts
-
-from models.Generator import Generator_big
-from models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
@@ -13,6 +9,10 @@ import matplotlib.pyplot as plt
 import os
 import operator
 import datetime
+import torch_two_sample as tts
+
+from src.models.Mmd_loss_constrained import MMDLossConstrained
+from src.models.generator.Generator5_16 import Generator5_16
 
 
 class VMMD:
@@ -24,6 +24,8 @@ class VMMD:
     '''
 
     def __init__(self, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=777, weight_decay=0.04, path_to_directory=None):
+        self.generator = None
+        self.__latent_size = None
         self.storage = locals()
         self.train_history = defaultdict(list)
         self.batch_size = batch_size
@@ -102,14 +104,14 @@ class VMMD:
         '''
         if device == None:
             device = self.device
-        self.generator = Generator_big(
+        self.generator = Generator5_16(
             img_size=ndims, latent_size=max(int(ndims/16), 1)).to(device)
         self.generator.load_state_dict(torch.load(path_to_generator))
         self.generator.eval()  # This only works for dropout layers
         self.generator_optimizer = f'Loaded Model from {path_to_generator} with {ndims} dimensions in the latent space'
         self.__latent_size = max(int(ndims/16), 1)
 
-    def get_the_networks(self, ndims: int, latent_size: int, device: str = None) -> Generator_big:
+    def get_the_networks(self, ndims: int, latent_size: int, device: str = None) -> Generator5_16:
         """Object function to obtain the networks' architecture
 
         Args:
@@ -122,28 +124,11 @@ class VMMD:
         """
         if device == None:
             device = self.device
-        generator = Generator_big(
+        generator = Generator5_16(
             img_size=ndims, latent_size=latent_size).to(device)
         return generator
 
-    def flatten_images_3d(self, dataset: torch.utils.data.Dataset):
-        flattened_images = []
-        for image, _ in dataset:
-            images_flat = image.view(-1)
-            flattened_images.append(images_flat)
-        return torch.stack(flattened_images)
-
-    def unflatten_images_3d(self, flattened_dataset: torch.Tensor, height: int, width: int, channels: int):
-        reshaped_images = []
-        for flattened_image in flattened_dataset:
-            image_3d = flattened_image.view(channels, height, width)
-            reshaped_images.append(image_3d)
-        return torch.stack(reshaped_images)
-
-    def fit(self, X, embedding_function = lambda x: x):
-
-        X = self.flatten_images_3d(X)
-        X = X[:100]
+    def fit(self, X):
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -168,8 +153,7 @@ class VMMD:
             generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.generator_optimizer = optimizer.__class__.__name__
         # loss_function =  tts.MMDStatistic(self.batch_size, self.batch_size)
-
-        loss_function = MMDLossConstrained(weight=10, kernel=RBF(embedding_function=embedding_function))
+        loss_function = MMDLossConstrained(weight=10)
 
         for epoch in range(epochs):
             print(f'\rEpoch {epoch} of {epochs}')
@@ -210,15 +194,11 @@ class VMMD:
                 # OPTIMIZATION STEP#
                 optimizer.zero_grad()
                 fake_subspaces = generator(noise_tensor)
-
-                unflattened_fake_subspaces = self.unflatten_images_3d(fake_subspaces*batch + torch.less(
-                     batch, 1/batch.shape[1])*torch.mean(batch, dim=0), 224, 224, 3)
-                unflattened_batch = self.unflatten_images_3d(batch, 224, 224, 3)
+                test = fake_subspaces * batch
                 # batch_loss = loss_function(batch, fake_subspaces*batch + (fake_subspaces == 1e-08)*torch.mean(batch,dim=0), alphas=[0.1]) #Upper_lower_softmax
                 # batch_loss = loss_function(batch, fake_subspaces*batch + torch.less(batch,1/batch.shape[1])*torch.mean(batch,dim=0), alphas=[0.1]) #Upper softmax
-                # batch_loss = loss_function(batch, fake_subspaces*batch + torch.less(
-                #     batch, 1/batch.shape[1])*torch.mean(batch, dim=0), fake_subspaces)  # Constrained MMD Loss
-                batch_loss = loss_function(unflattened_batch, unflattened_fake_subspaces, fake_subspaces)
+                batch_loss = loss_function(batch, fake_subspaces*batch + torch.less(
+                    batch, 1/batch.shape[1])*torch.mean(batch, dim=0), fake_subspaces)  # Constrained MMD Loss
                 self.bandwidth = loss_function.bandwidth
                 batch_loss.backward()
                 optimizer.step()
@@ -260,8 +240,9 @@ if __name__ == "__main__":
     cov = [[1, 0, 0, 0, 0, 0, 0, 0, 500, 500], [0, 1, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 1, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0], [500, 0, 0, 0, 0, 0, 0, 0, 1, 500], [500, 0, 0, 0, 0, 0, 0, 0, 500, 1]]
     X_data = np.random.multivariate_normal(mean, cov, 2000)
-    model = VMMD(epochs=1500, path_to_directory=Path(os.getcwd()).parent / "experiments" /
-                 f"Example_normal_{datetime.datetime.now()}_vmmd", lr=0.01, batch_size=1)
+
+    model = VMMD(epochs=1500, path_to_directory=Path() / "experiments" /
+                 f"Example_normal_{datetime.datetime.now()}_vmmd", lr=0.01)
     model.fit(X_data)
 
     X_sample = torch.mps.Tensor(pd.DataFrame(
@@ -272,13 +253,6 @@ if __name__ == "__main__":
         torch.mean(X_sample, dim=0)*(~u)
     mmd = tts.MMDStatistic(500, 500)
     mmd_val, distances = mmd(X_sample, uX_data, alphas=[0.01], ret_matrix=True)
-    mmd_prop = tts.MMDStatistic(500, 500)
-    mmd_prop_val, distances_prop = mmd_prop(
-        X_sample, uX_data, alphas=[1/model.bandwidth], ret_matrix=True)
-    PYDEVD_WARN_EVALUATION_TIMEOUT = 200
-    print(f'pval of the MMD two sample test {mmd.pval(distances)}')
-    print(
-        f'pval of the MMD two sample test with proposed bandwidth {1/model.bandwidth} is {mmd_prop.pval(distances_prop)}, with MMD {mmd_prop_val}')
     unique_subspaces, proba = np.unique(
         np.array(u.to('cpu')), axis=0, return_counts=True)
     proba = proba/np.array(u.to('cpu')).shape[0]

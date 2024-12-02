@@ -23,8 +23,6 @@ class RBF(nn.Module):
         return self.bandwidth
 
     def forward(self, X):
-        X = self.embedding_function(X)
-        X = X.view(X.size(0), -1)
         L2_distances = torch.cdist(X, X) ** 2
         bandwidth = self.get_bandwidth(L2_distances)
         multipliers = self.bandwidth_multipliers
@@ -52,4 +50,5 @@ class MMDLossConstrained(nn.Module):
         XX = K[:X_size, :X_size].mean()
         XY = K[:X_size, X_size:].mean()
         YY = K[X_size:, X_size:].mean()
+        #return XX - 2 * XY + YY + self.weight*(torch.mean(torch.ones(U.shape[2]).to(self.device) - torch.topk(U, 1, 0).values))
         return XX - 2 * XY + YY + self.weight*(torch.mean(torch.ones(U.shape[1]).to(self.device) - torch.topk(U, 1, 0).values))

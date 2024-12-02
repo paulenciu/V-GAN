@@ -164,7 +164,7 @@ cython_debug/
 experiments/
 
 # Test notebook for mps/cuda compatibility
-src/test.ipynb
+src/notebooks/test.ipynb
 
 data/
 .DS_Store

@@ -1,69 +1,89 @@
-import datetime
-import os
-from pathlib import Path
-
-import timm
+import numpy as np
 import torch
-import torch.nn as nn
 import torchvision
+import torchvision.transforms as transforms
+import pandas as pd
 
-from models.Autoencoder import ResNet50Encoder
-from vmmd import VMMD
+from src.models.Autoencoder import ResNet18AutoEncoder
+from src.pipeline import Pipeline
+from src.utils.L2DistanceUtility import plot_l2_distance
+from src.utils.Plotter import plot_pvals, visualise_single_masking_of_vmmd, visualise_linear_mapping_of_vmmd, \
+    visualise_rotations_of_vmmd
+from src.vmmd.VMMDFlattened import VMMDFlattened
+from src.vmmd.VMMDLinearMapping import VMMDLinearMapping
+from src.vmmd.VMMDRotationMapping import VMMDRotationMapping
+from src.vmmd.VMMDSingleMask import VMMDSingleMask
 
-def download_cifar10():
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True)
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True)
-    return trainset, testset
-
-class CatDataset(torch.utils.data.Dataset):
-    def __init__(self, transform=None):
-        trainset, _ = download_cifar10()
-        cat_indices = [i for i, label in enumerate(trainset.targets) if label == 3]
-        cat_subset = torch.utils.data.Subset(trainset, cat_indices)
-        self.subset = cat_subset
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.subset)
-
-    def __getitem__(self, idx):
-        image, label = self.subset[idx]
-        if self.transform:
-            image = self.transform(image)
-        return image, label
-def init_vmmd():
-    vmmd = VMMD(batch_size=1, path_to_directory=Path(os.getcwd()) / "experiments" /
-                 f"Example_normal_{datetime.datetime.now()}_vmmd", epochs=1500  )
+def load_vmmd(filepath, name="single"):
+    if name == "single":
+        vmmd = VMMDSingleMask()
+        vmmd.load_models(path_to_generator=filepath, ndims=1024)
+    elif name == "flatten":
+        vmmd = VMMDFlattened()
+        vmmd.load_models(path_to_generator=filepath, ndims=3072)
+    elif name == "linear":
+        vmmd = VMMDLinearMapping()
+        vmmd.load_models(path_to_generator=filepath, ndims=32)
+    else:
+        raise NotImplementedError("Error, generator with label not found.")
     return vmmd
 
-def init_encoder(name: str):
-    if name == "resnet50":
-        return ResNet50Encoder()
-    elif name == "inceptionv4":
-        return Inceptionv4(pretrained_model=timm.create_model('inception_v4', pretrained=True))
-    else:
-        raise ValueError("Encoder not found")
-
-class Inceptionv4(nn.Module):
-    def __init__(self, pretrained_model):
-        super(Inceptionv4, self).__init__()
-
-        self.upsample = nn.Upsample(size=(299, 299), mode='bilinear', align_corners=False)
-        self.pretrained_model = pretrained_model
-        self.pretrained_model.reset_classifier(0)  # 0 means no output classes
-        self.pretrained_model.eval()
-
-    def forward(self, x):
-        x = self.upsample(x)
-        x = self.pretrained_model(x)
-        return x
-
-
 if __name__ == "__main__":
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor()
-    ])
-    cat_dataset = CatDataset(transform=transform)
-    encoder = init_encoder("inceptionv4")
-    vmmd = init_vmmd()
-    vmmd.fit(cat_dataset, embedding_function=encoder)
+    lrs = [0.001, 0.0004]
+    device = torch.device(
+        'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
+
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.4955, 0.4564, 0.4155], std=[0.2568, 0.2523, 0.2580])
+         ]
+    )
+    dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
+                                           transform=transform)
+    cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
+
+    #visualise_results("../experiments/single_masked_unscaled_resnet18_2024-11-25 09:32:54.536332_0.0001_2500/models/generator_0.pt")
+
+    single_masked_vmmd = load_vmmd(
+        "../experiments/single_masked_unscaled_resnet18_2024-11-25 09:32:54.536332_0.0001_2500/models/generator_0.pt",
+                 name="single"
+    )
+
+    single_masked_vmmd2 = load_vmmd(
+        "../experiments/single_masked_unscaled_resnet18_2024-11-24 09:59:39.127708_0.0001_3000/models/generator_0.pt",
+        name="single"
+    )
+
+    vmmd1 = load_vmmd(
+        "../experiments/unscaled_resnet18_2024-11-20 16:56:16.715808_0.0001_2000/models/generator_0.pt",
+        name="flatten"
+    )
+
+    vmmd_linear = load_vmmd(
+        "../experiments/linear_mapping_resnet18_2024-11-30 18:31:26.797733_0.001_200/models/generator_0.pt",
+        name="linear"
+    )
+
+    vmmd_rot = VMMDRotationMapping()
+
+    #print(vmmd_linear.generate_subspaces(1).to(torch.float32))
+
+    #visualise_rotations_of_vmmd(vmmd_rot, 10)
+
+    #plot_l2_distance(vmmd, cats_dataset, 3, single_mask=False, model_name="unscaled_resnet18")
+    #plot_l2_distance(single_masked_vmmd, cats_dataset, upper_bound=300, single_mask=True, model_name="single_masked_unscaled_resnet18")
+    #emb_func = ResNet18AutoEncoder().get_encoder().to(device)
+    #plot_pvals(single_masked_vmmd2 ,x=cats_dataset, min=100, max=1000, step=1)
+    #
+    pl = Pipeline(
+        lrs=lrs,
+        n_epochs=200)
+    pl.run(X=cats_dataset)
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-from vmmd import VMMD
+from src.vmmd.VMMDFlattened import VMMD
 import torch  
 import numpy as np 
 from pathlib import Path

@@ -1,0 +1,29 @@
+from torch import nn
+
+from src.models.Generator import upper_softmax
+
+
+class Generator5_16(nn.Module):
+    def __init__(self, latent_size, img_size):
+        super(Generator5_16, self).__init__()
+
+        self.hidden = nn.Sequential(
+            nn.Linear(latent_size, 2 * latent_size),
+            nn.BatchNorm1d(2 * latent_size),
+            nn.ReLU(),
+            nn.Linear(2 * latent_size, 4 * latent_size),
+            nn.BatchNorm1d(4 * latent_size),
+            nn.ReLU(),
+            nn.Linear(4 * latent_size, 8 * latent_size),
+            nn.BatchNorm1d(8 * latent_size),
+            nn.ReLU(),
+            nn.Linear(8 * latent_size, 16 * latent_size),
+            nn.BatchNorm1d(16 * latent_size),
+            nn.ReLU(),
+            nn.Linear(16 * latent_size, img_size),
+            upper_softmax()
+        )
+
+    def forward(self, x):
+        x = self.hidden(x)
+        return x
