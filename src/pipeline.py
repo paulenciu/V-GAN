@@ -6,6 +6,7 @@ import torch
 
 from src.models.Autoencoder import ResNet50AutoEncoder, ResNet18AutoEncoder
 from src.models.ScaledAutoEncoder import ScaledAutoEncoder
+from src.vmmd.VMMDConvLinearMapping import VMMDConvLinearMapping
 from src.vmmd.VMMDFlattened import VMMDFlattened
 from src.vmmd.VMMDLinearMapping import VMMDLinearMapping
 from src.vmmd.VMMDRotationMapping import VMMDRotationMapping
@@ -70,6 +71,11 @@ class Pipeline:
                                                                               f"rotation_resnet18_{datetime.datetime.now()}_{lr}_{self.n_epochs}",
                                                            lr=lr, batch_size=self.batch_size)
 
+            vmmd_conv_mapping_flattened_unscaled_resnet18 = VMMDConvLinearMapping(epochs=self.n_epochs,
+                                                           path_to_directory=Path(os.getcwd()).parent / "experiments" /
+                                                                              f"conv_steroids_resnet18_{datetime.datetime.now()}_{lr}_{self.n_epochs}",
+                                                           lr=lr, batch_size=self.batch_size)
+
             print("--------------------------[unscaled_resnet50]--------------------------")
             # vmmd_flattened_unscaled_resnet50.fit(X=X, autoencoder=unscaled_resnet50)
             #vmmd_flattened_single_masked_resnet50.fit(X=X, autoencoder=self.unscaled_resnet50)
@@ -90,4 +96,7 @@ class Pipeline:
             #vmmd_mapping_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)
 
             print("--------------------------[linear_mapping_unscaled_resnet18]--------------------------")
-            vmmd_rotation_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)
+            #vmmd_rotation_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)
+
+            print("------------------------[conv_linear_mapping_unscaled_resnet18]------------------------")
+            vmmd_conv_mapping_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)

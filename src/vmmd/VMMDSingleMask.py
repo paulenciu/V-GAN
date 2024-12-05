@@ -35,7 +35,7 @@ class VMMDSingleMask(VMMD):
                  path_to_directory=None):
         super().__init__(batch_size, epochs, lr, momentum, seed, weight_decay, path_to_directory)
 
-    def check_if_myopic(self, x_data, bandwidth: Union[float, np.array] = 0.01, count=500) -> pd.DataFrame:
+    def check_if_myopic(self, x_data, emb_func, bandwidth: Union[float, np.array] = 0.01, count=500) -> pd.DataFrame:
         """_summary_
 
         Args:
@@ -46,20 +46,28 @@ class VMMDSingleMask(VMMD):
 
         Returns:
             pd.DataFrame: DataFrame containing the p.value of the test with all the different bandwidths.
+
+        Parameters
+        ----------
+        emb_func
         """
         assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
         results = []
 
-        x_data = flatten_images_3d(x_data, "cpu")
+        x_data = flatten_images_3d(x_data).to("cpu")
 
         x_data = normalize(x_data, axis=0)
         x_sample = torch.Tensor(pd.DataFrame(
             x_data).sample(count).to_numpy()).to(self.device)
         u_subspaces = self.generate_subspaces(count).repeat(1, 3)
-        big_u, _, _ = create_big_u(u_subspaces)
-        big_u = big_u.to(torch.float32).to(self.device)
 
-        ux_sample = big_u * x_sample
+        ux_sample = u_subspaces * x_sample
+
+        ux_sample = ux_sample.view(-1, 3, 32, 32)
+        x_sample = x_sample.view(-1, 3, 32, 32)
+
+        x_sample_embedded = emb_func(x_sample).squeeze()
+        ux_sample_embedded = emb_func(ux_sample).squeeze()
 
         if type(bandwidth) == float:
             bandwidth = [bandwidth]
@@ -67,21 +75,12 @@ class VMMDSingleMask(VMMD):
         if not hasattr(self, 'bandwidth'):
             mmd_loss = MMDLossConstrained(0)
             mmd_loss.forward(
-                x_sample, x_sample, u_subspaces * 1)
+                x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
             self.bandwidth = mmd_loss.bandwidth
-
-        # bandwidth.sort()
-        # for bw in bandwidth:
-        #     mmd = tts.MMDStatistic(count, count)
-        #     _, distances = mmd(x_sample, ux_sample, alphas=[
-        #         bw], ret_matrix=True)
-        #     pval = mmd.pval(distances)
-        #     print("Count: ", count, "PVal: " ,pval)
-        #     results.append(pval)
 
         bw = self.bandwidth.item()
         mmd = tts.MMDStatistic(count, count)
-        _, distances = mmd(x_sample, x_sample, alphas=[bw], ret_matrix=True)
+        _, distances = mmd(x_sample_embedded, ux_sample_embedded, alphas=[bw], ret_matrix=True)
         pval = mmd.pval(distances)
         results.append(pval)
         print("Count: ", count, "PVal: ", pval)

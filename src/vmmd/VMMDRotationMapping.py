@@ -1,20 +1,28 @@
+from typing import Union
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import torch
 
 
 import torch
+from sklearn.preprocessing import normalize
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from pathlib import Path
 import os
 import operator
 import torch.nn.functional as F
+import torch_two_sample as tts
 
 
 from src.models.Generator import GeneratorSingleMaskRes, GeneratorSingleMask, LinearMappingGenerator, \
-    RotationalMatrixGenerator
+    RotationalMatrixGenerator, RotationalMatrixGenerator2
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_3d, unflatten_images_3d
+from src.utils.Plotter import tensor_to_image
 from src.vmmd.vmmd import VMMD
 
 
@@ -23,6 +31,57 @@ class VMMDRotationMapping(VMMD):
     def __init__(self, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=777, weight_decay=0.04,
                  path_to_directory=None):
         super().__init__(batch_size, epochs, lr, momentum, seed, weight_decay, path_to_directory)
+
+
+    def check_if_myopic(self, x_data, emb_func, bandwidth: Union[float, np.array] = 0.01, count=500) -> pd.DataFrame:
+        """_summary_
+
+        Args:
+            x_data (np.array): Data to check the myopicity of.
+            bandwidth (float | np.array, optional): Bandwidth used in the GOF tests using the MMD. This method always runs
+            the recommended bandwidth alongside this optional one. Defaults to 0.01.
+            count (int, optional): Number of samples used to approximate the MMD. Defaults to 500.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the p.value of the test with all the different bandwidths.
+        """
+        assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
+        results = []
+
+        x_data = flatten_images_3d(x_data).to("cpu")
+
+        x_data = normalize(x_data, axis=0)
+        x_sample = torch.Tensor(pd.DataFrame(
+            x_data).sample(count).to_numpy()).to(self.device)
+        u_subspaces = self.generate_subspaces(count)
+
+        x_sample = x_sample.view(-1, 3, 32, 32)
+
+        ux_sample = self.rotate_images(u_subspaces, x_sample)
+        ux_sample = ux_sample.view(-1, 3, 32, 32)
+
+        ux_sample_embedded = emb_func(ux_sample).squeeze()
+        x_sample_embedded = emb_func(x_sample).squeeze()
+
+        if type(bandwidth) == float:
+            bandwidth = [bandwidth]
+
+        if not hasattr(self, 'bandwidth'):
+            mmd_loss = MMDLossConstrained(0)
+            mmd_loss.forward(
+                x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
+            self.bandwidth = mmd_loss.bandwidth
+
+        bw = self.bandwidth.item()
+        mmd = tts.MMDStatistic(count, count)
+        _, distances = mmd(x_sample_embedded, ux_sample_embedded, alphas=[bw], ret_matrix=True)
+        pval = mmd.pval(distances)
+        results.append(pval)
+        print("Count: ", count, "PVal: ", pval)
+        results.append(pval)
+
+        bandwidth.append("recommended bandwidth")
+        return pd.DataFrame([results], columns=bandwidth, index=["p-val"])
 
     def rotate_images(self, rotation_matrices_2d, batch):
 
@@ -52,11 +111,11 @@ class VMMDRotationMapping(VMMD):
         if device == None:
             device = self.device
         self.__latent_size = max(int(3072 / 16), 1)
-        self.generator = RotationalMatrixGenerator(
+        self.generator = RotationalMatrixGenerator2(
            latent_size=self.__latent_size).to(device)
         self.generator.load_state_dict(torch.load(path_to_generator))
         self.generator.eval()  # This only works for dropout layers
-        self.generator_optimizer = f'Loaded Model from {path_to_generator} with {ndims} dimensions in the latent space'
+        self.generator_optimizer = f'Loaded Model from {path_to_generator} with 2x2 dimensions in the latent space'
 
     def fit(self, X, autoencoder):
 
@@ -85,7 +144,7 @@ class VMMDRotationMapping(VMMD):
 
         X = unflatten_images_3d(X, channels=n_channels, width=width, height=height)
 
-        generator = RotationalMatrixGenerator(latent_size).to(self.device)
+        generator = RotationalMatrixGenerator2(latent_size).to(self.device)
 
         optimizer = torch.optim.Adadelta(
             generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
@@ -167,9 +226,7 @@ class VMMDRotationMapping(VMMD):
 
     def generate_subspaces(self, nsubs):
         # Need to load in cpu as mps Tensor module doesn't properly fix the seed
-        #noise_tensor = torch.Tensor(nsubs, self.__latent_size).to('cpu') #FIXME commented out for testing purpose
-        noise_tensor = torch.Tensor(nsubs, 192).to('cpu')
-        self.generator = RotationalMatrixGenerator(192).to(self.device)
+        noise_tensor = torch.Tensor(nsubs, self.__latent_size).to('cpu')
         if not self.seed == None:
             torch.manual_seed(self.seed)
         noise_tensor.normal_()
