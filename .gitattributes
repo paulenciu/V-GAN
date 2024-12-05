@@ -1,0 +1,2 @@
+caltech256-resnet18 filter=lfs diff=lfs merge=lfs -text
+models/caltech256-resnet18.pth filter=lfs diff=lfs merge=lfs -text
