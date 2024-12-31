@@ -21,8 +21,7 @@ from src.models.Generator import GeneratorSingleMaskRes, GeneratorSingleMask, Li
     RotationalMatrixGenerator, RotationalMatrixGenerator2
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_3d, unflatten_images_3d
-from src.utils.Plotter import tensor_to_image
+from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.vmmd import VMMD
 
 
@@ -48,7 +47,7 @@ class VMMDRotationMapping(VMMD):
         assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
         results = []
 
-        x_data = flatten_images_3d(x_data).to("cpu")
+        x_data = flatten_images_dataset_3d(x_data).to("cpu")
 
         x_data = normalize(x_data, axis=0)
         x_sample = torch.Tensor(pd.DataFrame(
@@ -100,7 +99,7 @@ class VMMDRotationMapping(VMMD):
         rotated_images = F.grid_sample(batch, grid, align_corners=False, padding_mode='zeros')
         return rotated_images
 
-    def load_models(self, path_to_generator, ndims, device: str = None):
+    def load_models(self, path_to_generator, ndims, generator=None, device: str = None):
         '''Loads models for prediction
 
         In case that the generator has already been trained, this method allows to load it (and optionally the discriminator) for generating subspaces
@@ -111,9 +110,13 @@ class VMMDRotationMapping(VMMD):
         if device == None:
             device = self.device
         self.__latent_size = max(int(3072 / 16), 1)
-        self.generator = RotationalMatrixGenerator2(
-           latent_size=self.__latent_size).to(device)
-        self.generator.load_state_dict(torch.load(path_to_generator))
+
+        if generator is None:
+            self.generator = RotationalMatrixGenerator2(latent_size=self.__latent_size).to(device)
+        else:
+            self.generator = generator.to(device)
+
+        self.generator.load_state_dict(torch.load(path_to_generator, map_location=device))
         self.generator.eval()  # This only works for dropout layers
         self.generator_optimizer = f'Loaded Model from {path_to_generator} with 2x2 dimensions in the latent space'
 
@@ -124,7 +127,7 @@ class VMMDRotationMapping(VMMD):
 
         encoder = autoencoder.get_encoder().to(self.device)
 
-        X = flatten_images_3d(X, self.device)
+        X = flatten_images_dataset_3d(X, self.device)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()

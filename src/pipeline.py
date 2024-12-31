@@ -4,8 +4,7 @@ from pathlib import Path
 
 import torch
 
-from src.models.Autoencoder import ResNet50AutoEncoder, ResNet18AutoEncoder
-from src.models.ScaledAutoEncoder import ScaledAutoEncoder
+from src.models.autoencoder.resnet.RestNetAutoEncoder import ResNet50AutoEncoder, ResNet18AutoEncoder
 from src.vmmd.VMMDConvLinearMapping import VMMDConvLinearMapping
 from src.vmmd.VMMDFlattened import VMMDFlattened
 from src.vmmd.VMMDLinearMapping import VMMDLinearMapping
@@ -23,11 +22,6 @@ class Pipeline:
             'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
         self.unscaled_resnet50 = ResNet50AutoEncoder()
         self.unscaled_resnet18 = ResNet18AutoEncoder()
-
-        self.scaled_resnet50 = ScaledAutoEncoder(
-            "../experiments/autoencoder/resnet50_2024-11-17 19:02:26.938377_scaled_autoencoder/train_history/resnet50_scaled_autoencoder_runs_100.pth")
-        self.scaled_resnet18 = ScaledAutoEncoder(
-            "../experiments/autoencoder/resnet18_2024-11-18 13:24:29.469347_scaled_autoencoder/train_history/resnet18_scaled_autoencoder_runs_100.pth")
 
     def  run(self, X):
         for lr in self.lrs:

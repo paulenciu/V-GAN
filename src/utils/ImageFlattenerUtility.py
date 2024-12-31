@@ -1,7 +1,7 @@
 import torch
 
 
-def flatten_images_3d(dataset: torch.utils.data.Dataset):
+def flatten_images_dataset_3d(dataset: torch.utils.data.Dataset):
     flattened_images = []
     for image, _ in dataset:
         images_flat = image.view(-1)

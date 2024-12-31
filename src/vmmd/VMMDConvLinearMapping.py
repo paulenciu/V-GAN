@@ -18,10 +18,10 @@ import torch_two_sample as tts
 
 from src.models.Generator import GeneratorSingleMaskRes, GeneratorSingleMask, LinearMappingGenerator, \
     RotationalMatrixGenerator, RotationalMatrixGenerator2, ConvLinearMappingGenerator, \
-    ConvLinearMappingGeneratorSteroids, ConvLinearMappingGeneratorResnet
+    ConvLinearMappingGeneratorSteroids, ConvLinearMappingGeneratorResnet, ConvLinearMappingGeneratorResnet2
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_3d, unflatten_images_3d
+from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.vmmd import VMMD
 
 
@@ -31,7 +31,7 @@ class VMMDConvLinearMapping(VMMD):
                  path_to_directory=None):
         super().__init__(batch_size, epochs, lr, momentum, seed, weight_decay, path_to_directory)
 
-    def load_models(self, path_to_generator, ndims, device: str = None):
+    def load_models(self, path_to_generator, ndims, generator=None, device: str = None):
         '''Loads models for prediction
 
         In case that the generator has already been trained, this method allows to load it (and optionally the discriminator) for generating subspaces
@@ -42,8 +42,13 @@ class VMMDConvLinearMapping(VMMD):
         if device == None:
             device = self.device
         self.__latent_size = max(int(3072 / 16), 1)
-        self.generator = ConvLinearMappingGeneratorResnet().to(device)
-        self.generator.load_state_dict(torch.load(path_to_generator))
+
+        if generator is None:
+            self.generator = ConvLinearMappingGeneratorSteroids().to(device)
+        else:
+            self.generator = generator.to(device)
+
+        self.generator.load_state_dict(torch.load(path_to_generator, map_location=device))
         self.generator.eval()  # This only works for dropout layers
         self.generator_optimizer = f'Loaded Model from {path_to_generator} with {ndims} dimensions in the latent space'
 
@@ -62,7 +67,7 @@ class VMMDConvLinearMapping(VMMD):
         assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
         results = []
 
-        x_data = flatten_images_3d(x_data).to("cpu")
+        x_data = flatten_images_dataset_3d(x_data).to("cpu")
 
         x_data = normalize(x_data, axis=0)
         x_sample = torch.Tensor(pd.DataFrame(
@@ -103,7 +108,7 @@ class VMMDConvLinearMapping(VMMD):
 
         encoder = autoencoder.get_encoder().to(self.device)
 
-        X = flatten_images_3d(X).to(self.device)
+        X = flatten_images_dataset_3d(X).to(self.device)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -123,7 +128,7 @@ class VMMDConvLinearMapping(VMMD):
 
         X = unflatten_images_3d(X, channels=n_channels, width=width, height=height)
 
-        generator = ConvLinearMappingGeneratorResnet().to(self.device)
+        generator = ConvLinearMappingGeneratorResnet2().to(self.device)
 
         optimizer = torch.optim.Adadelta(
             generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
@@ -170,8 +175,8 @@ class VMMDConvLinearMapping(VMMD):
 
                 # OPTIMIZATION STEP#
                 optimizer.zero_grad()
-                u_mappings = generator(noise_tensor).repeat(1, 3, 1, 1).to(self.device)
 
+                u_mappings = generator(noise_tensor).repeat(1, 3, 1, 1).to(self.device)
                 processed_batch = u_mappings * batch
 
                 embedded_batch = encoder(batch).squeeze()
@@ -209,4 +214,3 @@ class VMMDConvLinearMapping(VMMD):
         noise_tensor.normal_()
         u = self.generator(noise_tensor.to(self.device))
         return u
-

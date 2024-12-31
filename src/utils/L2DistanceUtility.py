@@ -5,7 +5,7 @@ import torch_two_sample as tts
 import matplotlib.pyplot as plt
 
 from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_3d
+from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
 
 def plot(x, xlabel, y, ylabel, model_name):
     plt.plot(x, y)
@@ -39,7 +39,7 @@ def plot_l2_masking_distance(vmmd, dataset, upper_bound, single_mask=False, mode
         l2_norm = torch.norm(big_u, p='fro')
         matrix_norm[i] = l2_norm.to("cpu")
 
-        original = flatten_images_3d(dataset).to(device)
+        original = flatten_images_dataset_3d(dataset).to(device)
         masked = big_u * original
 
         distance: torch.Tensor = torch.sqrt(torch.sum(torch.abs(original - masked) ** 2))

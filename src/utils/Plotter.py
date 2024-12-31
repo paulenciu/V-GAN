@@ -12,16 +12,32 @@ from torchvision import transforms
 import torch_two_sample as tts
 import torch.nn.functional as F
 
-
+from src.models.generator.convolution.GeneratorConvLinearMappingBigSigm import GeneratorConvLinearMappingBigSigm
 from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_3d
+from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
+from src.utils.VMMDLoader import load_vmmd
 
-def tensor_to_image(tensor):
+
+def tensor_to_image_before(tensor):
     """Convert a tensor to a numpy image for visualization."""
     tensor = tensor.detach().cpu().numpy()
     if tensor.ndim == 3 and tensor.shape[0] in [1, 3]:  # (C, H, W)
         tensor = np.transpose(tensor, (1, 2, 0))  # Convert to (H, W, C)
+        tensor = (tensor * 255).astype(np.uint8)
+
+
     return tensor
+
+def tensor_to_image(tensor):
+    """
+    Converts a PyTorch tensor to a numpy image array.
+    Ensures that the dtype is compatible with matplotlib.
+    """
+    if tensor.is_floating_point():
+        tensor = tensor.to(torch.float32)  # Ensure float32 type
+    array = tensor.cpu().numpy()  # Convert to numpy
+    array = np.clip(array, 0, 1)  # Ensure values are in [0, 1] range
+    return array.transpose(1, 2, 0)  # (C, H, W) -> (H, W, C)
 
 def visualize_tensor_processing(batch, n_samples, generator, n_channels, width, height, unsqueeze_fake_subspace=True):
 
@@ -54,18 +70,18 @@ def visualize_tensor_processing(batch, n_samples, generator, n_channels, width, 
     fig, axs = plt.subplots(n_samples, 3, figsize=(15, 5 * n_samples))
 
     for i in range(n_samples):
-        # Row i, Column 1: Used mapping (fake_subspaces)
-        axs[i, 0].imshow(tensor_to_image(fake_subspaces[i]))
+        # Row i, Column 1: Used linear_mapping (fake_subspaces)
+        axs[i, 0].imshow(tensor_to_image_before(fake_subspaces[i]))
         axs[i, 0].set_title(f"Mapping {i + 1}")
         axs[i, 0].axis("off")
 
         # Row i, Column 2: Original image (batch)
-        axs[i, 1].imshow(tensor_to_image(batch[i]))
+        axs[i, 1].imshow(tensor_to_image_before(batch[i]))
         axs[i, 1].set_title(f"Original {i + 1}")
         axs[i, 1].axis("off")
 
         # Row i, Column 3: Projection (processed_fake_subspaces)
-        axs[i, 2].imshow(tensor_to_image(normalize_to_01(processed_fake_subspaces[i])))
+        axs[i, 2].imshow(tensor_to_image_before(normalize_to_01(processed_fake_subspaces[i])))
         axs[i, 2].set_title(f"Projection {i + 1}")
         axs[i, 2].axis("off")
 
@@ -83,38 +99,47 @@ def calculate_angles(rotation_matrices):
 
     return angles
 
-def visualise_rotations_of_vmmd(model, n_samples=10):
-
+def visualise_rotations_of_vmmd(model, n_samples=10, n_masks=10, path_to_experiment=None, filename="image"):
     device = torch.device(
         'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
-    # Load CIFAR-10 dataset and filter for cat images (label = 3)
     dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
                                            transform=transforms.ToTensor())
     cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
-    sample_indices = np.arange(min(n_samples, len(cats_dataset)))  # Ensure it doesn't exceed dataset size
-    batch = [cats_dataset[i][0] for i in sample_indices]
 
+    sample_indices = np.arange(n_samples)
+    X_sample = torch.utils.data.Subset(cats_dataset, sample_indices)
 
-    batch = torch.stack(batch).to(torch.float32).to(device)
-    rotations_batch = model.generate_subspaces(n_samples).to(torch.float32).to(device)
+    fig, axis = plt.subplots(n_samples, 1 + n_masks, figsize=(5 * (1 + n_masks), 5 * (n_samples)))
 
-    rotations_theta = torch.rad2deg(calculate_angles(rotations_batch))
-
-    rotated_images = model.rotate_images(rotations_batch, batch)
-
-    fig, axs = plt.subplots(n_samples, 2, figsize=(15, 5 * n_samples))
+    u = model.generate_subspaces(n_masks).to(device)
+    big_u, _, _ = create_big_u(u.detach())
+    big_u = big_u.to(torch.float32).to(device)
 
     for i in range(n_samples):
-        # Row i, Column 2: Original image (batch)
-        axs[i, 0].imshow(tensor_to_image(batch[i]))
-        axs[i, 0].set_title(f"Original {i + 1}")
-        axs[i, 0].axis("off")
 
-        # Row i, Column 3: Projection (processed_fake_subspaces)
-        axs[i, 1].imshow(tensor_to_image(rotated_images[i]))
-        axs[i, 1].set_title(f"Projection {rotations_theta[i]}")
-        axs[i, 1].axis("off")
+        image, _ = X_sample[i - 1]
+        image = image.to(torch.float32).to(device)
+
+        axis[i, 0].imshow(tensor_to_image(image))
+        axis[i, 0].set_title(f"Original {i + 1}")
+        axis[i, 0].axis("off")
+
+        u = model.generate_subspaces(n_masks).to(device)
+        image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1)
+        ux_data = model.rotate_images(u, image)
+
+        big_u, _, _ = create_big_u(u.detach())
+        big_u = big_u.to(torch.float32).to(device)
+
+        for j in range(n_masks):
+            axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
+            axis[i, j + 1].set_title(f"Projection {j + 1}")
+            axis[i, j + 1].axis("off")
+
+    if path_to_experiment is not None:
+        fig.tight_layout()
+        store_image(path_to_experiment=path_to_experiment, fig=fig, filename=filename)
 
     plt.tight_layout()
     plt.show()
@@ -174,7 +199,15 @@ def visualise_conv_masking_of_vmmd(model, n_samples=10, method="conv_linear", n_
 
     fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
 
-    u = model.generate_subspaces(n_masks).repeat(1, 3, 1, 1).to(device)
+    if method == "conv_linear":
+        u = model.generate_subspaces(n_masks).repeat(1, 3, 1, 1).to(device)
+    elif method == "single":
+        u = model.generate_subspaces(n_masks).repeat(1, 3).to(device)
+    elif method == "flatten":
+        u = model.generate_subspaces(n_masks).to(device)
+    else:
+        raise NotImplementedError
+
     big_u, _, _ = create_big_u(u.detach())
     big_u = big_u.to(torch.float32).to(device)
 
@@ -182,11 +215,28 @@ def visualise_conv_masking_of_vmmd(model, n_samples=10, method="conv_linear", n_
     axis[0, 0].axis("off")
 
     for i in range(n_masks):
-        axis[0, i + 1].imshow(tensor_to_image(u[i]))
+
+        if method == "single":
+            axis[0, i + 1].imshow(tensor_to_image(u[i].squeeze().view(3, 32, 32)))
+        elif method == "conv_linear":
+            axis[0, i + 1].imshow(tensor_to_image(u[i]))
+        elif method == "flatten":
+            axis[0, i + 1].imshow(tensor_to_image(u[i].view(3, 32, 32)))
+        else:
+            raise NotImplementedError
+
         axis[0, i + 1].axis("off")
         axis[0, i + 1].set_title(f"Mask {i + 1}")
 
-    axis[0, n_masks + 1].imshow(tensor_to_image(big_u))
+    if method == "single":
+        axis[0, n_masks + 1].imshow(tensor_to_image(big_u.view(3, 32, 32)))
+    elif method == "conv_linear":
+        axis[0, n_masks + 1].imshow(tensor_to_image(big_u))
+    elif method == "flatten":
+        axis[0, n_masks + 1].imshow(tensor_to_image(big_u.view(3, 32, 32)))
+    else:
+        raise NotImplementedError
+
     axis[0, n_masks + 1].axis("off")
     axis[0, n_masks + 1].set_title(f"Big U Mask")
 
@@ -200,20 +250,43 @@ def visualise_conv_masking_of_vmmd(model, n_samples=10, method="conv_linear", n_
         axis[i, 0].set_title(f"Original {i + 1}")
         axis[i, 0].axis("off")
 
-        u = model.generate_subspaces(n_masks).repeat(1, 3, 1, 1).to(device)
-        image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1)
-        ux_data = u * image
+        if method == "conv_linear":
+            u = model.generate_subspaces(n_masks).repeat(1, 3, 1, 1).to(device)
+            image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1).to(device)
+            ux_data = u * image
+        elif method == "single":
+            u = model.generate_subspaces(n_masks).repeat(1, 3).view(n_masks, -1).to(device)
+            image = image.view(-1).unsqueeze(0).repeat(n_masks, 1).to(device)
+            ux_data = u * image
+        elif method == "flatten":
+            u = model.generate_subspaces(n_masks).view(n_masks, -1).to(device)
+            image = image.view(-1).unsqueeze(0).repeat(n_masks, 1).to(device)
+            ux_data = u * image
+        else:
+            raise NotImplementedError
 
         big_u, _, _ = create_big_u(u.detach())
         big_u = big_u.to(torch.float32).to(device)
 
         for j in range(n_masks):
-            axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
+
+            if method == "conv_linear":
+                axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
+            elif method == "single":
+                axis[i, j + 1].imshow(tensor_to_image(ux_data[j].view(3, 32, 32)))
+            elif method == "flatten":
+                axis[i, j + 1].imshow(tensor_to_image(ux_data[j].view(3, 32, 32)))
+
             axis[i, j + 1].set_title(f"Projection {j + 1}")
             axis[i, j + 1].axis("off")
 
         big_u_image = big_u * image[0].squeeze()
-        axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
+        big_u_image = big_u_image.to(torch.float32).to(device)
+        if method == "conv_linear":
+            axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
+        elif method == "single" or method == "flatten":
+            axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image.view(3, 32, 32)))
+
         axis[i, n_masks + 1].axis("off")
         axis[i, n_masks + 1].set_title(f"Big U Projection")
 
@@ -223,6 +296,53 @@ def visualise_conv_masking_of_vmmd(model, n_samples=10, method="conv_linear", n_
     if path_to_experiment is not None:
         fig.tight_layout()
         store_image(path_to_experiment=path_to_experiment, fig=fig, filename=filename)
+
+def get_generator_files(base_dir):
+    """
+    Recursively iterates through a directory to find all .pt files within subdirectories.
+
+    Parameters:
+        base_dir (str): The path to the base 'experiments' folder.
+
+    Returns:
+        List[str]: A list of paths to the .pt files.
+    """
+    generator_files = []
+
+    # Walk through the directory structure
+    for root, dirs, files in os.walk(base_dir):
+        for file in files:
+            if file.endswith('.pt'):
+                # Append the full path to the generator files list
+                generator_files.append(os.path.join(root, file))
+
+    return generator_files
+
+def get_vmmd(file):
+    if "single" in file:
+        return load_vmmd(file, name="single")
+    elif "unscaled" in file:
+        return load_vmmd(file, name="flatten")
+    elif "conv" in file:
+
+        if "-06" in file:
+            return load_vmmd(file, name="conv_linear", generator=GeneratorConvLinearMappingBigSigm())
+
+        return load_vmmd(file, name="conv_linear")
+    elif "rotation" in file:
+        return load_vmmd(file, name="rotation")
+    elif "linear" in file:
+        return  load_vmmd(file, name="linear")
+
+    raise NotImplementedError
+
+def plot_pvals_dir(base_dir, x, emb_func, count=1000):
+    pt_files = get_generator_files(base_dir)
+
+    for file in pt_files:
+        vmmd = get_vmmd(file)
+        path_to_experiment = file.split("/models")[0]
+        plot_pvals(vmmd, x, emb_func, count, path_to_experiment=path_to_experiment)
 
 
 def plot_pvals(vmmd, x, emb_func, count=1000, path_to_experiment=None):

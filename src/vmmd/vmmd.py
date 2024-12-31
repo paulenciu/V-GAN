@@ -12,7 +12,7 @@ import datetime
 import torch_two_sample as tts
 
 from src.models.Mmd_loss_constrained import MMDLossConstrained
-from src.models.generator.Generator5_16 import Generator5_16
+from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
 
 
 class VMMD:
@@ -104,14 +104,14 @@ class VMMD:
         '''
         if device == None:
             device = self.device
-        self.generator = Generator5_16(
+        self.generator = GeneratorThreeChannel(
             img_size=ndims, latent_size=max(int(ndims/16), 1)).to(device)
         self.generator.load_state_dict(torch.load(path_to_generator))
         self.generator.eval()  # This only works for dropout layers
         self.generator_optimizer = f'Loaded Model from {path_to_generator} with {ndims} dimensions in the latent space'
         self.__latent_size = max(int(ndims/16), 1)
 
-    def get_the_networks(self, ndims: int, latent_size: int, device: str = None) -> Generator5_16:
+    def get_the_networks(self, ndims: int, latent_size: int, device: str = None) -> GeneratorThreeChannel:
         """Object function to obtain the networks' architecture
 
         Args:
@@ -124,7 +124,7 @@ class VMMD:
         """
         if device == None:
             device = self.device
-        generator = Generator5_16(
+        generator = GeneratorThreeChannel(
             img_size=ndims, latent_size=latent_size).to(device)
         return generator
 

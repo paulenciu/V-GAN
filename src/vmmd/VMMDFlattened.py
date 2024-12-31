@@ -1,8 +1,6 @@
 from typing import Union
 
 import torch
-from collections import defaultdict
-
 
 from sklearn.preprocessing import normalize
 from torch.utils.data import DataLoader
@@ -10,16 +8,13 @@ from tqdm import tqdm
 import pandas as pd
 import numpy as np
 from pathlib import Path
-import matplotlib.pyplot as plt
 import os
 import operator
-import datetime
 import torch_two_sample as tts
 
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
-from src.models.generator.Generator5_16 import Generator5_16
-from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_3d, unflatten_images_3d
+from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
+from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.vmmd import VMMD
 
 
@@ -50,7 +45,7 @@ class VMMDFlattened(VMMD):
         assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
         results = []
 
-        x_data = flatten_images_3d(x_data).to("cpu")
+        x_data = flatten_images_dataset_3d(x_data).to("cpu")
 
         x_data = normalize(x_data, axis=0)
         x_sample = torch.Tensor(pd.DataFrame(
@@ -85,7 +80,7 @@ class VMMDFlattened(VMMD):
         bandwidth.append("recommended bandwidth")
         return pd.DataFrame([results], columns=bandwidth, index=["p-val"])
 
-    def load_models(self, path_to_generator, ndims, device: str = None):
+    def load_models(self, path_to_generator, ndims, generator = None, device: str = None):
         '''Loads models for prediction
 
         In case that the generator has already been trained, this method allows to load it (and optionally the discriminator) for generating subspaces
@@ -95,9 +90,14 @@ class VMMDFlattened(VMMD):
         '''
         if device == None:
             device = self.device
-        self.generator = Generator5_16(
-            img_size=ndims, latent_size=max(int(ndims/16), 1)).to(device)
-        self.generator.load_state_dict(torch.load(path_to_generator))
+
+        if generator is None:
+            self.generator = GeneratorThreeChannel(
+                img_size=ndims, latent_size=max(int(ndims / 16), 1)).to(device)
+        else:
+            self.generator = generator.to(device)
+
+        self.generator.load_state_dict(torch.load(path_to_generator, map_location=device))
         self.generator.eval()  # This only works for dropout layers
         self.generator_optimizer = f'Loaded Model from {path_to_generator} with {ndims} dimensions in the latent space'
         self.__latent_size = max(int(ndims/16), 1)
@@ -107,7 +107,7 @@ class VMMDFlattened(VMMD):
         encoder = autoencoder.get_encoder().to(self.device)
 
         n_channels, width, height = X[0][0].shape[0], X[0][0].shape[1], X[0][0].shape[2]
-        X = flatten_images_3d(X).to(self.device)
+        X = flatten_images_dataset_3d(X).to(self.device)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -128,7 +128,7 @@ class VMMDFlattened(VMMD):
         device = self.device
 
         if generator == "generator_s":
-            generator = Generator5_16(latent_size=latent_size, img_size=ndims).to(device)
+            generator = GeneratorThreeChannel(latent_size=latent_size, img_size=ndims).to(device)
         elif generator == "generator_h":
             generator = GeneratorHierarchical(latent_size=latent_size, img_size=ndims).to(device)
         else:

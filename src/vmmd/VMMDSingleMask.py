@@ -19,7 +19,7 @@ import torch_two_sample as tts
 from src.models.Generator import GeneratorSingleMaskRes, GeneratorSingleMask, LinearMappingGenerator
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_3d, unflatten_images_3d
+from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.vmmd import VMMD
 
 
@@ -54,7 +54,7 @@ class VMMDSingleMask(VMMD):
         assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
         results = []
 
-        x_data = flatten_images_3d(x_data).to("cpu")
+        x_data = flatten_images_dataset_3d(x_data).to("cpu")
 
         x_data = normalize(x_data, axis=0)
         x_sample = torch.Tensor(pd.DataFrame(
@@ -89,7 +89,7 @@ class VMMDSingleMask(VMMD):
         bandwidth.append("recommended bandwidth")
         return pd.DataFrame([results], columns=bandwidth, index=["p-val"])
 
-    def load_models(self, path_to_generator, ndims, device: str = None):
+    def load_models(self, path_to_generator, ndims, generator = None, device: str = None):
         '''Loads models for prediction
 
         In case that the generator has already been trained, this method allows to load it (and optionally the discriminator) for generating subspaces
@@ -100,9 +100,14 @@ class VMMDSingleMask(VMMD):
         if device == None:
             device = self.device
         self.__latent_size = max(int(3072 / 16), 1)
-        self.generator = GeneratorSingleMaskRes(
-            img_size=ndims, latent_size=self.__latent_size).to(device)
-        self.generator.load_state_dict(torch.load(path_to_generator))
+
+        if generator is None:
+            self.generator = GeneratorSingleMaskRes(
+                img_size=ndims, latent_size=self.__latent_size).to(device)
+        else:
+            self.generator = generator.to(device)
+
+        self.generator.load_state_dict(torch.load(path_to_generator, map_location=device))
         self.generator.eval()  # This only works for dropout layers
         self.generator_optimizer = f'Loaded Model from {path_to_generator} with {ndims} dimensions in the latent space'
 
@@ -112,7 +117,7 @@ class VMMDSingleMask(VMMD):
 
 
         n_channels, width, height = X[0][0].shape[0], X[0][0].shape[1], X[0][0].shape[2]
-        X = flatten_images_3d(X)
+        X = flatten_images_dataset_3d(X)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
