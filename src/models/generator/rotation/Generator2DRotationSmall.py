@@ -2,15 +2,18 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from src.models.generator.IGenerator import IGenerator
+from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
-class Generator2DRotationSmall(IGenerator):
+class Generator2DRotationSmall(AbstractGenerator):
 
     def __init__(self, latent_size):
         super(Generator2DRotationSmall, self).__init__()
 
-        self.noise_dim = torch.tensor([latent_size])
+        if isinstance(latent_size, int):
+            self._noise_dim = torch.tensor([latent_size])
+        elif isinstance(latent_size, torch.Tensor):
+            self._noise_dim = latent_size
 
         # Define the layers of the generator
         self.fc1 = nn.Linear(latent_size, 64)
@@ -43,9 +46,6 @@ class Generator2DRotationSmall(IGenerator):
         orthogonal_vector = torch.stack([-vector[:, 1], vector[:, 0]], dim=1)
         rotation_matrix = torch.stack([vector, orthogonal_vector], dim=2)
         return rotation_matrix
-
-    def get_noise_tensor_shape(self):
-        return self.noise_dim
 
     def sample_subspace_masks(self, noise):
         return self.forward(noise)

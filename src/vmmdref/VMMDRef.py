@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Union
@@ -18,8 +19,11 @@ import operator
 import torch_two_sample as tts
 
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
-from src.models.generator.IGenerator import IGenerator
+from src.models.autoencoder.AutoEncoderManager import AutoEncoderManager
+from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannel import GeneratorOneChannel
+from src.models.autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 
@@ -73,14 +77,38 @@ class VMMDRef(ABC):
                 'batch_size': self.batch_size, 'seed': self.seed,
                 'generator optimizer': self.generator_optimizer,
                 'generator name': self.generator.__class__.__name__,
-                'noise dim': self.generator.get_noise_tensor_shape(),
+                'noise dim': self.generator.noise_dim,
                 'autoencoder': self.autoencoder.__class__.__name__}
 
-    def load_model(self, generator: IGenerator, path_to_parameters: str):
+    def load_model(self, path_to_generator_params: str):
+        generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
         self.generator = generator.to(self.device)
-        self.generator.load_state_dict(torch.load(path_to_parameters))
+        self.autoencoder = autoencoder.to(self.device)
+        self.generator.load_state_dict(torch.load(path_to_generator_params))
         self.generator.eval()
-        self.generator_optimizer = f'Loaded Model from {path_to_parameters} with {generator.get_noise_tensor_shape()} dimensions in the latent space'
+        self.generator_optimizer = f'Loaded Model from {path_to_generator_params} with {generator.noise_dim} dimensions in the latent space'
+
+
+
+    def __extract_models_from_file(self, path_to_generator_params):
+        pt_file_path = Path(path_to_generator_params)
+        csv_file_path = pt_file_path.parent.parent / 'params.csv'
+
+        filename = path_to_generator_params.split('/')[-1]
+        train_iteration_number = int(re.search(r'\d+', filename).group())
+
+        df = pd.read_csv(csv_file_path)
+
+        noise_dim_column = df.loc[train_iteration_number, 'noise dim']
+        noise_tensor = eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))
+
+        generator_name = df.loc[train_iteration_number, "generator name"] + "(noise_tensor)"
+        generator = eval(generator_name)
+
+        autoencoder_name = df.loc[train_iteration_number, "autoencoder"] + "()"
+        autoencoder = eval(autoencoder_name)
+
+        return generator, autoencoder
 
     def __plot_loss(self, path_to_directory, data, encoder, show=False, run_number=0):
 
@@ -160,7 +188,7 @@ class VMMDRef(ABC):
     def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
         return u_subspaces * x_sample_unflattened
 
-    def fit(self, X_dataset, autoencoder, generator: IGenerator):
+    def fit(self, X_dataset, autoencoder, generator: AbstractGenerator):
 
         n_channels, width, height = X_dataset[0][0].shape[0], X_dataset[0][0].shape[1], X_dataset[0][0].shape[2]
         assert width == height, "Error, need square input images."
@@ -194,6 +222,10 @@ class VMMDRef(ABC):
         loss_function = MMDLossConstrained(weight=10, kernel=RBF(), flattened=self.flattened_projection)
 
         snapshot_intervals = [int(i * 0.25 * epochs) for i in range(1, 5)]
+
+        #INITIAL SNAPSHOT
+        self.__store_model_snapshot(X_dataset, encoder)
+
         for epoch in range(epochs):
             print(f'\rEpoch {epoch} of {epochs}')
             generator_loss = 0
@@ -203,7 +235,7 @@ class VMMDRef(ABC):
             batch_number = data_loader.__len__()
 
             # GET NOISE TENSORS#
-            noise_tensor = self.__setup_noise_tensor(generator_input_shape=generator.get_noise_tensor_shape(), mps=mps, cuda=cuda)
+            noise_tensor = self.__setup_noise_tensor(generator_input_shape=generator.noise_dim, mps=mps, cuda=cuda)
 
             # BATCH LOOP#
             for batch in tqdm(data_loader, leave=False):
@@ -327,7 +359,7 @@ class VMMDRef(ABC):
 
     def _generate_subspaces(self, count, generate_subspace_adjust=True):
 
-        generator_input_shape = self.generator.get_noise_tensor_shape()
+        generator_input_shape = self.generator.noise_dim
 
         # Need to load in cpu as mps Tensor module doesn't properly fix the seed
         noise_tensor = self.__setup_noise_tensor(batch_size=count, generator_input_shape=generator_input_shape, mps=False, cuda=False)
@@ -421,3 +453,28 @@ class VMMDRef(ABC):
                 os.mkdir(path_to_directory / 'plots')
 
             fig.savefig(path_to_directory / 'plots' / f'plot_{run_number}.png')
+
+    def __extract_noise_dim(self, train_iteration_number, path_to_generator_params) -> torch.Tensor:
+        pt_file_path = Path(path_to_generator_params)
+        csv_file_path = pt_file_path.parent.parent / 'params.csv'
+
+        df = pd.read_csv(csv_file_path, header=None)
+        row = df.iloc[train_iteration_number]
+
+        noise_dim_column = row['noise dim']
+
+        # Convert to torch.Tensor
+        return eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))
+
+    def __extract_autoencoder(self, path_to_generator_params):
+        pt_file_path = Path(path_to_generator_params)
+        csv_file_path = pt_file_path.parent.parent / 'params.csv'
+        first_row = pd.read_csv(csv_file_path, header=None).iloc[0]
+
+        autoencoder_name = first_row['autoencoder']
+
+        autoencoder_manager = AutoEncoderManager()
+        return autoencoder_manager.get_autoencoder(autoencoder_name)
+
+
+

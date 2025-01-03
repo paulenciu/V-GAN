@@ -2,15 +2,15 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from src.models.generator.IGenerator import IGenerator
+from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
-class Generator2DRotationBig(IGenerator):
+class Generator2DRotationBig(AbstractGenerator):
 
     def __init__(self, latent_size):
         super(Generator2DRotationBig, self).__init__()
 
-        self.noise_dim = torch.tensor([latent_size])
+        self._noise_dim = torch.tensor([latent_size])
 
         # Define the layers of the generator
         self.fc1 = nn.Linear(latent_size, 128)
@@ -50,9 +50,6 @@ class Generator2DRotationBig(IGenerator):
         orthogonal_vector = torch.stack([-normalized_vectors[:, 1], normalized_vectors[:, 0]], dim=1)
         rotation_matrix = torch.stack([normalized_vectors, orthogonal_vector], dim=2)
         return rotation_matrix
-
-    def get_noise_tensor_shape(self):
-        return self.noise_dim
 
     def sample_subspace_masks(self, noise):
         return self.forward(noise)
