@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.models.generator.convolution.residual.ResidualBlock import ResidualBlock
+from ResidualBlock import ResidualBlock
 
 
 class GeneratorConvLinearMappingResidualSmall(nn.Module):

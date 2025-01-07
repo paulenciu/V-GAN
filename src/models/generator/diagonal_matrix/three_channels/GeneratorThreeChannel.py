@@ -7,9 +7,11 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 
 class GeneratorThreeChannel(AbstractGenerator):
 
-    def __init__(self, latent_size, img_size):
-        self._noise_dim = torch.tensor([latent_size])
+    def __init__(self, latent_size):
         super(GeneratorThreeChannel, self).__init__()
+
+        self._noise_dim = torch.tensor([latent_size])
+
 
         self.hidden = nn.Sequential(
             nn.Linear(latent_size, 2 * latent_size),
@@ -24,7 +26,7 @@ class GeneratorThreeChannel(AbstractGenerator):
             nn.Linear(8 * latent_size, 16 * latent_size),
             nn.BatchNorm1d(16 * latent_size),
             nn.ReLU(),
-            nn.Linear(16 * latent_size, img_size),
+            nn.Linear(16 * latent_size, 32*32*3),
             upper_softmax()
         )
 

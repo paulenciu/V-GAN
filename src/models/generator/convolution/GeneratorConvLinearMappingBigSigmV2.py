@@ -16,11 +16,13 @@ class GeneratorConvLinearMappingBigSigmV2(AbstractGenerator):
         else:
             self._noise_dim = latent_size
 
+        latent_size = self._noise_dim[0].item()
+
         self.main = nn.Sequential(
             # Input: (batch, noise_dim, 1, 1)
 
             # Project to 4x4x512
-            nn.ConvTranspose2d(64, 512, kernel_size=4, stride=1, padding=0, bias=False),
+            nn.ConvTranspose2d(latent_size, 512, kernel_size=4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
 

@@ -329,7 +329,7 @@ class VMMDRef(ABC):
     def __setup_data_loader(self, X_unflattened, cuda, mps):
         if cuda:
             return DataLoader(
-                X_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=cuda, shuffle=True)
+                X_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=False, shuffle=True)
         else:  # Uses CUDA if Available, other wise MPS or nothing
             return DataLoader(
                 X_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=mps, shuffle=True)

@@ -1,24 +1,65 @@
-import torch
+#%%
+import torchvision
+from torch import nn
+from torchvision.transforms import transforms
 
-from src.models.autoencoder.resnet.RestNetAutoEncoder import ResNet18AutoEncoder
-from src.utils.Plotter import visualise_linear_mapping_of_vmmd
-from src.utils.VMMDLoader import load_vmmd
+from src.models.autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
+from src.models.generator.convolution.GeneratorConvLinearMappingBigSigmV2 import GeneratorConvLinearMappingBigSigmV2
+from src.vmmdref.VMMDConvLinearMappingRef import VMMDConvLinearMappingRef
+#%%
 
-if __name__ == "__main__":
-    lrs = [0.1, 0.0004]
-    device = torch.device(
-        'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
+import numpy as np
+from sklearn.model_selection import ParameterSampler
 
+def generate_hyperparams(n_iter=10, random_state=777):
+    """
+    Generates a list of dictionaries, each containing a random combination
+    of hyperparameters for model tuning.
 
-    emb_func = ResNet18AutoEncoder().get_encoder().to(device)
+    :param n_iter:        How many random hyperparameter sets to generate.
+    :param random_state:  Seed for reproducibility.
+    :return:              A list of dictionaries with hyperparameter configurations.
+    """
 
-    vmmd_linear = load_vmmd(
-        filepath="../experiments/remote/experiments/linear_mapping_resnet18_2024-12-06 09:57:00.613177_0.5_500/models/generator_0.pt",
-        name="linear"
-    )
+    # Define your hyperparameter search space
+    param_distributions = {
+        'batch_size':    [128, 256, 500, 1024],
+        'epochs':        [100, 200, 300, 400],
+        'lr':            np.logspace(-4, -1, 4),     # e.g., [1e-4, 1e-3, 1e-2, 1e-1]
+        'momentum':      np.linspace(0.8, 0.99, 5),  # e.g., [0.8, 0.85, 0.9, 0.95, 0.99]
+        'seed':          [777, 111, 222, 333],
+        'weight_decay':  np.logspace(-4, -1, 4)      # e.g., [1e-4, 1e-3, 1e-2, 1e-1]
+    }
 
-    visualise_linear_mapping_of_vmmd(vmmd_linear)
+    # Randomly sample n_iter configurations from the above distributions
+    sampler = ParameterSampler(param_distributions, n_iter=n_iter, random_state=random_state)
 
+    # Convert the iterator to a list of dictionaries
+    param_list = list(sampler)
+    return param_list
 
+#%%
+transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+     ]
+)
+dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
+                                       transform=transform)
+cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
+#%%
 
+hyperparameter_list = generate_hyperparams(n_iter=3, random_state=777)
 
+for i in range(len(hyperparameter_list)):
+    vmmd = VMMDConvLinearMappingRef(
+        filename=f"conv_hypparam_tuning_0_{i}",
+        weight_decay=hyperparameter_list[i]['weight_decay'],
+        seed=hyperparameter_list[i]['seed'],
+        momentum=hyperparameter_list[i]['momentum'],
+        lr=hyperparameter_list[i]['lr'],
+        epochs=hyperparameter_list[i]['epochs'],
+        batch_size=hyperparameter_list[i]['batch_size'],
+        path_to_directory="/Users/paulenciu/PycharmProjects/V-GAN/experiments/remote")
+    vmmd.fit(cats_dataset, ResNet18AutoEncoder(), GeneratorConvLinearMappingBigSigmV2())

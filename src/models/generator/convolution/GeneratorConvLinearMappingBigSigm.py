@@ -3,7 +3,6 @@ from torch import nn
 
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
-
 class GeneratorConvLinearMappingBigSigm(AbstractGenerator):
 
     def __init__(self, latent_size=None):
