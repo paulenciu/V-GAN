@@ -26,6 +26,8 @@ from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannel import
 from src.models.autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
+from src.vmmdref.MMDLossConstrainedV2 import MMDLossConstrainedV2
+
 
 def tensor_to_image(tensor):
     """
@@ -45,7 +47,7 @@ class VMMDRef(ABC):
        kernel learning is performed. The default values for the kernel are
     """
 
-    def __init__(self, filename, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=777, weight_decay=0.04,
+    def __init__(self, filename, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=None, weight_decay=0.04,
                  path_to_directory= Path(os.getcwd()).parent / "experiments" / "local", flattened_projection=False):
         self.autoencoder = None
         self.generator = None
@@ -219,7 +221,7 @@ class VMMDRef(ABC):
             self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.generator_optimizer = optimizer.__class__.__name__
 
-        loss_function = MMDLossConstrained(weight=10, kernel=RBF(), flattened=self.flattened_projection)
+        loss_function = MMDLossConstrainedV2(weight=5e-5, kernel=RBF(), flattened=self.flattened_projection) ##FIXME Testing constrained MMD
 
         snapshot_intervals = [int(i * 0.25 * epochs) for i in range(1, 5)]
 

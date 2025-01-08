@@ -13,9 +13,15 @@ class VMMDLinearMappingRef(VMMDRef):
         super().__init__(filename, batch_size, epochs, lr, momentum, seed, weight_decay, path_to_directory, False)
 
     def sample_count_subspaces(self, count):
-        return self._generate_subspaces(count=count, generate_subspace_adjust=False)
+        #return self._generate_subspaces(count=count, generate_subspace_adjust=False) #FIXME only for testing
+        return self._generate_subspaces(count=count, generate_subspace_adjust=True)
+
 
     def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
+
+        x_sample_unflattened = x_sample_unflattened.to(torch.float32)
+        u_subspaces = u_subspaces.to(torch.float32)
+
         matmul_result = torch.matmul(u_subspaces, x_sample_unflattened)
         matmul_result = matmul_result - matmul_result.min()  # Shift minimum to 0
         matmul_result = matmul_result / matmul_result.max()  # Scale to [0, 1]
