@@ -52,6 +52,6 @@ class MMDLossConstrainedV2(nn.Module):
         XY = K[:X_size, X_size:].mean()
         YY = K[X_size:, X_size:].mean()
 
-        u_l2 = torch.norm(U)
+        u_l2 = torch.sqrt(U.view(U.shape[0], -1).sum(dim=1).sum(dim=0).float())
 
         return XX - 2 * XY + YY + self.weight * u_l2

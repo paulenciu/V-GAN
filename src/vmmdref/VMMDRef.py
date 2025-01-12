@@ -117,6 +117,8 @@ class VMMDRef(ABC):
         myopic_test_df = self.check_if_myopic(data, encoder)
         pval_recommended_bw = myopic_test_df.iat[0, 1]
 
+        mmd_loss = self.__calculate_mmd_loss(x_data=data, emb_func=encoder)
+
         train_history = self.train_history
         plt.style.use('ggplot')
         generator_y = train_history['generator_loss']
@@ -126,6 +128,7 @@ class VMMDRef(ABC):
         ax.plot(x, generator_y, color="cornflowerblue",
                 label="Generator loss", linewidth=2)
         ax.plot([], [], ' ', label="pval: " + str(pval_recommended_bw))
+        ax.plot([], [], ' ', label="mmd: " + str(mmd_loss))
         ax.plot([], [], ' ', label="generator: " + self.generator.__class__.__name__)
 
         plt.xlabel("Epoch")
@@ -221,7 +224,7 @@ class VMMDRef(ABC):
             self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.generator_optimizer = optimizer.__class__.__name__
 
-        loss_function = MMDLossConstrainedV2(weight=5e-5, kernel=RBF(), flattened=self.flattened_projection) ##FIXME Testing constrained MMD
+        loss_function = MMDLossConstrainedV2(weight=1e-5, kernel=RBF(), flattened=self.flattened_projection) ##FIXME Testing constrained MMD
 
         snapshot_intervals = [int(i * 0.25 * epochs) for i in range(1, 5)]
 
@@ -400,10 +403,11 @@ class VMMDRef(ABC):
         X_sample = torch.utils.data.Subset(X, sample_indices)
 
         fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
-        u = self.sample_count_subspaces(n_masks).to(self.device).detach()
+        u = self.sample_count_subspaces(500).to(self.device).detach()
 
-        big_u, _, _ = create_big_u(u)
+        big_u, u_n_masks, _ = create_big_u(u, n_masks)
         big_u = big_u.to(torch.float32).to(self.device)
+        u = torch.from_numpy(u_n_masks).to(self.device)
 
         axis[0, 0].imshow(tensor_to_image(torch.ones(3, 32, 32)))
         axis[0, 0].axis("off")
@@ -427,7 +431,7 @@ class VMMDRef(ABC):
             axis[i, 0].set_title(f"Original {i + 1}")
             axis[i, 0].axis("off")
 
-            u = self.sample_count_subspaces(n_masks).to(self.device)
+            #u = self.sample_count_subspaces(n_masks).to(self.device)
             image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1).to(self.device)
             ux_data = self.apply_subspaces_operator(image, u).to(self.device).detach()
 
@@ -477,6 +481,25 @@ class VMMDRef(ABC):
 
         autoencoder_manager = AutoEncoderManager()
         return autoencoder_manager.get_autoencoder(autoencoder_name)
+
+    def __calculate_mmd_loss(self, x_data, emb_func, count=500):
+        x_data = flatten_images_dataset_3d(x_data).to("cpu")
+
+        x_data = normalize(x_data, axis=0)
+        x_sample = torch.Tensor(pd.DataFrame(
+            x_data).sample(count).to_numpy()).to(self.device)
+
+        u_subspaces = self.sample_count_subspaces(count)
+
+        x_sample = x_sample.view(-1, 3, 32, 32)
+
+        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces)
+
+        x_sample_embedded = emb_func(x_sample).squeeze()
+        ux_sample_embedded = emb_func(ux_sample).squeeze()
+
+        mmd_loss = MMDLossConstrainedV2(0, flattened=self.flattened_projection)
+        return mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces).item()
 
 
 
