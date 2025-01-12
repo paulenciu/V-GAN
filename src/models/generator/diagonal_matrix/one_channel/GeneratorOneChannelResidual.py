@@ -12,12 +12,15 @@ class ResidualBlock2(nn.Module):
             nn.Linear(in_channels, out_channels),
             nn.BatchNorm1d(out_channels),
             nn.LeakyReLU(0.2),
+
             nn.Linear(out_channels, out_channels),
             nn.BatchNorm1d(out_channels),
             nn.LeakyReLU(0.2),
+
             nn.Linear(out_channels, out_channels),
             nn.BatchNorm1d(out_channels),
             nn.LeakyReLU(0.2),
+
             nn.Linear(out_channels, out_channels),
             nn.BatchNorm1d(out_channels),
             nn.LeakyReLU(0.2)
@@ -47,14 +50,19 @@ class GeneratorOneChannelResidual(AbstractGenerator):
             nn.Linear(latent_size, 2 * latent_size),
             nn.BatchNorm1d(2 * latent_size),
             nn.LeakyReLU(0.2),
+
             nn.Linear(2 * latent_size, 4* latent_size),
             nn.BatchNorm1d(4 * latent_size),
             nn.LeakyReLU(0.2),
+
             ResidualBlock2(4 * latent_size, 4 * latent_size),
+
             nn.Linear(4 * latent_size, 8 * latent_size),
             nn.BatchNorm1d(8 * latent_size),
             nn.LeakyReLU(0.2),
+
             ResidualBlock2(8 * latent_size, 8 * latent_size),
+
             nn.Linear(8 * latent_size, 32*32),
             upper_softmax()
         )

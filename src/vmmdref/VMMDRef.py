@@ -221,7 +221,7 @@ class VMMDRef(ABC):
             self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.generator_optimizer = optimizer.__class__.__name__
 
-        loss_function = MMDLossConstrainedV2(weight=5e-5, kernel=RBF(), flattened=self.flattened_projection) ##FIXME Testing constrained MMD
+        loss_function = MMDLossConstrainedV2(weight=1e-5, kernel=RBF(), flattened=self.flattened_projection) ##FIXME Testing constrained MMD
 
         snapshot_intervals = [int(i * 0.25 * epochs) for i in range(1, 5)]
 
