@@ -148,7 +148,7 @@ class ResNetDecoder(nn.Module):
 
 class EncoderResidualBlock(nn.Module):
 
-    def __init__(self, in_channels, hidden_channels, layers, downsample_method="conv"):
+    def     __init__(self, in_channels, hidden_channels, layers, downsample_method="conv"):
         super(EncoderResidualBlock, self).__init__()
 
         if downsample_method == "conv":
