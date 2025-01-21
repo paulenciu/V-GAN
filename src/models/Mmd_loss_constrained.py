@@ -54,6 +54,7 @@ class MMDLossConstrained(nn.Module):
 
         ##Flattening changes the dimensions of U
         if not self.flattened:
-            return XX - 2 * XY + YY + self.weight*(torch.mean(torch.ones(U.shape[2]).to(self.device) - torch.topk(U, 1, 0).values))
+            return XX - 2 * XY + YY + self.weight* (torch.mean(torch.ones(U.shape[2]).to(self.device) - torch.topk(U, 1, 0).values))
 
-        return XX - 2 * XY + YY + self.weight*(torch.mean(torch.ones(U.shape[1]).to(self.device) - torch.topk(U, 1, 0).values))
+        return XX - 2 * XY + YY + self.weight * (torch.mean(torch.ones(U.shape[1]).to(self.device) - torch.topk(U, 1, 0).values))
+

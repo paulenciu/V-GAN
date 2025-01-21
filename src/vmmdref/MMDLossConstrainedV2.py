@@ -1,4 +1,5 @@
 import torch
+from src.vmmdref.penalty.MMDLossPenalty import MMDLossNoPenalty
 from torch import nn
 
 
@@ -35,13 +36,12 @@ class MMDLossConstrainedV2(nn.Module):
     Constrained loss by the number of features selected
     '''
 
-    def __init__(self, weight, kernel=RBF(), flattened=True):
+    def __init__(self, kernel=RBF(), penalty=MMDLossNoPenalty()):
         super().__init__()
         self.kernel = kernel
-        self.weight = weight
+        self.penalty = penalty
         self.device = torch.device('cuda:0' if torch.cuda.is_available(
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
-        self.flattened = flattened
 
     def forward(self, X, Y, U):
         K = self.kernel(torch.vstack([X, Y]))
@@ -52,5 +52,8 @@ class MMDLossConstrainedV2(nn.Module):
         XY = K[:X_size, X_size:].mean()
         YY = K[X_size:, X_size:].mean()
 
-        u_l2 = torch.sqrt(U.view(U.size(0), -1).sum(dim=1).sum(dim=0).float())
-        return XX - 2 * XY + YY + self.weight * u_l2
+        mmd_loss = XX - 2 * XY + YY
+
+        total_loss = mmd_loss + self.penalty.get_weighted_penalty(U)
+
+        return total_loss, mmd_loss

@@ -2,7 +2,7 @@ import torch
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from torch import nn
 
-from src.models.Generator import upper_softmax
+from src.models.Generator import upper_softmax2D
 
 
 class ResidualBlock2(nn.Module):
@@ -64,7 +64,7 @@ class GeneratorOneChannelResidual(AbstractGenerator):
             ResidualBlock2(8 * latent_size, 8 * latent_size),
 
             nn.Linear(8 * latent_size, 32*32),
-            upper_softmax()
+            upper_softmax2D()
         )
 
     def forward(self, x):

@@ -5,6 +5,8 @@ from typing import Union
 
 import torch
 from collections import defaultdict
+import torch.nn.utils as nn_utils
+
 
 from sklearn.preprocessing import normalize
 from torch import nn
@@ -18,6 +20,7 @@ import os
 import operator
 import torch_two_sample as tts
 
+from src.vmmdref.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.models.autoencoder.AutoEncoderManager import AutoEncoderManager
 from src.models.generator.AbstractGenerator import AbstractGenerator
@@ -48,9 +51,10 @@ class VMMDRef(ABC):
     """
 
     def __init__(self, filename, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=None, weight_decay=0.04,
-                 path_to_directory= Path(os.getcwd()).parent / "experiments" / "local", flattened_projection=False):
+                 path_to_directory= Path(os.getcwd()).parent / "experiments" / "local", flattened_projection=False, penalty=MMDLossNoPenalty()):
         self.autoencoder = None
         self.generator = None
+        self.penalty = penalty
         self.storage = locals()
         self.train_history = defaultdict(list)
         self.batch_size = batch_size
@@ -80,7 +84,9 @@ class VMMDRef(ABC):
                 'generator optimizer': self.generator_optimizer,
                 'generator name': self.generator.__class__.__name__,
                 'noise dim': self.generator.noise_dim,
-                'autoencoder': self.autoencoder.__class__.__name__}
+                'autoencoder': self.autoencoder.__class__.__name__,
+                'mmd_penalty': self.penalty.__class__.__name__,
+                'mmd_penalty_stats': self.penalty.get_stats()}
 
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
@@ -89,8 +95,6 @@ class VMMDRef(ABC):
         self.generator.load_state_dict(torch.load(path_to_generator_params))
         self.generator.eval()
         self.generator_optimizer = f'Loaded Model from {path_to_generator_params} with {generator.noise_dim} dimensions in the latent space'
-
-
 
     def __extract_models_from_file(self, path_to_generator_params):
         pt_file_path = Path(path_to_generator_params)
@@ -118,17 +122,24 @@ class VMMDRef(ABC):
         pval_recommended_bw = myopic_test_df.iat[0, 1]
 
         mmd_loss = self.__calculate_mmd_loss(x_data=data, emb_func=encoder)
+        n_unique_subspaces = self.__count_unique_subspaces(data)
+
 
         train_history = self.train_history
         plt.style.use('ggplot')
         generator_y = train_history['generator_loss']
+        mmd_y = train_history['mmd_loss']
+
         x = np.linspace(1, len(generator_y), len(generator_y))
         fig, ax = plt.subplots()
 
         ax.plot(x, generator_y, color="cornflowerblue",
                 label="Generator loss", linewidth=2)
+        ax.plot(x, mmd_y, color="red", label="MMD loss", linewidth=2)
+
         ax.plot([], [], ' ', label="pval: " + str(pval_recommended_bw))
         ax.plot([], [], ' ', label="mmd: " + str(mmd_loss))
+        ax.plot([], [], ' ', label="n_u_subs: " + str(n_unique_subspaces) + "/500")
         ax.plot([], [], ' ', label="generator: " + self.generator.__class__.__name__)
 
         plt.xlabel("Epoch")
@@ -201,8 +212,10 @@ class VMMDRef(ABC):
         self.autoencoder = autoencoder
         encoder = autoencoder.get_encoder().to(self.device)
 
-        X_flattened = flatten_images_dataset_3d(X_dataset).to(self.device)
-        X_unflattened = unflatten_images_3d(X_flattened, 3, 32, 32).to(self.device)
+        X_flattened = flatten_images_dataset_3d(X_dataset).to("cpu")
+        x_flattened_normalized = torch.from_numpy(normalize(X_flattened, axis=0)).to(torch.float32).to(self.device)
+
+        X_unflattened_normalized = unflatten_images_3d(x_flattened_normalized, 3, 32, 32).to(self.device)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -224,9 +237,9 @@ class VMMDRef(ABC):
             self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.generator_optimizer = optimizer.__class__.__name__
 
-        loss_function = MMDLossConstrainedV2(weight=1e-5, kernel=RBF(), flattened=self.flattened_projection) ##FIXME Testing constrained MMD
+        loss_function = MMDLossConstrainedV2(penalty=self.penalty, kernel=RBF())
 
-        snapshot_intervals = [int(i * 0.25 * epochs) for i in range(1, 5)]
+        snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
 
         #INITIAL SNAPSHOT
         self.__store_model_snapshot(X_dataset, encoder)
@@ -234,9 +247,10 @@ class VMMDRef(ABC):
         for epoch in range(epochs):
             print(f'\rEpoch {epoch} of {epochs}')
             generator_loss = 0
+            mmd_loss_avg = 0
 
             # DATA LOADER#
-            data_loader = self.__setup_data_loader(X_unflattened, cuda, mps)
+            data_loader = self.__setup_data_loader(X_unflattened_normalized, cuda, mps)
             batch_number = data_loader.__len__()
 
             # GET NOISE TENSORS#
@@ -264,7 +278,7 @@ class VMMDRef(ABC):
                 embedded_batch = encoder(batch).squeeze()
                 embedded_fake_subspaces = encoder(processed_batch).squeeze()
 
-                batch_loss = loss_function(embedded_batch, embedded_fake_subspaces, u_mappings)
+                batch_loss, mmd_loss = loss_function(embedded_batch, embedded_fake_subspaces, u_mappings)
 
                 self.bandwidth = loss_function.bandwidth
                 batch_loss.backward()
@@ -272,11 +286,15 @@ class VMMDRef(ABC):
                 generator_loss += float(batch_loss.to(
                     'cpu').detach().numpy()) / batch_number
 
+                mmd_loss_avg += float(mmd_loss.to(
+                    'cpu').detach().numpy()) / batch_number
+
             #INBETWEEN SNAPSHOTS
             if epoch in snapshot_intervals:
                 self.__store_model_snapshot(X_dataset, encoder)
             print(f"Average loss in the epoch: {generator_loss}")
             self.train_history["generator_loss"].append(generator_loss)
+            self.train_history["mmd_loss"].append(mmd_loss_avg)
 
         #FINAL SNAPSHOT
         self.__store_model_snapshot(X_dataset, encoder)
@@ -300,6 +318,7 @@ class VMMDRef(ABC):
 
         self.__include_train_history(path_to_directory, X, encoder, run_number, show)
         self.__include_visual_plots(X=X, n_samples=5, n_masks=5, path_to_experiment=path_to_directory, run_number=run_number)
+        self.__include_subspace_distribution_plot(path_to_directory=path_to_directory, run_number=run_number, count=100)
 
     def __include_train_history(self, path_to_directory, X, encoder, run_number=0, show=False):
         path_to_train_history = path_to_directory / "train_history"
@@ -373,11 +392,18 @@ class VMMDRef(ABC):
             torch.manual_seed(self.seed)
 
         noise_tensor.normal_()
-        u = self.generator.sample_subspace_masks(noise_tensor.to(self.device))
+        u = self.generator.sample_subspace_masks(noise_tensor.to(self.device), mode="test")
 
         if generate_subspace_adjust:
-            u = torch.greater_equal(u, 1 / u.shape[1])
+ #           u = torch.greater_equal(u, 1 / self._calculate_d(u))
+            u = torch.greater_equal(u, 0.5)
+
         return u
+
+    def _calculate_d(self, u):
+        u_reduced = u[:, 0:1, :, :]
+        u_reduced = u_reduced.view(u.shape[0], -1)
+        return u_reduced.shape[1]
 
     def __setup_noise_tensor(self, generator_input_shape: torch.Tensor, mps: bool, cuda: bool, batch_size=None):
 
@@ -396,7 +422,16 @@ class VMMDRef(ABC):
         device = 'cuda' if cuda else 'mps' if mps else 'cpu'
         return torch.empty(shape, dtype=torch.float32, device=device)
 
+    def __include_subspace_distribution_plot(self, path_to_directory, run_number, count):
+        u = self.sample_count_subspaces(count)
+        plot = self._create_mask_frequency_plot(u).to("cpu")
 
+        plt.imshow(tensor_to_image(plot.detach()), cmap='hot', interpolation='nearest')
+        plt.colorbar(label='Frequency of Masking')
+        plt.title('Pixel Masking Distribution')
+        plt.savefig(path_to_directory / f"freq_mask_{run_number}.pdf",
+                    format="pdf", dpi=1200)
+        plt.show()
 
     def __include_visual_plots(self, X, n_samples, n_masks, path_to_experiment, run_number):
         sample_indices = np.arange(n_samples)
@@ -405,15 +440,15 @@ class VMMDRef(ABC):
         fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
         u = self.sample_count_subspaces(500).to(self.device).detach()
 
-        big_u, u_n_masks, _ = create_big_u(u, n_masks)
+        big_u, _, _ = create_big_u(u, n_masks)
         big_u = big_u.to(torch.float32).to(self.device)
-        u = torch.from_numpy(u_n_masks).to(self.device)
+        u = self.sample_count_subspaces(n_masks).to(self.device)
 
         axis[0, 0].imshow(tensor_to_image(torch.ones(3, 32, 32)))
         axis[0, 0].axis("off")
 
         for i in range(n_masks):
-            axis[0, i + 1].imshow(tensor_to_image(u[i]))
+            axis[0, i + 1].imshow(tensor_to_image(u[i].detach()))
             axis[0, i + 1].axis("off")
             axis[0, i + 1].set_title(f"Mask {i + 1}")
 
@@ -431,10 +466,9 @@ class VMMDRef(ABC):
             axis[i, 0].set_title(f"Original {i + 1}")
             axis[i, 0].axis("off")
 
-            #u = self.sample_count_subspaces(n_masks).to(self.device)
+            u = self.sample_count_subspaces(n_masks).to(self.device)
             image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1).to(self.device)
             ux_data = self.apply_subspaces_operator(image, u).to(self.device).detach()
-
 
             for j in range(n_masks):
                 axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
@@ -498,8 +532,52 @@ class VMMDRef(ABC):
         x_sample_embedded = emb_func(x_sample).squeeze()
         ux_sample_embedded = emb_func(ux_sample).squeeze()
 
-        mmd_loss = MMDLossConstrainedV2(0, flattened=self.flattened_projection)
-        return mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces).item()
+        mmd_loss = MMDLossConstrainedV2()
+        _, mmd_loss = mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
+        return mmd_loss.item()
 
+    def __count_unique_subspaces(self, X):
+        u = self.sample_count_subspaces(count=500)
 
+        unique_subspaces, _ = np.unique(
+            np.array(u.detach().to('cpu')), axis=0, return_counts=True)
 
+        return len(unique_subspaces)
+
+    def __include_ss_count(self, X):
+        u = self.sample_count_subspaces(count=500)
+
+        unique_subspaces, count = np.unique(
+            np.array(u.to('cpu')), axis=0, return_counts=True)
+
+        n_unique_subspaces = len(unique_subspaces)
+
+        # Create a figure and axis
+        fig, ax = plt.subplots()
+
+        # Hide the axes
+        ax.axis('tight')
+        ax.axis('off')
+
+        # Prepare data for the table
+        data = [np.arange(n_unique_subspaces), count]
+
+        # Create the table
+        table = ax.table(
+            cellText=data,
+            rowLabels=["Subspace", "Count"],
+            colLabels=[f"{i + 1}" for i in range(n_unique_subspaces)],
+            loc='center'
+        )
+
+        # Adjust the layout
+        table.auto_set_font_size(False)
+        table.set_fontsize(12)
+        table.auto_set_column_width(col=list(range(n_unique_subspaces)))
+
+        # Show the plot
+        plt.show()
+
+    def _create_mask_frequency_plot(self, u) -> torch.Tensor:
+        u_agg = u.sum(dim=0)
+        return u_agg / u.shape[0]

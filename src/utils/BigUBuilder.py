@@ -7,10 +7,6 @@ def create_big_u(u, n_masks):
         np.array(u.to('cpu')), axis=0, return_counts=True)
     proba = proba / np.array(u.to('cpu')).shape[0]
 
-    unique_subspaces, proba = np.unique(
-        np.array(u.to('cpu')), axis=0, return_counts=True)
-    proba = proba / np.array(u.to('cpu')).shape[0]
-
     top_k_indices = np.argsort(proba)[-n_masks:][::-1]  # Sort in descending order
 
     # Extract the top k subspaces and their probabilities

@@ -1,6 +1,6 @@
 from torch import nn
 
-from src.models.Generator import upper_softmax
+from src.models.Generator import upper_softmax2D
 
 
 class ResNetXDetachedDecoder(nn.Module):
@@ -8,7 +8,7 @@ class ResNetXDetachedDecoder(nn.Module):
     def __init__(self, original_generator):
         super(ResNetXDetachedDecoder, self).__init__()
         self.model = original_generator
-        self.softmax = upper_softmax()
+        self.softmax = upper_softmax2D()
         self.latent_size = original_generator.latent_size
 
         # resetting the parameters

@@ -5,10 +5,10 @@ from src.models.Generator import upper_softmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
-class GeneratorOneChannel(AbstractGenerator):
+class GeneratorOneChannelV3(AbstractGenerator):
 
     def __init__(self, latent_size):
-        super(GeneratorOneChannel, self).__init__()
+        super(GeneratorOneChannelV3, self).__init__()
 
         self._noise_dim = torch.tensor([latent_size])
 
@@ -23,11 +23,9 @@ class GeneratorOneChannel(AbstractGenerator):
 
             nn.Linear(4 * latent_size, 8 * latent_size),
             nn.BatchNorm1d(8 * latent_size),
+            nn.LeakyReLU(0.2),
 
-            nn.Linear(8 * latent_size, 8 * latent_size),
-            nn.BatchNorm1d(8 * latent_size),
-
-            nn.Linear(8 * latent_size, 32*32),
+            nn.Linear(8 * latent_size, 32 * 32),
         )
         self.upper_softmax = upper_softmax1D()
         self.softmax = nn.Softmax(dim=-1)

@@ -4,7 +4,7 @@ from torch import nn
 from src.models.Generator import upper_softmax2D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
-class GeneratorOneChannelResidualBig(AbstractGenerator):
+class GeneratorOneChannelResidualBigInv(AbstractGenerator):
 
     def __init__(self, latent_size, depth=5, dropout=0.2):
         """
@@ -14,7 +14,7 @@ class GeneratorOneChannelResidualBig(AbstractGenerator):
         :param depth: Number of hidden layers to scale complexity.
         :param dropout: Dropout probability for regularization.
         """
-        super(GeneratorOneChannelResidualBig, self).__init__()
+        super(GeneratorOneChannelResidualBigInv, self).__init__()
 
         self._noise_dim = torch.tensor([latent_size])
 
@@ -24,34 +24,25 @@ class GeneratorOneChannelResidualBig(AbstractGenerator):
         for i in range(depth):
             output_dim = input_dim * 2
             layers.append(nn.Linear(input_dim, output_dim))
-            layers.append(nn.BatchNorm1d(output_dim))
-            layers.append(nn.ReLU())
-            layers.append(nn.Dropout(dropout))
+            layers.append(nn.BatchNorm1d(output_dim))  # Stabilized BatchNorm
+            layers.append(nn.LeakyReLU(0.2, inplace=True))  # Avoid ReLU dead neurons
+            layers.append(nn.Dropout(dropout))  # Regularization
             input_dim = output_dim
 
-        # Final output layer
         layers.append(nn.Linear(input_dim, 32 * 32))
-        layers.append(upper_softmax2D())
 
-        # Build the model as a sequential block
         self.hidden = nn.Sequential(*layers)
-
-        # Residual connections to refine generated features
         self.residual = nn.Sequential(
-            nn.Linear(latent_size, 32 * 32),
-            nn.Tanh()
+            nn.Linear(latent_size, 32 * 32)
         )
 
-    def forward(self, x):
-        """
-        Forward pass for the generator with residual connection.
+        self.upper_softmax = upper_softmax2D()
 
-        :param x: Input noise.
-        :return: Generated output in the shape of [batch_size, 3, 32, 32].
-        """
+    def forward(self, x):
         base_output = self.hidden(x)
         residual_output = self.residual(x)
-        return base_output + residual_output
+        return nn.functional.softmax(base_output + residual_output, dim=1)
+
 
     def sample_subspace_masks(self, noise):
         return self.forward(noise).repeat(1, 3).view(-1, 3, 32, 32)
