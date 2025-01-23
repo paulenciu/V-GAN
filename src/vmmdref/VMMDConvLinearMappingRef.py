@@ -15,4 +15,4 @@ class VMMDConvLinearMappingRef(VMMDRef):
 
 
     def sample_count_subspaces(self, count):
-        return self._generate_subspaces(count, True)
+        return self._generate_subspaces(count, threshold=lambda u : 1 / 2)

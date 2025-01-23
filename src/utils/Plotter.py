@@ -103,7 +103,7 @@ def visualise_rotations_of_vmmd(model, n_samples=10, n_masks=10, path_to_experim
     device = torch.device(
         'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
-    dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
+    dataset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True,
                                            transform=transforms.ToTensor())
     cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
 
@@ -151,7 +151,7 @@ def visualise_linear_mapping_of_vmmd(model, n_samples=10, unsqueeze_fake_subspac
         'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
     # Load CIFAR-10 dataset and filter for cat images (label = 3)
-    dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
+    dataset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True,
                                            transform=transforms.ToTensor())
     cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
 
@@ -167,7 +167,7 @@ def visualize_masking_of_vmmd(model, n_samples=10, single=True, n_masks=3):
     device = torch.device(
         'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
-    dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
+    dataset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True,
                                            transform=transforms.ToTensor())
     cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
 
@@ -190,7 +190,7 @@ def visualise_conv_masking_of_vmmd(model, n_samples=10, method="conv_linear", n_
     device = torch.device(
         'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
-    dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
+    dataset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True,
                                            transform=transforms.ToTensor())
     cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
 

@@ -7,22 +7,46 @@ import torch.nn.functional as F
 
 # Regular function definition does not appear to work properly within a Sequential definition of a network in Pytorchs
 class upper_softmax2D(nn.Module):
+
     def __init__(self):
         super().__init__()  # Dummy intialization as there is no parameter to learn
 
-    def forward(self, x, d):
+    def stable_log_softmax(self, logits):
+        logits_max = torch.max(logits, dim=-1, keepdim=True).values
+        exps = torch.exp(logits - logits_max)
+        return logits - logits_max - torch.log(torch.sum(exps, dim=-1, keepdim=True))
+
+    def stable_softmax(self, x, dim=1):
+        # Subtract the maximum value for numerical stability
+        x_max = torch.max(x, dim=dim, keepdim=True).values
+        x_stable = x - x_max
+        # Compute the softmax
+        return F.softmax(x_stable, dim=dim)
+
+    def forward(self, x):
         x_flattened = x.view(x.size(0), -1)
-        x_flattened = torch.nn.functional.softmax(x_flattened, 1)
-        x_flattened = torch.less(x_flattened, 1/d)*x_flattened + \
-            torch.greater_equal(x_flattened, 1/d)
+
+        x_flattened = self.stable_softmax(x_flattened)
+
+        # Apply thresholding
+        threshold = 1 / x_flattened.shape[1]
+        x_flattened = torch.where(x_flattened >= threshold, torch.tensor(1.0, device=x.device),
+                                  torch.tensor(0.0, device=x.device))
+
+        if torch.all(x_flattened):
+            print(x)
+            print(x_flattened)
+
         x = x_flattened.view(x.size(0), x.size(1), x.size(2), x.size(3))
         return x
 
 class upper_softmax1D(nn.Module):
+
     def __init__(self):
         super().__init__()  # Dummy intialization as there is no parameter to learn
 
-    def forward(self, x, d):
+    def forward(self, x):
+        d = x.shape[1]
         x = torch.nn.functional.softmax(x, 1)
         x = torch.less(x, 1 / d) * x + \
             torch.greater_equal(x, 1 / d)
@@ -38,3 +62,35 @@ class upper_lower_softmax(nn.Module):
         x = x*selected + (~selected)*1e-08
         return x
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class Sparsemax(nn.Module):
+    def __init__(self, dim=-1):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, x):
+        # Sort the input in descending order
+        x_sorted, _ = torch.sort(x, dim=self.dim, descending=True)
+        # Compute the cumulative sum
+        cumsum = torch.cumsum(x_sorted, dim=self.dim)
+        # Find the threshold
+        k = torch.arange(1, x.size(self.dim) + 1, device=x.device)
+        threshold = (x_sorted * k > (cumsum - 1)) * 1.0
+        k = torch.sum(threshold, dim=self.dim, keepdim=True)
+        # Compute the sparsemax
+        tau = (torch.sum(x_sorted * threshold, dim=self.dim, keepdim=True) - 1) / k
+        return torch.clamp(x - tau, min=0)
+
+class UpperSparsemax2D(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.sparsemax = Sparsemax(dim=1)
+
+    def forward(self, x):
+        x_flattened = x.view(x.size(0), -1)
+        x_flattened = self.sparsemax(x_flattened)
+        x = x_flattened.view(x.size(0), x.size(1), x.size(2), x.size(3))
+        return x

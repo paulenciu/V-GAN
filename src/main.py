@@ -1,27 +1,22 @@
 import torch
-import torchvision
+
+from src.dataset.Cifar10CatsDataset import Cifar10CatsDataset
+from src.dataset.FashionMNISTTrousersDataset import FashionMNISTTrousersDataset
 from src.models.generator.convolution.GeneratorConvLinearMappingBigSigmV2 import GeneratorConvLinearMappingBigSigmV2
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelResidualBigInv import \
-    GeneratorOneChannelResidualBigInv
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV2 import GeneratorOneChannelV2
+from src.models.generator.convolution.GeneratorConvLinearMappingBigSigmV3 import GeneratorConvLinearMappingBigSoftmax
+
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV3 import GeneratorOneChannelV3
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV5 import GeneratorOneChannelV5
 from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
+from src.vmmdref.VMMDConvLinearMappingRef import VMMDConvLinearMappingRef
 
 from src.vmmdref.VMMDDiagonal1Channel import VMMDDiagonal1Channel
-from src.vmmdref.VMMDDiagonal3Channel import VMMDDiagonal3Channel
-from torch import nn
 from torchvision.transforms import transforms
-import gc
 import os
-from dataset.SyntheticImageDataset import SyntheticImageDataset
-from src.vmmdref.penalty.MMDLossPenalty import MMDLossL2Penalty, MMDLossNoPenalty, MMDLossPenaltyJoin, \
-    MMDLossDiscretePenalty, MMDLossDiscreteExponentialPenalty, MMDLossDiscreteJenkeJenkePenalty
+
+from src.vmmdref.VMMDDiagonal3Channel import VMMDDiagonal3Channel
+from src.vmmdref.penalty.MMDLossPenalty import MMDLossL2Penalty, MMDLossPenaltyJoin, \
+    MMDLossDiscretePenalty
 from src.models.autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
-from src.models.autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
-from src.models.generator.convolution.GeneratorConvLinearMappingBigSigmV3 import GeneratorConvLinearMappingBigSoftmax
-from src.vmmdref.VMMDConvLinearMappingRef import VMMDConvLinearMappingRef
 import numpy as np
 from sklearn.model_selection import ParameterSampler
 
@@ -57,34 +52,32 @@ def generate_hyperparams(n_iter=10, random_state=777):
 
 if __name__ == '__main__':
     os.environ.update(OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', NUMEXPR_NUM_THREADS='1', MKL_NUM_THREADS='1')
+    torch.autograd.set_detect_anomaly(True)
 
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            #transforms.Normalize(mean=[0.4955, 0.4564, 0.4155], std=[0.2568, 0.2523, 0.2580])
         ]
     )
-    dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
-                                           transform=transform)
-    cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
-    s_dataset = SyntheticImageDataset(5000)
-    hyperparameter_list = generate_hyperparams(n_iter=10, random_state=888)
-    torch.autograd.set_detect_anomaly(True)
 
+    cats_dataset = Cifar10CatsDataset("../datasets/cifar10")
     penalty_weight = 1
     lr = .1
 
-    vmmd = VMMDDiagonal3Channel(
-        filename=f"syn_2_three_channel_tr=sm,test=u_sm_w={penalty_weight}_lr={lr}_0",
+    vmmd = VMMDConvLinearMappingRef(
+        filename=f"conv_sm_w={penalty_weight}_lr={lr}_1",
         weight_decay=0.09999999999999999,
         seed=333,
         momentum=0.8,
         lr=lr,
-        epochs=200,
+        epochs=100,
         batch_size=256,
-        path_to_directory="/home/i40/enciup/V-GAN/experiments/remote",
-        penalty=MMDLossNoPenalty(1),
+        path_to_directory="../experiments/local",
+        penalty=MMDLossPenaltyJoin(
+            mmd_loss_1=MMDLossDiscretePenalty(1),
+            mmd_loss_2=MMDLossL2Penalty(5e-3),
+            weight=penalty_weight),
     )
     noise_dim = 100
-    vmmd.fit(s_dataset, ResNet18AutoEncoder(), GeneratorThreeChannel(noise_dim))
+    vmmd.fit(cats_dataset, ResNet18AutoEncoder(), GeneratorConvLinearMappingBigSigmV2(torch.tensor([noise_dim, 1, 1])))
 

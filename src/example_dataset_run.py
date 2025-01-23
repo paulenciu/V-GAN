@@ -9,14 +9,14 @@ from sklearn.preprocessing import normalize
 
 if __name__ == "__main__":
         
-        # X_data = np.load("data/SpamBase.npz")
+        # X_data = np.load("cifar10/SpamBase.npz")
         # df = pd.DataFrame(X_data["X"])
         # df["outlier"] = X_data["y"]
         # df["id"] = df.index
 
         # df["outlier"] = pd.factorize(df["outlier"], sort=True)[0] #Keep in mind: 0 inlier, 1 outlier
         # X_data = normalize(df[df["outlier"] == 0].to_numpy(), axis=0)
-        X_data = pd.read_parquet("../data/p53_mutant_inactive.parquet").to_numpy()
+        X_data = pd.read_parquet("../datasets/cifar10/p53_mutant_inactive.parquet").to_numpy()
         X_data = normalize(X_data, axis = 0)
 
         #model = VMMD(epochs = 1500, batch_size= 500, path_to_directory=Path()/ "experiments" / f"Example_dataset_{datetime.datetime.now()}", lr=0.01)

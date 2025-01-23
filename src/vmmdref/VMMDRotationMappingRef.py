@@ -26,4 +26,4 @@ class VMMDRotationMappingRef(VMMDRef):
         return rotated_images
 
     def sample_count_subspaces(self, count):
-        return self._generate_subspaces(count=count, generate_subspace_adjust=False)
+        return self._generate_subspaces(count=count, discretize_condition=False)

@@ -5,29 +5,22 @@ from typing import Union
 
 import torch
 from collections import defaultdict
-import torch.nn.utils as nn_utils
-import torch.nn.functional as F
-from dataset.IDataset import IDataset
+from src.dataset.IDataset import IDataset
 
 from sklearn.preprocessing import normalize
-from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import os
-import operator
 import torch_two_sample as tts
 
 from src.vmmdref.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.models.autoencoder.AutoEncoderManager import AutoEncoderManager
 from src.models.generator.AbstractGenerator import AbstractGenerator
-from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannel import GeneratorOneChannel
-from src.models.autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmdref.MMDLossConstrainedV2 import MMDLossConstrainedV2
@@ -123,7 +116,7 @@ class VMMDRef(ABC):
         pval_recommended_bw = myopic_test_df.iat[0, 1]
 
         mmd_loss = self.__calculate_mmd_loss(x_data=data, emb_func=encoder)
-        n_unique_subspaces = self.__count_unique_subspaces(data)
+        n_unique_subspaces = self.__count_unique_subspaces()
 
 
         train_history = self.train_history
@@ -152,7 +145,7 @@ class VMMDRef(ABC):
         if show == True:
             print("The show option has been depricated due to lack of utility")
 
-    def check_if_myopic(self, x_data, emb_func, bandwidth: Union[float, np.array] = 0.01, count=500) -> pd.DataFrame:
+    def check_if_myopic(self, x_data: IDataset, emb_func, bandwidth: Union[float, np.array] = 0.01, count=500) -> pd.DataFrame:
         """_summary_
 
         Args:
@@ -167,6 +160,8 @@ class VMMDRef(ABC):
         assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
         results = []
 
+        n_channels, height, width = x_data.image_shape
+
         x_data = flatten_images_dataset_3d(x_data).to("cpu")
 
         x_data = normalize(x_data, axis=0)
@@ -174,7 +169,7 @@ class VMMDRef(ABC):
             x_data).sample(count).to_numpy()).to(self.device)
 
         u_subspaces = self.sample_count_subspaces(count)
-        x_sample = x_sample.view(-1, 3, 32, 32)
+        x_sample = x_sample.view(-1, n_channels, height, width)
         ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces).view(x_sample.shape[0], -1)
         x_sample = x_sample.view(x_sample.shape[0], -1)
 
@@ -201,17 +196,14 @@ class VMMDRef(ABC):
     def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
         return u_subspaces * x_sample_unflattened
 
-    def fit(self, dataset, autoencoder, generator: AbstractGenerator):
+    def fit(self, dataset: IDataset, autoencoder, generator: AbstractGenerator):
 
-        encoder = autoencoder.get_encoder().to(self.device)
-
-        n_channels, width, height = dataset[0][0].shape
+        n_channels, width, height = dataset.image_shape
         assert width == height, "Error, need square input images."
 
         X_flattened = flatten_images_dataset_3d(dataset).to("cpu")
         x_flattened_normalized = torch.from_numpy(normalize(X_flattened, axis=0)).to(torch.float32).to(self.device)
-
-        X_unflattened_normalized = unflatten_images_3d(x_flattened_normalized, 3, 32, 32).to(self.device)
+        X_unflattened_normalized = unflatten_images_3d(x_flattened_normalized, n_channels, height, width).to(self.device)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -236,6 +228,8 @@ class VMMDRef(ABC):
         loss_function = MMDLossConstrainedV2(penalty=self.penalty, kernel=RBF())
 
         snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
+
+        encoder = autoencoder.get_encoder().to(self.device)
 
         #INITIAL SNAPSHOT
         self.__store_model_snapshot(dataset, encoder)
@@ -377,7 +371,7 @@ class VMMDRef(ABC):
                    path_to_directory / 'models' / f'generator_{run_number}.pt')
         self.__model_snapshot(path_to_directory=path_to_directory, run_number=run_number, X=X, encoder=encoder, show=True)
 
-    def _generate_subspaces(self, count, generate_subspace_adjust=True):
+    def _generate_subspaces(self, count, threshold = None):
 
         generator_input_shape = self.generator.noise_dim
 
@@ -388,10 +382,11 @@ class VMMDRef(ABC):
             torch.manual_seed(self.seed)
 
         noise_tensor.normal_()
-        u = self.generator.sample_subspace_masks(noise_tensor.to(self.device), mode="test")
+        u: torch.Tensor = self.generator.sample_subspace_masks(noise_tensor.to(self.device), mode="test")
 
-        if generate_subspace_adjust:
-            u = torch.greater_equal(u, 1 / self._calculate_d(u))
+        if threshold is not None:
+            u = torch.greater_equal(u, threshold(u))
+#            u = torch.greater_equal(u, 1 / self._calculate_d(u))
 #            u = torch.greater_equal(u, 0.5)
 
         return u
@@ -429,9 +424,11 @@ class VMMDRef(ABC):
                     format="pdf", dpi=1200)
         plt.show()
 
-    def __include_visual_plots(self, X, n_samples, n_masks, path_to_experiment, run_number):
+    def __include_visual_plots(self, X: IDataset, n_samples, n_masks, path_to_experiment, run_number):
         sample_indices = np.arange(n_samples)
         X_sample = torch.utils.data.Subset(X, sample_indices)
+
+        n_channels, width, height = X.image_shape
 
         fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
         u = self.sample_count_subspaces(500).to(self.device).detach()
@@ -440,7 +437,7 @@ class VMMDRef(ABC):
         big_u = big_u.to(torch.float32).to(self.device)
         u = self.sample_count_subspaces(n_masks).to(self.device)
 
-        axis[0, 0].imshow(tensor_to_image(torch.ones(3, 32, 32)))
+        axis[0, 0].imshow(tensor_to_image(torch.ones(n_channels, height, width)))
         axis[0, 0].axis("off")
 
         for i in range(n_masks):
@@ -512,7 +509,9 @@ class VMMDRef(ABC):
         autoencoder_manager = AutoEncoderManager()
         return autoencoder_manager.get_autoencoder(autoencoder_name)
 
-    def __calculate_mmd_loss(self, x_data, emb_func, count=500):
+    def __calculate_mmd_loss(self, x_data: IDataset, emb_func, count=500):
+        n_channels, height, width = x_data.image_shape
+
         x_data = flatten_images_dataset_3d(x_data).to("cpu")
 
         x_data = normalize(x_data, axis=0)
@@ -520,7 +519,7 @@ class VMMDRef(ABC):
             x_data).sample(count).to_numpy()).to(self.device)
 
         u_subspaces = self.sample_count_subspaces(count)
-        x_sample = x_sample.view(-1, 3, 32, 32)
+        x_sample = x_sample.view(-1, n_channels, height, width)
         ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces).view(x_sample.shape[0], -1)
         x_sample = x_sample.view(x_sample.shape[0], -1)
 
@@ -528,47 +527,13 @@ class VMMDRef(ABC):
         _, mmd_loss = mmd_loss.forward(x_sample, ux_sample, u_subspaces)
         return mmd_loss.item()
 
-    def __count_unique_subspaces(self, X):
+    def __count_unique_subspaces(self):
         u = self.sample_count_subspaces(count=500)
 
         unique_subspaces, _ = np.unique(
             np.array(u.detach().to('cpu')), axis=0, return_counts=True)
 
         return len(unique_subspaces)
-
-    def __include_ss_count(self, X):
-        u = self.sample_count_subspaces(count=500)
-
-        unique_subspaces, count = np.unique(
-            np.array(u.to('cpu')), axis=0, return_counts=True)
-
-        n_unique_subspaces = len(unique_subspaces)
-
-        # Create a figure and axis
-        fig, ax = plt.subplots()
-
-        # Hide the axes
-        ax.axis('tight')
-        ax.axis('off')
-
-        # Prepare data for the table
-        data = [np.arange(n_unique_subspaces), count]
-
-        # Create the table
-        table = ax.table(
-            cellText=data,
-            rowLabels=["Subspace", "Count"],
-            colLabels=[f"{i + 1}" for i in range(n_unique_subspaces)],
-            loc='center'
-        )
-
-        # Adjust the layout
-        table.auto_set_font_size(False)
-        table.set_fontsize(12)
-        table.auto_set_column_width(col=list(range(n_unique_subspaces)))
-
-        # Show the plot
-        plt.show()
 
     def _create_mask_frequency_plot(self, u) -> torch.Tensor:
         u_agg = u.sum(dim=0)

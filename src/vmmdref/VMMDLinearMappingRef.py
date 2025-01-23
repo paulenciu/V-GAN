@@ -14,7 +14,7 @@ class VMMDLinearMappingRef(VMMDRef):
 
     def sample_count_subspaces(self, count):
         #return self._generate_subspaces(count=count, generate_subspace_adjust=False) #FIXME only for testing
-        return self._generate_subspaces(count=count, generate_subspace_adjust=True)
+        return self._generate_subspaces(count=count, discretize_condition=True)
 
 
     def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):

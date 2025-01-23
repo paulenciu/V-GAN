@@ -159,13 +159,13 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Experiment file (to avoid a large data dump useless for the non-research user)
+# Experiment file (to avoid a large cifar10 dump useless for the non-research user)
 
 experiments/
 
 # Test notebook for mps/cuda compatibility
 src/notebooks/test.ipynb
 
-data/
+datasets/cifar10/
 .DS_Store
 .vscode/

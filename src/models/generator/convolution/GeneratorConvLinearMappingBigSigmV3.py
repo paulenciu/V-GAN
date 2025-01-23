@@ -1,8 +1,9 @@
 from typing import Optional
 
 import torch
-from src.models.Generator import upper_softmax2D
+from src.models.Generator import upper_softmax2D, UpperSparsemax2D
 from torch import nn
+import torch.nn.functional as F
 
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
@@ -49,17 +50,24 @@ class GeneratorConvLinearMappingBigSoftmax(AbstractGenerator):
             nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1, bias=False),
         )
         self.upper_softmax = upper_softmax2D()
+        self.sparse_max = UpperSparsemax2D()
 
     def forward(self, input, mode="train"):
         x = self.main(input)
         if mode == "train":
             return self.softmax(x)
+        return self.sparse_max(x)
 
-        return self.upper_softmax(x, 32*32)
+    def stable_softmax(self, x, dim=1):
+        # Subtract the maximum value for numerical stability
+        x_max = torch.max(x, dim=dim, keepdim=True).values
+        x_stable = x - x_max
+        # Compute the softmax
+        return F.softmax(x_stable, dim=dim)
 
     def softmax(self, x):
         x_flattened = x.view(x.size(0), -1)
-        x_flattened = torch.nn.functional.softmax(x_flattened, dim=1)
+        x_flattened = self.stable_softmax(x_flattened)
         x = x_flattened.view(x.size(0), x.size(1), x.size(2), x.size(3))
         return x
 

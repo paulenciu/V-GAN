@@ -58,6 +58,6 @@ class GeneratorThreeChannelResidual(AbstractGenerator):
         Generate masks from the latent noise input.
 
         :param noise: Latent noise.
-        :return: Reshaped generated data as [batch_size, 3, 32, 32].
+        :return: Reshaped generated cifar10 as [batch_size, 3, 32, 32].
         """
         return self.forward(noise).view(noise.shape[0], 3, 32, 32)

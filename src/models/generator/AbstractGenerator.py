@@ -10,6 +10,17 @@ class AbstractGenerator(ABC, nn.Module):
     def __init__(self):
         super().__init__()
         self._noise_dim = None
+        self._img_shape = None
+
+    @property
+    def img_shape(self):
+        """Abstract property for the noise dimension."""
+        return self._img_shape
+
+    @img_shape.setter
+    def img_shape(self, value):
+        """Abstract setter for the noise dimension."""
+        self._img_shape = value
 
     @property
     def noise_dim(self):

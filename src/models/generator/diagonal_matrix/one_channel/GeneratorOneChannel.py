@@ -7,10 +7,11 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 
 class GeneratorOneChannel(AbstractGenerator):
 
-    def __init__(self, latent_size):
+    def __init__(self, latent_size, img_size):
         super(GeneratorOneChannel, self).__init__()
 
         self._noise_dim = torch.tensor([latent_size])
+        self._img_size = img_size
 
         self.layers = nn.Sequential(
             nn.Linear(latent_size, 2 * latent_size),
@@ -27,7 +28,7 @@ class GeneratorOneChannel(AbstractGenerator):
             nn.Linear(8 * latent_size, 8 * latent_size),
             nn.BatchNorm1d(8 * latent_size),
 
-            nn.Linear(8 * latent_size, 32*32),
+            nn.Linear(8 * latent_size, img_size * img_size),
         )
         self.upper_softmax = upper_softmax1D()
         self.softmax = nn.Softmax(dim=-1)
@@ -37,7 +38,7 @@ class GeneratorOneChannel(AbstractGenerator):
         if mode == "train":
             return self.softmax(x)
 
-        return self.upper_softmax(x, d=32 * 32)
+        return self.upper_softmax(x)
 
     def sample_subspace_masks(self, noise, mode="train"):
         return self.forward(noise, mode).repeat(1, 3).view(-1, 3, 32, 32)
