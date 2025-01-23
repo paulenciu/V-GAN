@@ -21,10 +21,10 @@ class SyntheticImageDataset(Dataset):
         """
         for _ in range(self.num_samples // 2):
             # Upper half white, lower half black
-            # image = torch.zeros(3, 32, 32)
-            # image[:, :16, :] = 1.0  # Set upper half to white
-            # self.data.append(image)
-            # self.labels.append(0)  # Label: 0
+            image = torch.zeros(3, 32, 32)
+            image[:, :16, :] = 1.0  # Set upper half to white
+            self.data.append(image)
+            self.labels.append(0)  # Label: 0
 
             # Upper half black, lower half white
             image = torch.zeros(3, 32, 32)
@@ -57,12 +57,3 @@ class SyntheticImageDataset(Dataset):
                    and label is the corresponding label.
         """
         return self.data[idx], self.labels[idx]
-
-# Example usage:
-if __name__ == "__main__":
-    dataset = SyntheticImageDataset(num_samples=2)
-    print("Dataset size:", len(dataset))
-    image, label = dataset[0]
-    print("Image shape:", image.shape)
-    print("Label:", label)
-    print("Label shape:", image)

@@ -6,11 +6,12 @@ from typing import Union
 import torch
 from collections import defaultdict
 import torch.nn.utils as nn_utils
-
+import torch.nn.functional as F
+from dataset.IDataset import IDataset
 
 from sklearn.preprocessing import normalize
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
@@ -173,13 +174,9 @@ class VMMDRef(ABC):
             x_data).sample(count).to_numpy()).to(self.device)
 
         u_subspaces = self.sample_count_subspaces(count)
-
         x_sample = x_sample.view(-1, 3, 32, 32)
-
-        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces)
-
-        x_sample_embedded = emb_func(x_sample).squeeze()
-        ux_sample_embedded = emb_func(ux_sample).squeeze()
+        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces).view(x_sample.shape[0], -1)
+        x_sample = x_sample.view(x_sample.shape[0], -1)
 
         if type(bandwidth) == float:
             bandwidth = [bandwidth]
@@ -187,12 +184,12 @@ class VMMDRef(ABC):
         if not hasattr(self, 'bandwidth'):
             mmd_loss = MMDLossConstrained(0, flattened=self.flattened_projection)
             mmd_loss.forward(
-                x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
+                x_sample, ux_sample, u_subspaces * 1)
             self.bandwidth = mmd_loss.bandwidth
 
         bw = self.bandwidth.item()
         mmd = tts.MMDStatistic(count, count)
-        _, distances = mmd(x_sample_embedded, ux_sample_embedded, alphas=[bw], ret_matrix=True)
+        _, distances = mmd(x_sample, ux_sample, alphas=[bw], ret_matrix=True)
         pval = mmd.pval(distances)
         results.append(pval)
         print("Count: ", count, "PVal: ", pval)
@@ -204,15 +201,14 @@ class VMMDRef(ABC):
     def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
         return u_subspaces * x_sample_unflattened
 
-    def fit(self, X_dataset, autoencoder, generator: AbstractGenerator):
+    def fit(self, dataset, autoencoder, generator: AbstractGenerator):
 
-        n_channels, width, height = X_dataset[0][0].shape[0], X_dataset[0][0].shape[1], X_dataset[0][0].shape[2]
-        assert width == height, "Error, need square input images."
-
-        self.autoencoder = autoencoder
         encoder = autoencoder.get_encoder().to(self.device)
 
-        X_flattened = flatten_images_dataset_3d(X_dataset).to("cpu")
+        n_channels, width, height = dataset[0][0].shape
+        assert width == height, "Error, need square input images."
+
+        X_flattened = flatten_images_dataset_3d(dataset).to("cpu")
         x_flattened_normalized = torch.from_numpy(normalize(X_flattened, axis=0)).to(torch.float32).to(self.device)
 
         X_unflattened_normalized = unflatten_images_3d(x_flattened_normalized, 3, 32, 32).to(self.device)
@@ -242,7 +238,7 @@ class VMMDRef(ABC):
         snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
 
         #INITIAL SNAPSHOT
-        self.__store_model_snapshot(X_dataset, encoder)
+        self.__store_model_snapshot(dataset, encoder)
 
         for epoch in range(epochs):
             print(f'\rEpoch {epoch} of {epochs}')
@@ -275,10 +271,10 @@ class VMMDRef(ABC):
 
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
 
-                embedded_batch = encoder(batch).squeeze()
-                embedded_fake_subspaces = encoder(processed_batch).squeeze()
+                embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
+                embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
 
-                batch_loss, mmd_loss = loss_function(embedded_batch, embedded_fake_subspaces, u_mappings)
+                batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 
                 self.bandwidth = loss_function.bandwidth
                 batch_loss.backward()
@@ -291,13 +287,13 @@ class VMMDRef(ABC):
 
             #INBETWEEN SNAPSHOTS
             if epoch in snapshot_intervals:
-                self.__store_model_snapshot(X_dataset, encoder)
+                self.__store_model_snapshot(dataset, encoder)
             print(f"Average loss in the epoch: {generator_loss}")
             self.train_history["generator_loss"].append(generator_loss)
             self.train_history["mmd_loss"].append(mmd_loss_avg)
 
         #FINAL SNAPSHOT
-        self.__store_model_snapshot(X_dataset, encoder)
+        self.__store_model_snapshot(dataset, encoder)
 
         self.generator = generator
 
@@ -395,8 +391,8 @@ class VMMDRef(ABC):
         u = self.generator.sample_subspace_masks(noise_tensor.to(self.device), mode="test")
 
         if generate_subspace_adjust:
- #           u = torch.greater_equal(u, 1 / self._calculate_d(u))
-            u = torch.greater_equal(u, 0.5)
+            u = torch.greater_equal(u, 1 / self._calculate_d(u))
+#            u = torch.greater_equal(u, 0.5)
 
         return u
 
@@ -524,16 +520,12 @@ class VMMDRef(ABC):
             x_data).sample(count).to_numpy()).to(self.device)
 
         u_subspaces = self.sample_count_subspaces(count)
-
         x_sample = x_sample.view(-1, 3, 32, 32)
-
-        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces)
-
-        x_sample_embedded = emb_func(x_sample).squeeze()
-        ux_sample_embedded = emb_func(ux_sample).squeeze()
+        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces).view(x_sample.shape[0], -1)
+        x_sample = x_sample.view(x_sample.shape[0], -1)
 
         mmd_loss = MMDLossConstrainedV2()
-        _, mmd_loss = mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
+        _, mmd_loss = mmd_loss.forward(x_sample, ux_sample, u_subspaces)
         return mmd_loss.item()
 
     def __count_unique_subspaces(self, X):

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.models.Generator import upper_softmax2D
+from src.models.Generator import upper_softmax2D, upper_softmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
@@ -27,12 +27,18 @@ class GeneratorThreeChannel(AbstractGenerator):
             nn.BatchNorm1d(16 * latent_size),
             nn.ReLU(),
             nn.Linear(16 * latent_size, 32*32*3),
-            upper_softmax2D()
         )
 
-    def forward(self, x):
-        x = self.hidden(x)
-        return x
+        self.softmax = nn.Softmax(dim=-1)
+        self.upper_softmax = upper_softmax1D()
 
-    def sample_subspace_masks(self, noise):
-        return self.forward(noise).view(noise.shape[0], 3, 32, 32)
+    def forward(self, x, mode):
+        x = self.hidden(x)
+
+        if mode == "train":
+            return self.softmax(x)
+
+        return self.upper_softmax(x, 32*32*3)
+
+    def sample_subspace_masks(self, noise, mode="train"):
+        return self.forward(noise, mode).view(noise.shape[0], 3, 32, 32)

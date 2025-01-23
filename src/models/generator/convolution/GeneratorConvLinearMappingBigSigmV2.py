@@ -52,5 +52,5 @@ class GeneratorConvLinearMappingBigSigmV2(AbstractGenerator):
     def forward(self, input):
         return self.main(input)
 
-    def sample_subspace_masks(self, noise):
+    def sample_subspace_masks(self, noise, mode="train"):
         return self.forward(noise).repeat(1, 3, 1, 1)  # Repeat across channels if needed

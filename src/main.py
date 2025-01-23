@@ -1,13 +1,16 @@
 import torch
 import torchvision
+from src.models.generator.convolution.GeneratorConvLinearMappingBigSigmV2 import GeneratorConvLinearMappingBigSigmV2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelResidualBigInv import \
     GeneratorOneChannelResidualBigInv
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV2 import GeneratorOneChannelV2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV3 import GeneratorOneChannelV3
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV5 import GeneratorOneChannelV5
+from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
 
 from src.vmmdref.VMMDDiagonal1Channel import VMMDDiagonal1Channel
+from src.vmmdref.VMMDDiagonal3Channel import VMMDDiagonal3Channel
 from torch import nn
 from torchvision.transforms import transforms
 import gc
@@ -55,24 +58,24 @@ def generate_hyperparams(n_iter=10, random_state=777):
 if __name__ == '__main__':
     os.environ.update(OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', NUMEXPR_NUM_THREADS='1', MKL_NUM_THREADS='1')
 
-    # transform = transforms.Compose(
-    #     [
-    #         transforms.ToTensor(),
-    #         #       transforms.Normalize(mean=[0.4955, 0.4564, 0.4155], std=[0.2568, 0.2523, 0.2580])
-    #     ]
-    # )
-    # dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
-    #                                        transform=transform)
-    # cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
-    s_dataset = SyntheticImageDataset(10000)
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            #transforms.Normalize(mean=[0.4955, 0.4564, 0.4155], std=[0.2568, 0.2523, 0.2580])
+        ]
+    )
+    dataset = torchvision.datasets.CIFAR10(root='../data', train=True, download=True,
+                                           transform=transform)
+    cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
+    s_dataset = SyntheticImageDataset(5000)
     hyperparameter_list = generate_hyperparams(n_iter=10, random_state=888)
     torch.autograd.set_detect_anomaly(True)
 
     penalty_weight = 1
-    lr = .5
+    lr = .1
 
-    vmmd = VMMDDiagonal1Channel(
-        filename=f"test_syn_1_jp_tr=sigm,test=sigm_one_channel_w={penalty_weight}_lr={lr}_4",
+    vmmd = VMMDDiagonal3Channel(
+        filename=f"syn_2_three_channel_tr=sm,test=u_sm_w={penalty_weight}_lr={lr}_0",
         weight_decay=0.09999999999999999,
         seed=333,
         momentum=0.8,
@@ -80,12 +83,8 @@ if __name__ == '__main__':
         epochs=200,
         batch_size=256,
         path_to_directory="/home/i40/enciup/V-GAN/experiments/remote",
-        penalty=MMDLossPenaltyJoin(
-            mmd_loss_1=MMDLossDiscretePenalty(1),
-            mmd_loss_2=MMDLossL2Penalty(1e-7),
-            weight=penalty_weight,
-            )
+        penalty=MMDLossNoPenalty(1),
     )
     noise_dim = 100
-    vmmd.fit(s_dataset, ResNet18AutoEncoder(), GeneratorOneChannelV5(noise_dim))
+    vmmd.fit(s_dataset, ResNet18AutoEncoder(), GeneratorThreeChannel(noise_dim))
 
