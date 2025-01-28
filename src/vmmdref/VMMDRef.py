@@ -157,7 +157,8 @@ class VMMDRef(ABC):
         Returns:
             pd.DataFrame: DataFrame containing the p.value of the test with all the different bandwidths.
         """
-        assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
+        if count > len(x_data):
+            count = len(x_data)
         results = []
 
         n_channels, height, width = x_data.image_shape
@@ -511,6 +512,9 @@ class VMMDRef(ABC):
 
     def __calculate_mmd_loss(self, x_data: IDataset, emb_func, count=500):
         n_channels, height, width = x_data.image_shape
+
+        if count > len(x_data):
+            count = len(x_data)
 
         x_data = flatten_images_dataset_3d(x_data).to("cpu")
 
