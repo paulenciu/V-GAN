@@ -5,7 +5,7 @@ from typing import Union
 
 import torch
 from collections import defaultdict
-from src.dataset.IDataset import IDataset
+from src.data.IDataset import IDataset
 
 from sklearn.preprocessing import normalize
 from torch.utils.data import DataLoader
@@ -24,6 +24,7 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmdref.MMDLossConstrainedV2 import MMDLossConstrainedV2
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
 
 
 def tensor_to_image(tensor):
@@ -77,6 +78,7 @@ class VMMDRef(ABC):
                 'batch_size': self.batch_size, 'seed': self.seed,
                 'generator optimizer': self.generator_optimizer,
                 'generator name': self.generator.__class__.__name__,
+                'image shape': self.generator.img_shape,
                 'noise dim': self.generator.noise_dim,
                 'autoencoder': self.autoencoder.__class__.__name__,
                 'mmd_penalty': self.penalty.__class__.__name__,
@@ -85,7 +87,10 @@ class VMMDRef(ABC):
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
         self.generator = generator.to(self.device)
-        self.autoencoder = autoencoder.to(self.device)
+
+        if autoencoder is not None:
+            self.autoencoder = autoencoder.to(self.device)
+
         self.generator.load_state_dict(torch.load(path_to_generator_params))
         self.generator.eval()
         self.generator_optimizer = f'Loaded Model from {path_to_generator_params} with {generator.noise_dim} dimensions in the latent space'
@@ -100,13 +105,21 @@ class VMMDRef(ABC):
         df = pd.read_csv(csv_file_path)
 
         noise_dim_column = df.loc[train_iteration_number, 'noise dim']
-        noise_tensor = eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))
+        img_shape_column = df.loc[train_iteration_number, 'image shape']
+        autoencoder_column = df.loc[train_iteration_number, 'autoencoder']
 
-        generator_name = df.loc[train_iteration_number, "generator name"] + "(noise_tensor)"
+        noise_tensor = eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))
+        img_shape = eval(img_shape_column)
+
+        generator_name = df.loc[train_iteration_number, "generator name"] + "(noise_tensor, img_shape)"
         generator = eval(generator_name)
 
-        autoencoder_name = df.loc[train_iteration_number, "autoencoder"] + "()"
-        autoencoder = eval(autoencoder_name)
+
+        if autoencoder_column == "NoneType":
+            autoencoder = None
+        else:
+            autoencoder_name = autoencoder_column + "()"
+            autoencoder = eval(autoencoder_name)
 
         return generator, autoencoder
 
@@ -266,8 +279,11 @@ class VMMDRef(ABC):
 
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
 
-                embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
-                embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
+                embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
+                embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
+
+                #embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
+                #embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
 
                 batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 

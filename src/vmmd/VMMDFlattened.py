@@ -42,7 +42,7 @@ class VMMDFlattened(VMMD):
         Returns:
             pd.DataFrame: DataFrame containing the p.value of the test with all the different bandwidths.
         """
-        assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the dataset"
+        assert count <= len(x_data), "Selected 'count' is greater than the number of samples in the data"
         results = []
 
         x_data = flatten_images_dataset_3d(x_data).to("cpu")

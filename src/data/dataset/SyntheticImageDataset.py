@@ -4,10 +4,10 @@ from torch.utils.data import Dataset
 class SyntheticImageDataset(Dataset):
     def __init__(self, num_samples, lower_half_white=True, upper_half_white=True):
         """
-        Initialize the dataset.
+        Initialize the data.
 
         Args:
-            num_samples (int): Total number of samples in the dataset.
+            num_samples (int): Total number of samples in the data.
         """
         super(SyntheticImageDataset, self).__init__()
         self.lower_half_white = lower_half_white
@@ -19,7 +19,7 @@ class SyntheticImageDataset(Dataset):
 
     def _generate_data(self):
         """
-        Generate the synthetic dataset.
+        Generate the synthetic data.
         """
         for _ in range(self.num_samples // 2):
 
@@ -46,13 +46,13 @@ class SyntheticImageDataset(Dataset):
         Return the total number of samples.
 
         Returns:
-            int: Total number of samples in the dataset.
+            int: Total number of samples in the data.
         """
         return self.num_samples
 
     def __getitem__(self, idx):
         """
-        Get a sample from the dataset.
+        Get a sample from the data.
 
         Args:
             idx (int): Index of the sample.
