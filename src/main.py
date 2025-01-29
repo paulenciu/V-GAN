@@ -12,6 +12,7 @@ from src.models.generator.convolution.GeneratorConvLinearMappingBigSigmV3 import
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV3 import GeneratorOneChannelV3
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
 from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
+from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannelV2 import GeneratorThreeChannelV2
 from src.vmmdref.VMMDConvLinearMappingRef import VMMDConvLinearMappingRef
 
 from src.vmmdref.VMMDDiagonal1Channel import VMMDDiagonal1Channel
@@ -66,25 +67,25 @@ if __name__ == '__main__':
     )
 
     #cats_dataset = Cifar10CatsDataset("../datasets/cifar10")
-    mv_tec = MVTecADDataset(root_dir="../datasets/mvtec_ad/mvtec_anomaly_detection", category="bottle", transform=transform)
+    mv_tec = MVTecADDataset(root_dir="../datasets/mvtec_ad/", category="bottle", transform=transform)
     penalty_weight = 1
     lr = .1
 
-    vmmd = VMMDDiagonal1Channel(
-        filename=f"bottle_mvtec_ad_1D-9",
+    vmmd = VMMDDiagonal3Channel(
+        filename=f"bottle_mvtec_ad_3D-5",
         weight_decay=0.09999999999999999, #TODO maybe smaller, 0?
         seed=333,
         momentum=0.8,
         lr=lr,
-        epochs=1500,
+        epochs=2000,
         batch_size=256,
-        path_to_directory="../experiments/local",
+        path_to_directory="../experiments/remote",
         penalty=MMDLossPenaltyJoin(
-            mmd_loss_1=MMDLossL2Penalty(5e-2),
+            mmd_loss_1=MMDLossL2Penalty(1),
             mmd_loss_2=MMDLossDiscretePenalty(1),
             weight=1
         )
     )
-    noise_dim = 32
-    vmmd.fit(mv_tec, ResNet18AutoEncoder(), GeneratorOneChannelV4(noise_dim, mv_tec.image_shape))
+    noise_dim = 256
+    vmmd.fit(mv_tec, ResNet18AutoEncoder(), GeneratorThreeChannelV2(noise_dim, mv_tec.image_shape))
 
