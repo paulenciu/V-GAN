@@ -10,6 +10,10 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 class GeneratorOneChannelV4(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape):
+
+        if isinstance(latent_size, torch.Tensor):
+            latent_size = latent_size.item()
+
         super(GeneratorOneChannelV4, self).__init__()
 
         self._noise_dim = torch.tensor([latent_size])

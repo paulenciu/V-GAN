@@ -150,13 +150,13 @@ def visualise_linear_mapping_of_vmmd(model, n_samples=10, unsqueeze_fake_subspac
     device = torch.device(
         'cuda:0' if torch.cuda.is_available() else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
-    # Load CIFAR-10 dataset and filter for cat images (label = 3)
+    # Load CIFAR-10 data and filter for cat images (label = 3)
     dataset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True,
                                            transform=transforms.ToTensor())
     cats_dataset = [(img, label) for (img, label) in dataset if label == 3]
 
     # Define the number of samples and select a subset of cat images
-    sample_indices = np.arange(min(n_samples, len(cats_dataset)))  # Ensure it doesn't exceed dataset size
+    sample_indices = np.arange(min(n_samples, len(cats_dataset)))  # Ensure it doesn't exceed data size
     batch = [cats_dataset[i][0] for i in sample_indices]
     batch = torch.stack(batch).to(torch.float32).to(device)
 
