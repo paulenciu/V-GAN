@@ -290,11 +290,11 @@ class VMMDRef(ABC):
                     batch = batch.repeat(1, 3, 1, 1)
                     processed_batch = processed_batch.repeat(1, 3, 1, 1)
 
-                #embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
-                #embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
+                embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
+                embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
 
-                embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
-                embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
+                #embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
+                #embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
 
                 batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 

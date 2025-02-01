@@ -40,7 +40,7 @@ class GeneratorOneChannelV4(AbstractGenerator):
         layer = nn.Sequential(
             nn.Linear(input_size, output_size),
             nn.BatchNorm1d(output_size),
-            nn.LeakyReLU(0.2),
+            nn.LeakyReLU(0.8),
         )
         last_layer = nn.Sequential(
             nn.Linear(input_size, self.img_size),

@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 class SyntheticImageDataset(Dataset):
 
-    def __init__(self, num_samples, lower_half_white=True, upper_half_white=True, image_size=(224, 224)):
+    def __init__(self, root_dir, category=None, transform=None, train=True, image_size=(64, 64)):
         """
         Initialize the data.
 
@@ -12,11 +12,13 @@ class SyntheticImageDataset(Dataset):
             num_samples (int): Total number of samples in the data.
         """
         super(SyntheticImageDataset, self).__init__()
-        self.lower_half_white = lower_half_white
-        self.upper_half_white = upper_half_white
-        self.num_samples = num_samples
+        if category is None:
+            category = ["1", "2"]
+
+        self.num_samples = 5000
         self.data = []
         self.labels = []
+        self.category = category
         self._generate_data(image_size)
 
         self.image_shape = self.data[0].shape
@@ -29,14 +31,14 @@ class SyntheticImageDataset(Dataset):
         half_height = int(height / 2)
         for _ in range(self.num_samples // 2):
 
-            if self.upper_half_white:
+            if "1" in self.category:
                 # Upper half white, lower half black
                 image = torch.zeros(3, height, width)
                 image[:, :half_height, :] = 1.0  # Set upper half to white
                 self.data.append(image)
                 self.labels.append(0)  # Label: 0
 
-            if self.lower_half_white:
+            if "2" in self.category:
                 # Upper half black, lower half white
                 image = torch.zeros(3, height, width)
                 image[:, half_height:, :] = 1.0  # Set lower half to white
