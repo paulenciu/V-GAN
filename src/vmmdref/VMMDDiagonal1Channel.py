@@ -13,7 +13,7 @@ class VMMDDiagonal1Channel(VMMDRef):
         super().__init__(filename, batch_size, epochs, lr, momentum, seed, weight_decay, path_to_directory, False, penalty)
 
     def sample_count_subspaces(self, count):
-        return self._generate_subspaces(count, threshold=lambda u : 1 / self._calculate_d(u))
+        return self._generate_subspaces(count, threshold=lambda u : 1 / 2)
 
     def _create_mask_frequency_plot(self, u):
         u_agg = u.sum(dim=0)

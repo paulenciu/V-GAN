@@ -1,8 +1,10 @@
 import torch
+from src.data.IDataset import IDataset
 from torch.utils.data import Dataset
 
 class SyntheticImageDataset(Dataset):
-    def __init__(self, num_samples, lower_half_white=True, upper_half_white=True):
+
+    def __init__(self, num_samples, lower_half_white=True, upper_half_white=True, image_size=(224, 224)):
         """
         Initialize the data.
 
@@ -15,25 +17,29 @@ class SyntheticImageDataset(Dataset):
         self.num_samples = num_samples
         self.data = []
         self.labels = []
-        self._generate_data()
+        self._generate_data(image_size)
 
-    def _generate_data(self):
+        self.image_shape = self.data[0].shape
+
+    def _generate_data(self, image_size):
         """
         Generate the synthetic data.
         """
+        height, width = image_size
+        half_height = int(height / 2)
         for _ in range(self.num_samples // 2):
 
             if self.upper_half_white:
                 # Upper half white, lower half black
-                image = torch.zeros(3, 32, 32)
-                image[:, :16, :] = 1.0  # Set upper half to white
+                image = torch.zeros(3, height, width)
+                image[:, :half_height, :] = 1.0  # Set upper half to white
                 self.data.append(image)
                 self.labels.append(0)  # Label: 0
 
             if self.lower_half_white:
                 # Upper half black, lower half white
-                image = torch.zeros(3, 32, 32)
-                image[:, 16:, :] = 1.0  # Set lower half to white
+                image = torch.zeros(3, height, width)
+                image[:, half_height:, :] = 1.0  # Set lower half to white
                 self.data.append(image)
                 self.labels.append(1)  # Label: 1
 

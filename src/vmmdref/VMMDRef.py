@@ -1,4 +1,6 @@
 import re
+import time
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Union
@@ -136,6 +138,7 @@ class VMMDRef(ABC):
         plt.style.use('ggplot')
         generator_y = train_history['generator_loss']
         mmd_y = train_history['mmd_loss']
+        training_time = train_history['training_time']
 
         x = np.linspace(1, len(generator_y), len(generator_y))
         fig, ax = plt.subplots()
@@ -148,6 +151,7 @@ class VMMDRef(ABC):
         ax.plot([], [], ' ', label="mmd: " + str(mmd_loss))
         ax.plot([], [], ' ', label="n_u_subs: " + str(n_unique_subspaces) + "/500")
         ax.plot([], [], ' ', label="generator: " + self.generator.__class__.__name__)
+        ax.plot([], [], ' ', label="t_time: " + training_time.__str__())
 
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
@@ -243,23 +247,26 @@ class VMMDRef(ABC):
 
         snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
 
-        encoder = autoencoder.get_encoder().to(self.device)
+        #encoder = autoencoder.get_encoder().to(self.device)
+        encoder = autoencoder.get_encoder()
 
         #INITIAL SNAPSHOT
         self.__store_model_snapshot(dataset, encoder)
+
+        # DATA LOADER#
+        data_loader = self.__setup_data_loader(X_unflattened_normalized, cuda, mps)
+        batch_number = data_loader.__len__()
+
+        # GET NOISE TENSORS#
+        noise_tensor = self.__setup_noise_tensor(generator_input_shape=generator.noise_dim, mps=mps, cuda=cuda)
+
+        total_training_time = 0.0
 
         for epoch in range(epochs):
             print(f'\rEpoch {epoch} of {epochs}')
             generator_loss = 0
             mmd_loss_avg = 0
-
-            # DATA LOADER#
-            data_loader = self.__setup_data_loader(X_unflattened_normalized, cuda, mps)
-            batch_number = data_loader.__len__()
-
-            # GET NOISE TENSORS#
-            noise_tensor = self.__setup_noise_tensor(generator_input_shape=generator.noise_dim, mps=mps, cuda=cuda)
-
+            epoch_start = time.time()
             # BATCH LOOP#
             for batch in tqdm(data_loader, leave=False):
                 # Make sure there is only 1 observation per row.
@@ -279,11 +286,15 @@ class VMMDRef(ABC):
 
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
 
-                embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
-                embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
+                if batch.shape[1] == 1:
+                    batch = batch.repeat(1, 3, 1, 1)
+                    processed_batch = processed_batch.repeat(1, 3, 1, 1)
 
-                #embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
-                #embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
+                #embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
+                #embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
+
+                embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
+                embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
 
                 batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 
@@ -296,15 +307,27 @@ class VMMDRef(ABC):
                 mmd_loss_avg += float(mmd_loss.to(
                     'cpu').detach().numpy()) / batch_number
 
+            epoch_duration = time.time() - epoch_start
+            total_training_time += epoch_duration
+            self.train_history["training_time"] = total_training_time
+
             #INBETWEEN SNAPSHOTS
+            snapshot_duration = 0.0
             if epoch in snapshot_intervals:
+                snapshot_start = time.time()
                 self.__store_model_snapshot(dataset, encoder)
+                snapshot_duration = time.time() - snapshot_start
+                total_training_time -= snapshot_duration
+
             print(f"Average loss in the epoch: {generator_loss}")
             self.train_history["generator_loss"].append(generator_loss)
             self.train_history["mmd_loss"].append(mmd_loss_avg)
 
+
         #FINAL SNAPSHOT
         self.__store_model_snapshot(dataset, encoder)
+
+        self.train_history["training_time"] = total_training_time
 
         self.generator = generator
 
@@ -403,8 +426,6 @@ class VMMDRef(ABC):
 
         if threshold is not None:
             u = torch.greater_equal(u, threshold(u))
-#            u = torch.greater_equal(u, 1 / self._calculate_d(u))
-#            u = torch.greater_equal(u, 0.5)
 
         return u
 

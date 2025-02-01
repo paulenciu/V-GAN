@@ -7,6 +7,7 @@ from src.data.dataset.Cifar10Dataset import Cifar10Dataset
 from src.data.IDataset import IDataset
 from src.data.dataset.FashionMNISTDataset import FashionMNISTDataset
 from src.data.dataset.MVTecADDataset import MVTecADDataset
+from src.data.dataset.SyntheticImageDataset import SyntheticImageDataset
 
 
 class DatasetType(Enum):
@@ -20,6 +21,7 @@ class DatasetType(Enum):
     CIFAR10 = Cifar10Dataset, "../datasets/cifar10"
     FASHION_MNIST = FashionMNISTDataset, "../datasets/fashion_mnist"
     MVTEC_AD = MVTecADDataset, "../datasets/mvtec_ad"
+    SYNTHETIC = SyntheticImageDataset, ""
 
     def load(self, category, train=True, transform=torchvision.transforms.ToTensor()):
         """

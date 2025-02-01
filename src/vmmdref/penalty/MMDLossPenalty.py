@@ -1,4 +1,6 @@
 import torch
+import math
+
 from abc import ABC, abstractmethod
 
 class MMDLossPenalty(ABC):
@@ -107,8 +109,80 @@ class MMDLossPenaltyJoin(MMDLossPenalty):
         l2 = self.mmd_loss_2.get_weighted_penalty(U)
         return self._weight * (l1 + l2)
 
+
     def get_stats(self):
-        return super().get_stats()  | self.mmd_loss_1.get_stats() | self.mmd_loss_2.get_stats() | {
-            "mmd_l1": self.mmd_loss_1.__class__,
-            "mmd_l2": self.mmd_loss_2.__class__,
+
+        l1_stats = {f"mmd_l1_{k}": v for k, v in self.mmd_loss_1.get_stats().items()}
+        l2_stats = {f"mmd_l2_{k}": v for k, v in self.mmd_loss_2.get_stats().items()}
+
+        return super().get_stats() | l1_stats | l2_stats | {
+            "mmd_l1_type": self.mmd_loss_1.__class__.__name__,
+            "mmd_l2_type": self.mmd_loss_2.__class__.__name__,
         }
+
+class MMDSparsityPenalty(MMDLossPenalty):
+
+    def __init__(self, weight):
+        super().__init__(weight)
+
+    def get_weighted_penalty(self, U):
+        return self._weight * torch.mean(U.float())
+
+    def get_stats(self):
+        return super().get_stats()
+
+class MMDDiversityPenalty(MMDLossPenalty):
+
+    def __init__(self, weight):
+        super().__init__(weight)
+
+    def get_weighted_penalty(self, U):
+        pairwise_dist = torch.cdist(U, U)
+        return self._weight * -1 * torch.mean(pairwise_dist)
+
+    def get_stats(self):
+        return super().get_stats()
+
+class KLDivergencePenalty(MMDLossPenalty):
+
+    def __init__(self, weight):
+        super().__init__(weight)
+
+    def get_weighted_penalty(self, U):
+        target_probs = 0.5 * (torch.distributions.Normal(0, 0.1).log_prob(U) +
+                              torch.distributions.Normal(1, 0.1).log_prob(U))
+        kl_loss = -torch.mean(target_probs)
+        return self._weight * kl_loss
+
+    def get_stats(self):
+        return super().get_stats()
+
+class MMDGMMLoss(MMDLossPenalty):
+    def __init__(self, weight):
+        super().__init__(weight)
+
+    def get_weighted_penalty(self, U):
+        lambda_gmm=0.1
+        sigma = 0.1
+        m_flat = U.view(-1)
+        log_prob_0 = -0.5 * ((m_flat - 0) / sigma) ** 2
+        log_prob_1 = -0.5 * ((m_flat - 1) / sigma) ** 2
+        log_prob = torch.logsumexp(torch.stack([log_prob_0, log_prob_1]), dim=0) - math.log(2)
+        return -lambda_gmm * torch.mean(log_prob)
+
+    def get_stats(self):
+        return super().get_stats()
+
+class MMDTVPenalty(MMDLossPenalty):
+
+    def __init__(self, weight):
+        super().__init__(weight)
+
+    def get_weighted_penalty(self, U):
+        lambda_tv = 0.05
+        h_diff = U[:, :, 1:, :] - U[:, :, :-1, :]
+        w_diff = U[:, :, :, 1:] - U[:, :, :, :-1]
+        return lambda_tv * (torch.mean(h_diff.abs()) + torch.mean(w_diff.abs()))
+
+    def get_stats(self):
+        return super().get_stats()

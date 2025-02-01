@@ -12,7 +12,7 @@ class FashionMNISTDataset(IDataset):
 
         dataset = torchvision.datasets.FashionMNIST(root, train=train, transform=transform, download=download)
 
-        category_dataset = [(img, label) for img, label in dataset if label in category]
+        category_dataset = [(img, label) for img, label in dataset if str(label) in category]
         data, labels = zip(*category_dataset)
 
         img_shape = category_dataset[0][0].shape

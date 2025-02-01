@@ -9,6 +9,7 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 class GeneratorConvLinearMappingBigSigmV2(AbstractGenerator):
 
     def __init__(self, latent_size: Optional[torch.Tensor]=None):
+
         super(GeneratorConvLinearMappingBigSigmV2, self).__init__()
 
         if latent_size is None:

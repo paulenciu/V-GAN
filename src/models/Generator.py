@@ -61,36 +61,3 @@ class upper_lower_softmax(nn.Module):
         selected = torch.greater_equal(x, 1/x.shape[1])
         x = x*selected + (~selected)*1e-08
         return x
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-class Sparsemax(nn.Module):
-    def __init__(self, dim=-1):
-        super().__init__()
-        self.dim = dim
-
-    def forward(self, x):
-        # Sort the input in descending order
-        x_sorted, _ = torch.sort(x, dim=self.dim, descending=True)
-        # Compute the cumulative sum
-        cumsum = torch.cumsum(x_sorted, dim=self.dim)
-        # Find the threshold
-        k = torch.arange(1, x.size(self.dim) + 1, device=x.device)
-        threshold = (x_sorted * k > (cumsum - 1)) * 1.0
-        k = torch.sum(threshold, dim=self.dim, keepdim=True)
-        # Compute the sparsemax
-        tau = (torch.sum(x_sorted * threshold, dim=self.dim, keepdim=True) - 1) / k
-        return torch.clamp(x - tau, min=0)
-
-class UpperSparsemax2D(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.sparsemax = Sparsemax(dim=1)
-
-    def forward(self, x):
-        x_flattened = x.view(x.size(0), -1)
-        x_flattened = self.sparsemax(x_flattened)
-        x = x_flattened.view(x.size(0), x.size(1), x.size(2), x.size(3))
-        return x

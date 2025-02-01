@@ -9,7 +9,7 @@ class Cifar10Dataset(IDataset):
             category = []
 
         dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, transform=transform, download=download)
-        category_dataset = [(img, label) for (img, label) in dataset if label in category]
+        category_dataset = [(img, label) for (img, label) in dataset if str(label) in category]
 
         data, labels = zip(*category_dataset)
 
