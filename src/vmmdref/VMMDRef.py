@@ -27,8 +27,8 @@ from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmdref.MMDLossConstrainedV2 import MMDLossConstrainedV2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
-
-
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV5 import GeneratorOneChannelV5
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV7 import GeneratorOneChannelV7
 def tensor_to_image(tensor):
     """
     Converts a PyTorch tensor to a numpy image array.
@@ -89,11 +89,10 @@ class VMMDRef(ABC):
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
         self.generator = generator.to(self.device)
-
         if autoencoder is not None:
             self.autoencoder = autoencoder.to(self.device)
 
-        self.generator.load_state_dict(torch.load(path_to_generator_params))
+        self.generator.load_state_dict(torch.load(path_to_generator_params, map_location=torch.device('cpu')))
         self.generator.eval()
         self.generator_optimizer = f'Loaded Model from {path_to_generator_params} with {generator.noise_dim} dimensions in the latent space'
 
@@ -247,8 +246,7 @@ class VMMDRef(ABC):
 
         snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
 
-        #encoder = autoencoder.get_encoder().to(self.device)
-        encoder = autoencoder.get_encoder()
+        encoder = autoencoder.get_encoder().to(self.device)
 
         #INITIAL SNAPSHOT
         self.__store_model_snapshot(dataset, encoder)

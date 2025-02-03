@@ -22,6 +22,7 @@ import logging
 
 from src.data.IDataset import IDataset
 from src.data.dataset_loader import load_data
+from src.data.dataset_type import DatasetType
 from src.models.autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV3 import GeneratorOneChannelV3
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
@@ -46,7 +47,7 @@ def aggregator_funct(decision_function: np.array, type: str = "avg", weights: np
         return aggregated_scores
 
 
-def launch_outlier_detection_experiments(dataset_name: str, category: list[str],
+def launch_outlier_detection_experiments(path_to_generator: str, dataset_type: DatasetType, category: list[str],
                                          base_estimators: list, epochs: int = 10,
                                          temperature: float = 10, seed: int = 777, gen_model_to_use: str = "VMMD") -> dict:
     """Launch the outlier detection experiments for a given data
@@ -61,30 +62,31 @@ def launch_outlier_detection_experiments(dataset_name: str, category: list[str],
     """
     logger.info(
         "No instance of a pretrained generation model found. Proceeding to train a new Generator.")
-    X_train, X_test, Y_test= load_data(dataset_name=dataset_name, category=category, image_size=(32, 32))
+    X_train, X_test, Y_test= load_data(dataset_type=dataset_type, category=category, image_size=(224, 224))
 
     vgan = VMMDDiagonal1Channel()
-    vgan.load_model("../experiments/local/28-01/od_mvtec_1D-1/models/generator_0.pt")
-    #vgan = VMMDDiagonal1Channel()
-    noise_dim = 128
-
-    #vgan.fit(X_train, ResNet18AutoEncoder(), GeneratorOneChannelV4(noise_dim, X_train.image_shape))
+    vgan.load_model(path_to_generator)
 
     vgan.seed = seed
-    subspaces = vgan.sample_count_subspaces(500)
-    subspaces_numpy = subspaces.reshape(subspaces.shape[0], -1).cpu().numpy()
-    ensemble_model = sel_SUOD(base_estimators=base_estimators, subspaces=subspaces_numpy,
-                              n_jobs=-1, bps_flag=False, approx_flag_global=False)
+    subspaces = vgan.sample_count_subspaces(100)
+
+    unique_subspaces, proba = np.unique(
+        np.array(subspaces.to('cpu')), axis=0, return_counts=True)
+    proba = proba / np.array(subspaces.to('cpu')).shape[0]
+
+    unique_subspaces = subspaces.reshape(subspaces.shape[0], -1).cpu().numpy()
 
     X_train = flatten_images_dataset_3d(X_train).cpu().numpy()
     X_test = flatten_images_dataset_3d(X_test).cpu().numpy()
 
+    ensemble_model = sel_SUOD(base_estimators=base_estimators, subspaces=unique_subspaces,
+                              n_jobs=-1, bps_flag=False, approx_flag_global=False)
     ensemble_model.fit(X_train)
 
     decision_function_scores_ens = ensemble_model.decision_function(X_test)
     decision_function_scores_ens = aggregator_funct(
-        decision_function_scores_ens, weights=vgan.proba, type="avg")
-    return {"Dataset": dataset_name,
+        decision_function_scores_ens, weights=proba, type="avg")
+    return {"Dataset": dataset_type,
             "AUC": auc(Y_test, decision_function_scores_ens),
             "PRAUC": average_precision_score(Y_test, decision_function_scores_ens),
             "F1": f1_score(Y_test, (decision_function_scores_ens > np.quantile(decision_function_scores_ens, .80)) * 1)}
