@@ -23,7 +23,7 @@ class GeneratorOneChannelV4(AbstractGenerator):
         rel_size = int(img_size/latent_size)
         self.latent_size = latent_size
         self.img_size = img_size
-        amount_layers = 3
+        amount_layers = 6
         self.increase = log(rel_size, amount_layers).real
 
         layers = [self.get_layer(layer) for layer in range(1, amount_layers)]

@@ -4,11 +4,11 @@ from pathlib import Path
 import torch
 
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
-from src.vmmdref.VMMDRef import VMMDRef
-from src.vmmdref.penalty.MMDLossPenalty import MMDLossNoPenalty
+from src.vmmd.VMMD import VMMD
+from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 
-class VMMDDiagonal3Channel(VMMDRef):
+class VMMDDiagonal3Channel(VMMD):
 
     def __init__(self, filename="no_filename", batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=777, weight_decay=0.04,
              path_to_directory=Path(os.getcwd()).parent / "experiments" / "local", penalty=MMDLossNoPenalty()):

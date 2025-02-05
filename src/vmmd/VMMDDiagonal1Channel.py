@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 
-from src.vmmdref.VMMDRef import VMMDRef
-from src.vmmdref.penalty.MMDLossPenalty import MMDLossNoPenalty
+from src.vmmd.VMMD import VMMD
+from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 
 
-class VMMDDiagonal1Channel(VMMDRef):
+class VMMDDiagonal1Channel(VMMD):
 
     def __init__(self, filename="no_filename", batch_size=500, epochs=30, lr=0.1, momentum=0.99, seed=777, weight_decay=0.04,
              path_to_directory=Path(os.getcwd()).parent / "experiments" / "local", penalty=MMDLossNoPenalty()):

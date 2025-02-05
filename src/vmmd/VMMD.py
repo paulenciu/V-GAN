@@ -19,16 +19,16 @@ import matplotlib.pyplot as plt
 import os
 import torch_two_sample as tts
 
-from src.vmmdref.penalty.MMDLossPenalty import MMDLossNoPenalty
+from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.models.autoencoder.AutoEncoderManager import AutoEncoderManager
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmdref.MMDLossConstrainedV2 import MMDLossConstrainedV2
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV5 import GeneratorOneChannelV5
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV7 import GeneratorOneChannelV7
+from src.vmmd.MMDLossConstrainedV2 import MMDLossConstrainedV2
+
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV8 import GeneratorOneChannelV8
+
 def tensor_to_image(tensor):
     """
     Converts a PyTorch tensor to a numpy image array.
@@ -39,7 +39,7 @@ def tensor_to_image(tensor):
     array = np.clip(array, 0, 1)  # Ensure values are in [0, 1] range
     return array.transpose(1, 2, 0)  # (C, H, W) -> (H, W, C)
 
-class VMMDRef(ABC):
+class VMMD(ABC):
     """
        V-MMD, a Subspace-Generative Moment Matching Network.
 
@@ -73,6 +73,19 @@ class VMMDRef(ABC):
         Samples count many subspaces of shape (batch_size, 3, 32, 32).
         """
         pass
+
+    def approx_subspace_dist(self, subspace_count=500, add_leftover_features=False):
+        u = self.sample_count_subspaces(subspace_count)
+        unique_subspaces, proba = np.unique(
+            np.array(u.detach().to('cpu')), axis=0, return_counts=True)
+
+        if (unique_subspaces.sum(axis=0) < 1).sum() != 0 and add_leftover_features:
+            unique_subspaces = np.append(
+                unique_subspaces, [unique_subspaces.sum(axis=0) < 1], axis=0)
+            proba = np.append(proba / proba.sum(), 1)
+
+        self.subspaces = torch.tensor(unique_subspaces).reshape(unique_subspaces.shape[0], -1).cpu().numpy()
+        self.proba = proba / proba.sum()
 
     def get_params(self) -> dict:
         return {'batch size': self.batch_size, 'epochs': self.epochs, 'lr_g': self.lr,

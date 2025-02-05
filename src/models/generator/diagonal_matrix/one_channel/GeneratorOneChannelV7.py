@@ -20,7 +20,7 @@ class GeneratorOneChannelV7(AbstractGenerator):
         self._img_shape = image_shape
 
         self.model = nn.Sequential(
-            # Input: latent_dim → 256x7x7
+            #latent_dim → 256x7x7
             nn.Linear(latent_size, 256 * 7 * 7),
             nn.Unflatten(1, (256, 7, 7)),
             nn.BatchNorm2d(256),

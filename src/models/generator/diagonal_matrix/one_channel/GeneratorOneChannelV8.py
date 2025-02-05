@@ -46,52 +46,46 @@ class GeneratorOneChannelV8(AbstractGenerator):
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = image_shape
 
+        # Reduced initial channels and optimized block structure
         self.initial = nn.Sequential(
-            nn.Linear(latent_size, 512 * 7 * 7),
-            nn.Unflatten(1, (512, 7, 7)),
-            nn.InstanceNorm2d(512),
+            nn.Linear(latent_size, 256 * 7 * 7),  # Reduced from 512
+            nn.Unflatten(1, (256, 7, 7)),
+            nn.InstanceNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True)
         )
 
         self.upscale = nn.Sequential(
-            # Stage 1: 7x7 -> 14x14
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-            nn.Conv2d(512, 256, 3, padding=1, bias=False),
-            nn.InstanceNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-            ResidualBlock(256),
-
-            # Stage 2: 14x14 -> 28x28
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-            nn.Conv2d(256, 128, 3, padding=1, bias=False),
-            nn.InstanceNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
+            #7x7 -> 14x14
+            self._upscale_block(256, 128),  # Reduced channels
             ResidualBlock(128),
-            SelfAttention(128),  # Add attention at 28x28 resolution
 
-            # Stage 3: 28x28 -> 56x56
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-            nn.Conv2d(128, 64, 3, padding=1, bias=False),
-            nn.InstanceNorm2d(64),
-            nn.LeakyReLU(0.2, inplace=True),
+            #14x14 -> 28x28
+            self._upscale_block(128, 64),
             ResidualBlock(64),
+            SelfAttention(64),
 
-            # Stage 4: 56x56 -> 112x112
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-            nn.Conv2d(64, 32, 3, padding=1, bias=False),
-            nn.InstanceNorm2d(32),
-            nn.LeakyReLU(0.2, inplace=True),
+            #28x28 -> 56x56
+            self._upscale_block(64, 32),
+            ResidualBlock(32),
 
-            # Stage 5: 112x112 -> 224x224
-            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
-            nn.Conv2d(32, 16, 3, padding=1, bias=False),
-            nn.InstanceNorm2d(16),
-            nn.LeakyReLU(0.2, inplace=True),
+            #56x56 -> 112x112
+            self._upscale_block(32, 16),
+
+            #112x112 -> 224x224
+            self._upscale_block(16, 8),
         )
 
         self.final = nn.Sequential(
-            nn.Conv2d(16, 1, 3, padding=1),
+            nn.Conv2d(8, 1, 3, padding=1),
             nn.Sigmoid()
+        )
+
+    def _upscale_block(self, in_channels, out_channels):
+        return nn.Sequential(
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
+            nn.Conv2d(in_channels, out_channels, 3, padding=1, bias=False),
+            nn.InstanceNorm2d(out_channels),
+            nn.LeakyReLU(0.2, inplace=True)
         )
 
     def forward(self, input, mode="train"):

@@ -1,5 +1,5 @@
 import torch
-from src.vmmdref.penalty.MMDLossPenalty import MMDLossNoPenalty
+from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from torch import nn
 
 
