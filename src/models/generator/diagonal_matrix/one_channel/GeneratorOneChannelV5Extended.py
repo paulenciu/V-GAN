@@ -7,14 +7,14 @@ from src.models.Generator import upper_softmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
-class GeneratorOneChannelV5(AbstractGenerator):
+class GeneratorOneChannelV5Extended(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape):
 
         if isinstance(latent_size, torch.Tensor):
             latent_size = latent_size.item()
 
-        super(GeneratorOneChannelV5, self).__init__()
+        super(GeneratorOneChannelV5Extended, self).__init__()
 
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = image_shape
@@ -23,7 +23,7 @@ class GeneratorOneChannelV5(AbstractGenerator):
         rel_size = int(img_size/latent_size)
         self.latent_size = latent_size
         self.img_size = img_size
-        amount_layers = 4
+        amount_layers = 5
         self.increase = log(rel_size, amount_layers).real
 
         layers = [self.get_layer(layer) for layer in range(1, amount_layers)]

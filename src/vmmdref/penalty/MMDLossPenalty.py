@@ -186,3 +186,36 @@ class MMDTVPenalty(MMDLossPenalty):
 
     def get_stats(self):
         return super().get_stats()
+
+
+class MMDSigmoidPenalty(MMDLossPenalty):
+
+    def __init__(self, weight, epsilon=1e-6):
+        super().__init__(weight)
+        self.epsilon = epsilon
+
+    def get_weighted_penalty(self, U):
+        numerator = (U - 0.25) ** 2 * (U - 0.75) ** 2
+        denominator = U * (1 - U) * ((U - 0.5) ** 2 + self.epsilon)
+
+        return self._weight * torch.mean(numerator / denominator)
+
+    def get_stats(self):
+        return super().get_stats() | {
+            "epsilon": self.epsilon,
+        }
+
+class MMDSigmoidPenalty2(MMDLossPenalty):
+
+    def __init__(self, weight, epsilon=100):
+        super().__init__(weight)
+        self.epsilon = epsilon
+
+    def get_weighted_penalty(self, U):
+        penalty = (U - 0.25) ** 2 * (U - 0.75) ** 2 * self.epsilon
+        return self._weight * penalty
+
+    def get_stats(self):
+        return super().get_stats() | {
+            "epsilon": self.epsilon,
+        }

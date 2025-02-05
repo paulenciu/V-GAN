@@ -1,4 +1,5 @@
 import torchvision.datasets
+import random
 
 from src.data.IDataset import IDataset
 
@@ -11,10 +12,16 @@ class FashionMNISTDataset(IDataset):
             category = []
 
         dataset = torchvision.datasets.FashionMNIST(root, train=train, transform=transform, download=download)
+        if not train:
+            all_category = [str(c) for c in range(len(dataset.classes) - 1)]
+            all_category_train_category_excluded = list(filter(lambda c: c not in category, all_category))
+            sampled_train_category_excluded = random.sample(all_category_train_category_excluded, 1)
+            category += sampled_train_category_excluded
 
-        category_dataset = [(img, label) for img, label in dataset if str(label) in category]
+        category_dataset = [(img, label) for (img, label) in dataset if str(label) in category]
+
         data, labels = zip(*category_dataset)
 
-        img_shape = category_dataset[0][0].shape
+        image_shape = dataset[0][0].shape
 
-        super().__init__(img_shape, data, labels)
+        super().__init__(image_shape, data, labels)
