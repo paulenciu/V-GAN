@@ -3,7 +3,7 @@ from torchvision import transforms
 from src.data.dataset_type import DatasetType
 
 
-def load_data(dataset_type, category, image_size=(128, 128), custom_transform=None):
+def load_data(dataset_type: DatasetType, category, image_size=(128, 128), custom_transform=None):
 
     if custom_transform is not None:
         transform = custom_transform

@@ -27,10 +27,8 @@ from src.utils.BigUBuilder import create_big_u
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmdref.MMDLossConstrainedV2 import MMDLossConstrainedV2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
-
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV5 import GeneratorOneChannelV5
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV7 import GeneratorOneChannelV7
-
-
 def tensor_to_image(tensor):
     """
     Converts a PyTorch tensor to a numpy image array.
@@ -91,11 +89,10 @@ class VMMDRef(ABC):
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
         self.generator = generator.to(self.device)
-
         if autoencoder is not None:
             self.autoencoder = autoencoder.to(self.device)
 
-        self.generator.load_state_dict(torch.load(path_to_generator_params))
+        self.generator.load_state_dict(torch.load(path_to_generator_params, map_location=torch.device('cpu')))
         self.generator.eval()
         self.generator_optimizer = f'Loaded Model from {path_to_generator_params} with {generator.noise_dim} dimensions in the latent space'
 
@@ -216,115 +213,6 @@ class VMMDRef(ABC):
     def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
         return u_subspaces * x_sample_unflattened
 
-    def fit_m(self, dataset: IDataset, autoencoder, generator: AbstractGenerator):
-        n_channels, width, height = dataset.image_shape
-        assert width == height, "Error, need square input images."
-
-        X_flattened = flatten_images_dataset_3d(dataset).to("cpu")
-        x_flattened_normalized = torch.from_numpy(normalize(X_flattened, axis=0)).to(torch.float32).cpu()  # Keep on CPU
-        X_unflattened_normalized = unflatten_images_3d(x_flattened_normalized, n_channels, height, width).cpu()
-
-        cuda = torch.cuda.is_available()
-        mps = torch.backends.mps.is_available()
-
-        torch.manual_seed(self.seed)
-        if cuda:
-            torch.cuda.manual_seed(self.seed)
-        elif mps:
-            torch.mps.manual_seed(self.seed)
-
-        # MODEL INITIALIZATION
-        epochs = self.epochs
-        train_size = X_flattened.shape[0]
-        self.batch_size = min(self.batch_size, train_size)
-
-        # SETUP GENERATOR OPTIMIZATION
-        self.generator = generator.to(self.device)
-        optimizer = torch.optim.Adadelta(
-            self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-        self.generator_optimizer = optimizer.__class__.__name__
-
-        loss_function = MMDLossConstrainedV2(penalty=self.penalty, kernel=RBF())
-
-        snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
-
-        encoder = autoencoder.get_encoder().to(self.device)
-        encoder.eval()  # Set encoder to evaluation mode
-
-        # INITIAL SNAPSHOT
-        self.__store_model_snapshot(dataset, encoder)
-
-        # DATA LOADER
-        data_loader = self.__setup_data_loader(X_unflattened_normalized, cuda, mps)
-        batch_number = data_loader.__len__()
-
-        total_training_time = 0.0
-
-        for epoch in range(epochs):
-            print(f'\rEpoch {epoch} of {epochs}')
-            generator_loss = 0
-            mmd_loss_avg = 0
-            epoch_start = time.time()
-
-            for batch in tqdm(data_loader, leave=False):
-                if cuda:
-                    batch = batch.cuda(non_blocking=True)
-                elif mps:
-                    batch = batch.to(torch.float32).to('mps', non_blocking=True)
-
-                # Generate noise for current batch
-                noise = torch.randn((batch.size(0),) + tuple(generator.noise_dim), device=self.device)
-
-                optimizer.zero_grad()
-                u_mappings = generator.sample_subspace_masks(noise)
-
-                processed_batch = self.apply_subspaces_operator(batch, u_mappings)
-
-                # Handle single-channel expansion
-                if batch.shape[1] == 1:
-                    batch = batch.repeat(1, 3, 1, 1)
-                    processed_batch = processed_batch.repeat(1, 3, 1, 1)
-
-                # Encoder forward pass without gradients
-                with torch.no_grad():
-                    embedded_batch = encoder(batch).flatten(start_dim=1)
-                    embedded_processed_batch = encoder(processed_batch).flatten(start_dim=1)
-
-                # Calculate loss and backprop
-                batch_loss, mmd_loss = loss_function(
-                    embedded_batch, embedded_processed_batch, u_mappings
-                )
-                self.bandwidth = loss_function.bandwidth
-
-                batch_loss.backward()
-                optimizer.step()
-
-                # Update loss tracking
-                generator_loss += batch_loss.item() / batch_number
-                mmd_loss_avg += mmd_loss.item() / batch_number
-
-                # Clean up intermediate variables
-                del noise, u_mappings, processed_batch, embedded_batch, embedded_processed_batch
-
-            epoch_duration = time.time() - epoch_start
-            total_training_time += epoch_duration
-            self.train_history["training_time"] = total_training_time
-
-            # Handle snapshots
-            if epoch in snapshot_intervals:
-                snapshot_start = time.time()
-                self.__store_model_snapshot(dataset, encoder)
-                total_training_time -= (time.time() - snapshot_start)
-
-            print(f"Average loss in the epoch: {generator_loss}")
-            self.train_history["generator_loss"].append(generator_loss)
-            self.train_history["mmd_loss"].append(mmd_loss_avg)
-
-        # FINAL SNAPSHOT
-        self.__store_model_snapshot(dataset, encoder)
-        self.train_history["training_time"] = total_training_time
-        self.generator = generator
-
     def fit(self, dataset: IDataset, autoencoder, generator: AbstractGenerator):
 
         n_channels, width, height = dataset.image_shape
@@ -400,11 +288,11 @@ class VMMDRef(ABC):
                     batch = batch.repeat(1, 3, 1, 1)
                     processed_batch = processed_batch.repeat(1, 3, 1, 1)
 
-                #embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
-                #embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
+                embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
+                embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
 
-                embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
-                embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
+                #embedded_batch = batch.view(batch.shape[0], -1).to(self.device)
+                #embedded_processed_batch = processed_batch.view(processed_batch.shape[0], -1).to(self.device)
 
                 batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 
@@ -432,6 +320,7 @@ class VMMDRef(ABC):
             print(f"Average loss in the epoch: {generator_loss}")
             self.train_history["generator_loss"].append(generator_loss)
             self.train_history["mmd_loss"].append(mmd_loss_avg)
+
 
         #FINAL SNAPSHOT
         self.__store_model_snapshot(dataset, encoder)

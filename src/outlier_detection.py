@@ -1,7 +1,6 @@
 import random
 
 import numpy as np
-import torch
 import torchvision
 from pyod.models.ocsvm import OCSVM
 from pyod.models.ecod import ECOD
@@ -55,7 +54,7 @@ def launch_outlier_detection_experiments(path_to_generator: str, dataset_type: D
 
     Args:
         dataset_name (str): Name of the data to load
-        base_estimators (list): List including all base estimators to build the ensemble. If the length is = 1,
+        base_estimators (list): List including all base estimators to build the ensemble. If the length is = 1, 
         then an homogeneus ensemble will be fitted.
         directory (Path): Path to the directory one wishes to load to
     Returns:
@@ -69,7 +68,7 @@ def launch_outlier_detection_experiments(path_to_generator: str, dataset_type: D
     vgan.load_model(path_to_generator)
 
     vgan.seed = seed
-    subspaces = vgan.sample_count_subspaces(2100)
+    subspaces = vgan.sample_count_subspaces(100)
 
     unique_subspaces, proba = np.unique(
         np.array(subspaces.to('cpu')), axis=0, return_counts=True)
@@ -79,11 +78,6 @@ def launch_outlier_detection_experiments(path_to_generator: str, dataset_type: D
 
     X_train = flatten_images_dataset_3d(X_train).cpu().numpy()
     X_test = flatten_images_dataset_3d(X_test).cpu().numpy()
-
-    n = min(len(X_train), len(X_test))
-
-    X_train = torch.mps.Tensor(pd.DataFrame(X_train).sample(n).to_numpy()).cpu().numpy()
-    X_test = torch.mps.Tensor(pd.DataFrame(X_test).sample(n).to_numpy()).cpu().numpy()
 
     ensemble_model = sel_SUOD(base_estimators=base_estimators, subspaces=unique_subspaces,
                               n_jobs=-1, bps_flag=False, approx_flag_global=False)
