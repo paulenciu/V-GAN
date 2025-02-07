@@ -25,7 +25,7 @@ from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d, unflatten_images_3d
+from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.MMDLossConstrainedV2 import MMDLossConstrainedV2
 
 
@@ -60,7 +60,7 @@ class VMMD(ABC):
     def add_logger_subscriber(self, subscriber):
         self.logger_subscriber.append(subscriber)
 
-    def notify_logger_subscriber(self, data: IDataset):
+    def notify_logging_subscriber(self, data: IDataset):
         for logger in self.logger_subscriber:
             logger.log(data)
 
@@ -102,11 +102,9 @@ class VMMD(ABC):
 
         n_channels, height, width = x_data.image_shape
 
-        x_data = flatten_images_dataset_3d(x_data).to("cpu")
+        x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
 
-        x_data = normalize(x_data, axis=0)
-        x_sample = torch.Tensor(pd.DataFrame(
-            x_data).sample(count).to_numpy()).to(self.device)
+        x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.device)
 
         u_subspaces = self.sample_count_subspaces(count)
         x_sample = x_sample.view(-1, n_channels, height, width)
@@ -121,8 +119,7 @@ class VMMD(ABC):
 
         if not hasattr(self, 'bandwidth'):
             mmd_loss = MMDLossConstrainedV2()
-            mmd_loss.forward(
-                x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
+            mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
             self.bandwidth = mmd_loss.bandwidth
 
         bw = self.bandwidth.item()
@@ -143,12 +140,12 @@ class VMMD(ABC):
         return self.encoder(x).view(x.shape[0], -1)
 
     def fit(self, dataset: IDataset, encoder, generator: AbstractGenerator):
+
         n_channels, width, height = dataset.image_shape
         assert width == height, "Error, need square input images."
 
-        X_flattened = flatten_images_dataset_3d(dataset).to("cpu")
-        x_flattened_normalized = torch.from_numpy(normalize(X_flattened, axis=0)).to(torch.float32).to(self.device)
-        X_unflattened_normalized = unflatten_images_3d(x_flattened_normalized, n_channels, height, width).to(self.device)
+        flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
+        unflattened_images = unflatten_images_3d(flattened_images, n_channels, height, width).to(self.device)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -161,40 +158,42 @@ class VMMD(ABC):
 
         # MODEL INTIALIZATION#
         epochs = self.epochs
-        train_size = X_flattened.shape[0]
+        train_size = flattened_images.shape[0]
         self.batch_size = min(self.batch_size, train_size)
 
         # SETUP GENERATOR OPTIMIZATION
         self.generator = generator.to(self.device)
-        # optimizer = torch.optim.Adadelta(
-        #     self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        optimizer = torch.optim.Adadelta(self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
-        optimizer = torch.optim.Adam(
-            self.generator.parameters(),
-            lr=self.lr,
-            betas=(0.5, 0.9),  # or (0.9, 0.999), etc.
-            weight_decay=self.weight_decay
-        )
+        #TODO no idea if better
+        # optimizer = torch.optim.Adam(
+        #     self.generator.parameters(),
+        #     lr=self.lr,
+        #     betas=(0.5, 0.9),
+        #     weight_decay=self.weight_decay
+        # )
         self.generator_optimizer = optimizer.__class__.__name__
 
         loss_function = MMDLossConstrainedV2(penalty=self.penalty, kernel=RBF())
 
         snapshot_intervals = [int(i * 0.25 * epochs) for i in range(1, 11)]
 
-        encoder = encoder.to(self.device)
         self.encoder = encoder
+        self.encoder.eval()
+        self.encoder = self.encoder.to(self.device)
 
         #INITIAL SNAPSHOT
-        self.notify_logger_subscriber(dataset)
+        self.notify_logging_subscriber(dataset)
 
         # DATA LOADER#
-        data_loader = self.__setup_data_loader(X_unflattened_normalized, cuda, mps)
+        data_loader = self.__setup_data_loader(unflattened_images, cuda, mps)
         batch_number = data_loader.__len__()
 
         # GET NOISE TENSORS#
         noise = self.__setup_noise_tensor(generator_input_shape=generator.noise_dim, mps=mps, cuda=cuda)
 
         total_training_time = 0.0
+        snapshot_duration = 0.0
 
         for epoch in range(epochs):
             print(f'\rEpoch {epoch} of {epochs}')
@@ -203,29 +202,28 @@ class VMMD(ABC):
             epoch_start = time.time()
             # BATCH LOOP#
             for batch in tqdm(data_loader, leave=False):
-                # Make sure there is only 1 observation per row.
-                #batch = batch.view(self.batch_size, -1)
+
                 if cuda:
                     batch = batch.cuda()
                 elif mps:
-                    batch = batch.to(torch.float32).to(
-                        torch.device('mps'))  # float64 not suported with mps
+                    batch = batch.to(torch.float32).to(torch.device('mps'))  # float64 not suported with mps
 
                 # SAMPLE NOISE#
                 noise.normal_()
 
                 # OPTIMIZATION STEP#
                 optimizer.zero_grad()
-                u_mappings = generator.sample_subspace_masks(noise).to(self.device)
 
+                u_mappings = generator.sample_subspace_masks(noise).to(self.device)
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
 
+                #Encoder assumes a 3 channeled input
                 if batch.shape[1] == 1:
                     batch = batch.repeat(1, 3, 1, 1)
                     processed_batch = processed_batch.repeat(1, 3, 1, 1)
 
-                embedded_batch = encoder(batch).view(batch.shape[0], -1).to(self.device)
-                embedded_processed_batch = encoder(processed_batch).view(processed_batch.shape[0], -1).to(self.device)
+                embedded_batch = self.encode(batch).to(self.device)
+                embedded_processed_batch = self.encode(processed_batch).to(self.device)
 
                 batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 
@@ -245,12 +243,11 @@ class VMMD(ABC):
             self.train_history["training_time"] = total_training_time
 
             #INBETWEEN SNAPSHOTS
-            snapshot_duration = 0.0
             if epoch in snapshot_intervals:
+                self.train_history["training_time"] -= snapshot_duration
                 snapshot_start = time.time()
-                self.notify_logger_subscriber(dataset)
+                self.notify_logging_subscriber(dataset)
                 snapshot_duration = time.time() - snapshot_start
-                total_training_time -= snapshot_duration
 
             print(f"Average loss in the epoch: {generator_loss}")
             self.train_history["generator_loss"].append(generator_loss)
@@ -258,19 +255,17 @@ class VMMD(ABC):
 
 
         #FINAL SNAPSHOT
-        self.notify_logger_subscriber(dataset)
+        self.notify_logging_subscriber(dataset)
 
         self.train_history["training_time"] = total_training_time
 
         self.generator = generator
 
-    def __setup_data_loader(self, X_unflattened, cuda, mps):
+    def __setup_data_loader(self, x_unflattened, cuda, mps):
         if cuda:
-            return DataLoader(
-                X_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=False, shuffle=True)
-        else:  # Uses CUDA if Available, other wise MPS or nothing
-            return DataLoader(
-                X_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=mps, shuffle=True)
+            return DataLoader(x_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=False, shuffle=True)
+        else:  # Uses CUDA if available, otherwise MPS or nothing
+            return DataLoader(x_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=mps, shuffle=True)
 
 
     def _generate_subspaces(self, count, threshold = None):
@@ -297,29 +292,13 @@ class VMMD(ABC):
             batch_size = self.batch_size
 
         # Determine tensor shape based on generator_input_shape
-        if  generator_input_shape.shape == torch.Size([1]):
-            shape = (batch_size, generator_input_shape[0])
-        elif generator_input_shape.shape == torch.Size([3]):
-            shape = (batch_size, generator_input_shape[0], generator_input_shape[1], generator_input_shape[2])
-        else:
-            raise NotImplementedError
+        # if  generator_input_shape.shape == torch.Size([1]):
+        #     shape = (batch_size, generator_input_shape[0])
+        # elif generator_input_shape.shape == torch.Size([3]):
+        #     shape = (batch_size, *generator_input_shape)
+        # else:
+        #     raise NotImplementedError
 
-        # Select appropriate device and tensor type
-        device = 'cuda' if cuda else 'mps' if mps else 'cpu'
-        return torch.empty(shape, dtype=torch.float32, device=device)
-
-
-
-    def __extract_noise_dim(self, train_iteration_number, path_to_generator_params) -> torch.Tensor:
-        pt_file_path = Path(path_to_generator_params)
-        csv_file_path = pt_file_path.parent.parent / 'params.csv'
-
-        df = pd.read_csv(csv_file_path, header=None)
-        row = df.iloc[train_iteration_number]
-
-        noise_dim_column = row['noise dim']
-
-        # Convert to torch.Tensor
-        return eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))
-
+        shape = (batch_size, *generator_input_shape)
+        return torch.empty(shape, dtype=torch.float32, device=self.device)
 

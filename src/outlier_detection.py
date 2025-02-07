@@ -15,7 +15,8 @@ from src.data.dataset_loader import load_data
 from src.data.dataset_type import DatasetType
 from src.models.encoder.AbstractEncoder import AbstractEncoder
 from src.models.generator.AbstractGenerator import AbstractGenerator
-from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
+from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
+from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
@@ -40,7 +41,8 @@ def aggregator_funct(decision_function: np.array, type: str = "avg", weights: np
 def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder, generator: AbstractGenerator, dataset_type: DatasetType,
                                          category: list[str], base_estimators: list, epochs: int = 10, lr=0.5, seed: int = 777,
                                          image_size=(224, 224), subspace_count=100, path_to_directory=None, store_stats=True,
-                                         penalty=MMDLossNoPenalty(), batch_size=256, momentum=0.8, weight_decay = 0.1) -> dict:
+                                         penalty=MMDLossNoPenalty(), batch_size=256, momentum=0.8, weight_decay = 0.1,
+                                         normalize_data=False) -> dict:
     """Launch the outlier detection experiments for a given data
 
     Args:
@@ -49,19 +51,21 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
     """
     logger.info("No instance of a pretrained generation model found. Proceeding to train a new Generator.")
 
-    x_train, x_test, y_test = load_data(dataset_type, category, image_size)
+    x_train, x_test, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data)
     y_test = np.array(y_test)
 
     vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
                                 lr=lr, penalty=penalty, filename=filename,
                                 batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)
 
+    vmmd_wrapper = VMMDWrapper(vmmd)
+
     vmmd.fit(dataset=x_train, encoder=encoder, generator=generator)
 
     vmmd_od = VMMDOD(vmmd=vmmd)
 
-    x_train = flatten_images_dataset_3d(x_train).cpu().numpy()
-    x_test = flatten_images_dataset_3d(x_test).cpu().numpy()
+    x_train = extract_and_flatten_images_dataset_3d(x_train).cpu().numpy()
+    x_test = extract_and_flatten_images_dataset_3d(x_test).cpu().numpy()
 
     decision_function_scores_ens, decision_time, fit_time = __launch_outlier_detection_ensemble(x_test, x_train,
                                                                                                 base_estimators, seed,
@@ -73,8 +77,8 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
 
 def __prepare_data(category, dataset_type, image_size):
     X_train, X_test, Y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size)
-    X_train = flatten_images_dataset_3d(X_train).cpu().numpy()
-    X_test = flatten_images_dataset_3d(X_test).cpu().numpy()
+    X_train = extract_and_flatten_images_dataset_3d(X_train).cpu().numpy()
+    X_test = extract_and_flatten_images_dataset_3d(X_test).cpu().numpy()
     return X_train, X_test, Y_test
 
 
@@ -168,8 +172,8 @@ def launch_outlier_detection_baseline(dataset_type: DatasetType, category: list[
 
     X_train, X_test, Y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size)
 
-    X_train = flatten_images_dataset_3d(X_train).cpu().numpy()
-    X_test = flatten_images_dataset_3d(X_test).cpu().numpy()
+    X_train = extract_and_flatten_images_dataset_3d(X_train).cpu().numpy()
+    X_test = extract_and_flatten_images_dataset_3d(X_test).cpu().numpy()
 
     fit_time_start = time.time()
     base_estimator.fit(X_train)

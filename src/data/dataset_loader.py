@@ -3,7 +3,7 @@ from torchvision import transforms
 from src.data.dataset_type import DatasetType
 
 
-def load_data(dataset_type: DatasetType, category, image_size=(128, 128), custom_transform=None):
+def load_data(dataset_type: DatasetType, category, image_size=(128, 128), custom_transform=None, normalize=False):
 
     if custom_transform is not None:
         transform = custom_transform
@@ -13,7 +13,7 @@ def load_data(dataset_type: DatasetType, category, image_size=(128, 128), custom
             transforms.ToTensor(),
         ])
 
-    X_train = dataset_type.load(category=category, transform=transform, train=True)
-    X_test = dataset_type.load(category=category, transform=transform, train=False)
-    Y_test = X_test.labels
-    return X_train, X_test, Y_test
+    x_train = dataset_type.load(category=category, transform=transform, train=True, normalize=normalize)
+    x_test = dataset_type.load(category=category, transform=transform, train=False, normalize=normalize)
+    y_test = x_test.labels
+    return x_train, x_test, y_test

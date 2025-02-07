@@ -29,8 +29,8 @@ class DatasetType(Enum):
     MVTEC_AD = MVTecADDataset, "../datasets/mvtec_ad"
     SYNTHETIC = SyntheticImageDataset, ""
 
-    def load(self, category, train=True, transform=torchvision.transforms.ToTensor()):
+    def load(self, category, train=True, transform=torchvision.transforms.ToTensor(), normalize=False):
         """
         Load the data using the constructor and file path.
         """
-        return self.dataset_class(self.file_path, inlier_category=category, train=train, transform=transform)
+        return self.dataset_class(self.file_path, inlier_category=category, train=train, transform=transform, normalize=normalize)

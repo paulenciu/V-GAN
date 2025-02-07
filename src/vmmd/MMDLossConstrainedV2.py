@@ -5,14 +5,12 @@ from torch import nn
 
 class RBF(nn.Module):
 
-    def __init__(self, embedding_function = lambda x: x, n_kernels=5, mul_factor=2.0, bandwidth=None):
+    def __init__(self, n_kernels=5, mul_factor=2.0, bandwidth=None):
         super().__init__()
-        self.embedding_function = embedding_function
         device = torch.device('cuda:0' if torch.cuda.is_available(
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
-        self.bandwidth_multipliers = mul_factor ** (
-            torch.arange(n_kernels) - n_kernels // 2).to(device)
+        self.bandwidth_multipliers = mul_factor ** (torch.arange(n_kernels) - n_kernels // 2).to(device)
         self.bandwidth = bandwidth
 
     def get_bandwidth(self, L2_distances):
@@ -23,11 +21,17 @@ class RBF(nn.Module):
 
         return self.bandwidth
 
+    #FIXME no idea if that is better
+    def get_bandwidth_v2(self, L2_distances):
+        n_samples = L2_distances.shape[0]
+        self.bandwidth = L2_distances.data.sum() / (n_samples ** 2 - n_samples)
+        return L2_distances.data.sum() / (n_samples ** 2 - n_samples)
+
+
     def forward(self, X):
         L2_distances = torch.cdist(X, X) ** 2
         bandwidth = self.get_bandwidth(L2_distances)
         multipliers = self.bandwidth_multipliers
-        p = bandwidth * multipliers
         return torch.exp(-L2_distances[None, ...] / (bandwidth * multipliers)[:, None, None]).sum(dim=0)
 
 

@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import normalize
 
 from src.data import IDataset
-from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
+from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
 from src.vmmd import VMMD
 from src.vmmd.logger.ILogger import ILogger
 from src.vmmd.MMDLossConstrainedV2 import MMDLossConstrainedV2
@@ -113,7 +113,7 @@ class TrainingLogger(ILogger):
         if count > len(x_data):
             count = len(x_data)
 
-        x_data = flatten_images_dataset_3d(x_data).to("cpu")
+        x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
         x_data = normalize(x_data, axis=0)
         x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.vmmd.device)
 

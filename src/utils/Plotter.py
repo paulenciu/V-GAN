@@ -14,7 +14,7 @@ import torch.nn.functional as F
 
 from src.models.generator.convolution.GeneratorConvLinearMappingBigSigm import GeneratorConvLinearMappingBigSigm
 from src.utils.BigUBuilder import create_big_u
-from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
+from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
 from src.utils.VMMDLoader import load_vmmd
 
 

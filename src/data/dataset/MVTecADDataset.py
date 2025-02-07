@@ -9,7 +9,7 @@ from src.data.IDataset import IDataset
 
 
 class MVTecADDataset(IDataset):
-    def __init__(self, file_path: str, inlier_category: List[str], train: bool = True, transform=None):
+    def __init__(self, file_path: str, inlier_category: List[str], train: bool = True, transform=None, normalize=False):
         """
         Initialize the MVTecADDataset.
 
@@ -22,6 +22,13 @@ class MVTecADDataset(IDataset):
         self.file_path = file_path
         self.category = inlier_category
         self.train = train
+
+        if normalize:
+            transform = transforms.Compose([
+                transform,
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet values (standard for RGB)
+            ])
+
         self.transform = transform
 
         # Initialize lists to store image paths and labels

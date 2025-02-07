@@ -75,12 +75,24 @@ class VMMDWrapper:
 
         return path_to_directory
 
-    def __extract_autoencoder(self, path_to_generator_params):
-        pt_file_path = Path(path_to_generator_params)
-        csv_file_path = pt_file_path.parent.parent / 'params.csv'
-        first_row = pd.read_csv(csv_file_path, header=None).iloc[0]
-
-        autoencoder_name = first_row['pretrained_autoencoder']
-
-        autoencoder_manager = AutoEncoderManager()
-        return autoencoder_manager.get_autoencoder(autoencoder_name)
+    # def __extract_autoencoder(self, path_to_generator_params):
+    #     pt_file_path = Path(path_to_generator_params)
+    #     csv_file_path = pt_file_path.parent.parent / 'params.csv'
+    #     first_row = pd.read_csv(csv_file_path, header=None).iloc[0]
+    #
+    #     autoencoder_name = first_row['pretrained_autoencoder']
+    #
+    #     autoencoder_manager = AutoEncoderManager()
+    #     return autoencoder_manager.get_autoencoder(autoencoder_name)
+    #
+    # def __extract_noise_dim(self, train_iteration_number, path_to_generator_params) -> torch.Tensor:
+    #     pt_file_path = Path(path_to_generator_params)
+    #     csv_file_path = pt_file_path.parent.parent / 'params.csv'
+    #
+    #     df = pd.read_csv(csv_file_path, header=None)
+    #     row = df.iloc[train_iteration_number]
+    #
+    #     noise_dim_column = row['noise dim']
+    #
+    #     # Convert to torch.Tensor
+    #     return eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))

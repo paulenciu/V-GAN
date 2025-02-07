@@ -2,20 +2,27 @@ import torchvision
 import random
 
 from IPython.lib.deepreload import original_import
+from torchvision.transforms import transforms
 
 from src.data.IDataset import IDataset
 
 
 class Cifar10Dataset(IDataset):
 
-    def __init__(self, root_dir, inlier_category=None, train=True, transform=torchvision.transforms.ToTensor(), download=True):
+    def __init__(self, root_dir, inlier_category=None, train=True, transform=torchvision.transforms.ToTensor(), download=True, normalize=False):
 
         if inlier_category is None:
             inlier_category = []
 
-        dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, transform=transform, download=download)
-
         combined_category = list(inlier_category)
+
+        if normalize:
+            transform = transforms.Compose([
+                transform,
+                transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
+            ])
+
+        dataset = torchvision.datasets.CIFAR10(root=root_dir, train=train, transform=transform, download=download)
 
         if not train:
             all_category = [str(c) for c in range(len(dataset.classes) - 1)]

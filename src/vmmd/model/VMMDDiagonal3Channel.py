@@ -3,7 +3,7 @@ from pathlib import Path
 
 import torch
 
-from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
+from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
 from src.vmmd.VMMD import VMMD
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
