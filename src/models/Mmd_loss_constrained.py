@@ -35,13 +35,12 @@ class MMDLossConstrained(nn.Module):
     Constrained loss by the number of features selected
     '''
 
-    def __init__(self, weight, kernel=RBF(), flattened=True):
+    def __init__(self, weight, kernel=RBF()):
         super().__init__()
         self.kernel = kernel
         self.weight = weight
         self.device = torch.device('cuda:0' if torch.cuda.is_available(
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
-        self.flattened = flattened
 
     def forward(self, X, Y, U):
         K = self.kernel(torch.vstack([X, Y]))
@@ -51,10 +50,6 @@ class MMDLossConstrained(nn.Module):
         XX = K[:X_size, :X_size].mean()
         XY = K[:X_size, X_size:].mean()
         YY = K[X_size:, X_size:].mean()
-
-        ##Flattening changes the dimensions of U
-        if not self.flattened:
-            return XX - 2 * XY + YY + self.weight* (torch.mean(torch.ones(U.shape[2]).to(self.device) - torch.topk(U, 1, 0).values))
 
         return XX - 2 * XY + YY + self.weight * (torch.mean(torch.ones(U.shape[1]).to(self.device) - torch.topk(U, 1, 0).values))
 

@@ -4,11 +4,11 @@ from pathlib import Path
 
 import torch
 
-from src.models.autoencoder.resnet.RestNetAutoEncoder import ResNet50AutoEncoder, ResNet18AutoEncoder
-from src.vmmd.VMMDConvLinearMapping import VMMDConvLinearMapping
+from src.models.encoder.autoencoder.resnet.RestNetAutoEncoder import ResNet50AutoEncoder, ResNet18AutoEncoder
+from src.vmmd.model.VMMDConvLinearMapping import VMMDConvLinearMapping
 from src.vmmd.VMMDFlattened import VMMDFlattened
-from src.vmmd.VMMDLinearMapping import VMMDLinearMapping
-from src.vmmd.VMMDRotationMapping import VMMDRotationMapping
+from src.vmmd.model.VMMDLinearMapping import VMMDLinearMapping
+from src.vmmd.model.VMMDRotationMapping import VMMDRotationMapping
 from src.vmmd.VMMDSingleMask import VMMDSingleMask
 
 
@@ -71,26 +71,26 @@ class Pipeline:
                                                            lr=lr, batch_size=self.batch_size)
 
             print("--------------------------[unscaled_resnet50]--------------------------")
-            # vmmd_flattened_unscaled_resnet50.fit(X=X, autoencoder=unscaled_resnet50)
-            #vmmd_flattened_single_masked_resnet50.fit(X=X, autoencoder=self.unscaled_resnet50)
+            # vmmd_flattened_unscaled_resnet50.fit(X=X, pretrained_autoencoder=unscaled_resnet50)
+            #vmmd_flattened_single_masked_resnet50.fit(X=X, pretrained_autoencoder=self.unscaled_resnet50)
 
             print("--------------------------[scaled_resnet50]--------------------------")
-            # vmmd_flattened_scaled_resnet50.fit(X=X, autoencoder=scaled_resnet50)
+            # vmmd_flattened_scaled_resnet50.fit(X=X, pretrained_autoencoder=scaled_resnet50)
 
             print("----------------------[single_mask_unscaled_resnet18]----------------------")
-            #vmmd_flattened_single_masked_resnet18.fit(X, autoencoder=self.unscaled_resnet18)
+            #vmmd_flattened_single_masked_resnet18.fit(X, pretrained_autoencoder=self.unscaled_resnet18)
 
             print("--------------------------[unscaled_resnet18]--------------------------")
-            #vmmd_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)
+            #vmmd_flattened_unscaled_resnet18.fit(X=X, pretrained_autoencoder=self.unscaled_resnet18)
 
             print("--------------------------[scaled_resnet18]--------------------------")
-            #vmmd_flattened_scaled_resnet18.fit(X=X, autoencoder=self.scaled_resnet18)
+            #vmmd_flattened_scaled_resnet18.fit(X=X, pretrained_autoencoder=self.scaled_resnet18)
 
             print("--------------------------[linear_mapping_unscaled_resnet18]--------------------------")
-            #vmmd_mapping_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)
+            #vmmd_mapping_flattened_unscaled_resnet18.fit(X=X, pretrained_autoencoder=self.unscaled_resnet18)
 
             print("--------------------------[linear_mapping_unscaled_resnet18]--------------------------")
-            #vmmd_rotation_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)
+            #vmmd_rotation_flattened_unscaled_resnet18.fit(X=X, pretrained_autoencoder=self.unscaled_resnet18)
 
             print("------------------------[conv_linear_mapping_unscaled_resnet18]------------------------")
             vmmd_conv_mapping_flattened_unscaled_resnet18.fit(X=X, autoencoder=self.unscaled_resnet18)

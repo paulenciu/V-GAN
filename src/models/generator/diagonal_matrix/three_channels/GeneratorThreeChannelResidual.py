@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.models.Generator import upper_softmax2D
+from src.models.Generator import UpperSoftmax2D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 class GeneratorThreeChannelResidual(AbstractGenerator):
@@ -31,7 +31,7 @@ class GeneratorThreeChannelResidual(AbstractGenerator):
 
         # Final output layer
         layers.append(nn.Linear(input_dim, 32 * 32 * 3))
-        layers.append(upper_softmax2D())
+        layers.append(UpperSoftmax2D())
 
         # Build the model as a sequential block
         self.hidden = nn.Sequential(*layers)

@@ -7,17 +7,19 @@ from src.models.Generator import UpperSoftmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
-class GeneratorOneChannelV4(AbstractGenerator):
+class GeneratorOneChannelV4Extended(AbstractGenerator):
 
-    def __init__(self, latent_size, image_shape):
+    def __init__(self, latent_size, image_shape, temperature=1.0, epsilon=1e-11):
 
         if isinstance(latent_size, torch.Tensor):
             latent_size = latent_size.item()
 
-        super(GeneratorOneChannelV4, self).__init__()
+        super(GeneratorOneChannelV4Extended, self).__init__()
 
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = image_shape
+        self.temperature = temperature
+        self.epsilon = epsilon
 
         img_size = image_shape[2] * image_shape[2]
         rel_size = int(img_size/latent_size)
@@ -46,14 +48,19 @@ class GeneratorOneChannelV4(AbstractGenerator):
             nn.Linear(input_size, self.img_size),
         )
 
+        self.softmax = nn.Softmax(dim=1)
+        self.upper_softmax = UpperSoftmax1D()
+
         return last_layer if last else layer
 
-    def forward(self, input, mode="train"):
-        x = self.layers(input)
+    def forward(self, x, mode="train"):
+        logits = self.layers(x)
+        gumbel_noise = -torch.log(-torch.log(torch.rand_like(logits) + self.epsilon) + self.epsilon)
+        y = (logits + gumbel_noise) / self.temperature
         if mode == "train":
-            return self.softmax(x)
+            return self.softmax(y)
 
-        return self.upper_softmax(x)
+        return self.upper_softmax(y)
 
     def sample_subspace_masks(self, noise, mode="train"):
         activation = self.forward(noise, mode)
@@ -61,4 +68,5 @@ class GeneratorOneChannelV4(AbstractGenerator):
         if mode == "test":
             binary_activation = torch.greater_equal(activation_upscaled, 1 / activation.shape[1])
             activation_upscaled = binary_activation
-        return activation_upscaled.view(-1, self._img_shape[0], self._img_shape[1], self._img_shape[2])
+
+        return activation_upscaled.view(-1, *self._img_shape)

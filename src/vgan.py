@@ -103,7 +103,7 @@ class VGAN:
                 'generator optimizer': self.generator_optimizer}
 
     def model_snapshot(self, path_to_directory=None, run_number=0, show=False):
-        ''' Creates an snapshot of the model 
+        ''' Creates an logger of the model
 
         Saves important information regarding the training of the model
         Args:

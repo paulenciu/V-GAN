@@ -3,7 +3,7 @@ from cmath import log
 import torch
 from torch import nn
 
-from src.models.Generator import upper_softmax1D
+from src.models.Generator import UpperSoftmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
@@ -26,7 +26,7 @@ class GeneratorThreeChannelV2(AbstractGenerator):
         layers += [self.get_layer(amount_layers, last=True)]
         self.layers = nn.Sequential(*layers)
 
-        self.upper_softmax = upper_softmax1D()
+        self.upper_softmax = UpperSoftmax1D()
         self.softmax = nn.Softmax(dim=-1)
 
     def get_layer(self, layer: int, last=False):

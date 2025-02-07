@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.models.Generator import upper_softmax2D, upper_softmax1D
+from src.models.Generator import UpperSoftmax2D, UpperSoftmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 
@@ -30,7 +30,7 @@ class GeneratorThreeChannel(AbstractGenerator):
         )
 
         self.softmax = nn.Softmax(dim=-1)
-        self.upper_softmax = upper_softmax1D()
+        self.upper_softmax = UpperSoftmax1D()
 
     def forward(self, x, mode):
         x = self.hidden(x)

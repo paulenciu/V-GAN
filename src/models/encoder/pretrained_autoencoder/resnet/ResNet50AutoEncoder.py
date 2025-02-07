@@ -1,11 +1,12 @@
 import torch
 from torch import nn
 
-from src.models.autoencoder.resnet.ResNetConfig import get_configs
-from src.models.autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
+from src.models.encoder.AbstractEncoder import AbstractEncoder
+from src.models.encoder.autoencoder.resnet.ResNetConfig import get_configs
+from src.models.encoder.autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
 
 
-class ResNet50Encoder(nn.Module):
+class ResNet50Encoder(AbstractEncoder):
     def __init__(self):
         super(ResNet50Encoder, self).__init__()
         autoencoder = ResNet50AutoEncoder()

@@ -3,7 +3,7 @@ from cmath import log
 import torch
 from torch import nn
 
-from src.models.Generator import upper_softmax1D
+from src.models.Generator import UpperSoftmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 
 

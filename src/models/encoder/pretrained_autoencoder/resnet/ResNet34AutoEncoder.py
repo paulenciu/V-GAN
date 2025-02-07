@@ -1,15 +1,16 @@
 import torch
 from torch import nn
 
-from src.models.autoencoder.resnet.ResNetConfig import get_configs
-from src.models.autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
+from src.models.encoder.AbstractEncoder import AbstractEncoder
+from src.models.encoder.autoencoder.resnet.ResNetConfig import get_configs
+from src.models.encoder.autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
 
 
-class ResNet18AutoEncoder(nn.Module):
+class ResNet34AutoEncoder(AbstractEncoder):
     def __init__(self):
-        super(ResNet18AutoEncoder, self).__init__()
-        autoencoder_model_pth = torch.load('../models/caltech256-resnet18.pth', map_location=torch.device('cpu'))
-        config, bottleneck = get_configs('resnet18')
+        super(ResNet34AutoEncoder, self).__init__()
+        autoencoder_model_pth = torch.load('../models/caltech256-resnet34.pth', map_location=torch.device('cpu'))
+        config, bottleneck = get_configs('resnet34')
         self.model = ResNetAutoEncoder(config, bottleneck)
 
         state_dict = autoencoder_model_pth['state_dict']
@@ -30,6 +31,5 @@ class ResNet18AutoEncoder(nn.Module):
         return self.model.encoder
 
     def get_decoder(self):
-        self.model.decoder.latent_size = 512
+        self.model.decoder.latent_size = -1 #TODO dont know
         return self.model.decoder
-

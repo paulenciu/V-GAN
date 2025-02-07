@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 
 # Regular function definition does not appear to work properly within a Sequential definition of a network in Pytorchs
-class upper_softmax2D(nn.Module):
+class UpperSoftmax2D(nn.Module):
 
     def __init__(self):
         super().__init__()  # Dummy intialization as there is no parameter to learn
@@ -40,12 +40,13 @@ class upper_softmax2D(nn.Module):
         x = x_flattened.view(x.size(0), x.size(1), x.size(2), x.size(3))
         return x
 
-class upper_softmax1D(nn.Module):
+class UpperSoftmax1D(nn.Module):
 
     def __init__(self):
         super().__init__()  # Dummy intialization as there is no parameter to learn
 
     def forward(self, x):
+        print(x[0])
         d = x.shape[1]
         x = torch.nn.functional.softmax(x, 1)
         x = torch.less(x, 1 / d) * x + \

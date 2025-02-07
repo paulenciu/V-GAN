@@ -9,7 +9,7 @@ from src.data.IDataset import IDataset
 
 
 class MVTecADDataset(IDataset):
-    def __init__(self, file_path: str, category: List[str], train: bool = True, transform=None):
+    def __init__(self, file_path: str, inlier_category: List[str], train: bool = True, transform=None):
         """
         Initialize the MVTecADDataset.
 
@@ -20,7 +20,7 @@ class MVTecADDataset(IDataset):
             transform (callable, optional): Optional transform to be applied to the images.
         """
         self.file_path = file_path
-        self.category = category
+        self.category = inlier_category
         self.train = train
         self.transform = transform
 

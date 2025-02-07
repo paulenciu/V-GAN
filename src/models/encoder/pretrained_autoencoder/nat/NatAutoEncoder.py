@@ -6,7 +6,7 @@ class NatAutoEncoder(nn.Module):
     pass
     # def __init__(self):
     #     super(NatAutoEncoder, self).__init__()
-    #     self.model = AutoModel.from_pretrained("nateraw/autoencoder-cifar10")
+    #     self.model = AutoModel.from_pretrained("nateraw/pretrained_autoencoder-cifar10")
     #
     # def forward(self, x):
     #     x = self.model(x)

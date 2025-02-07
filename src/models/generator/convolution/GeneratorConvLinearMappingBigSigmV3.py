@@ -1,7 +1,7 @@
 from typing import Optional
 
 import torch
-from src.models.Generator import upper_softmax2D, UpperSparsemax2D
+from src.models.Generator import UpperSoftmax2D, UpperSparsemax2D
 from torch import nn
 import torch.nn.functional as F
 
@@ -49,7 +49,7 @@ class GeneratorConvLinearMappingBigSoftmax(AbstractGenerator):
             # Final convolution to get 1 output channel (32x32)
             nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1, bias=False),
         )
-        self.upper_softmax = upper_softmax2D()
+        self.upper_softmax = UpperSoftmax2D()
         self.sparse_max = UpperSparsemax2D()
 
     def forward(self, input, mode="train"):

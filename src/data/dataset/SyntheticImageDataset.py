@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 class SyntheticImageDataset(Dataset):
 
-    def __init__(self, root_dir, category=None, transform=None, train=True, image_size=(224, 224)):
+    def __init__(self, root_dir, inlier_category=None, transform=None, train=True, image_size=(32, 32)):
         """
         Initialize the data.
 
@@ -12,13 +12,13 @@ class SyntheticImageDataset(Dataset):
             num_samples (int): Total number of samples in the data.
         """
         super(SyntheticImageDataset, self).__init__()
-        if category is None:
-            category = ["1", "2"]
+        if inlier_category is None:
+            inlier_category = ["1", "2"]
 
         self.num_samples = 5000
         self.data = []
         self.labels = []
-        self.category = category
+        self.category = inlier_category
         self._generate_data(image_size)
 
         self.image_shape = self.data[0].shape

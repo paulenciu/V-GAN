@@ -1,0 +1,88 @@
+import os
+from pathlib import Path
+
+import numpy as np
+import torch
+from matplotlib import pyplot as plt
+
+from src.utils.BigUBuilder import create_big_u
+from src.utils.TensorConverter import tensor_to_image
+from src.vmmd import VMMD
+from src.vmmd.logger.ILogger import ILogger
+
+
+class SubspaceProjectionPlotter(ILogger):
+
+    def __init__(self, vmmd: VMMD, base_dir: Path, n_samples=5, n_masks=5, sample_count=500):
+        self.vmmd = vmmd
+        self.n_samples = n_samples
+        self.n_masks = n_masks
+        self.base_dir = base_dir
+        self.sample_count = sample_count
+
+    def log(self, data):
+        n_samples = self.n_samples
+        n_masks = self.n_masks
+        device = self.vmmd.device
+
+        sample_indices = np.arange(n_samples)
+        x_sample = torch.utils.data.Subset(data, sample_indices)
+
+        n_channels, width, height = data.image_shape
+
+        fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
+        u = self.vmmd.sample_count_subspaces(self.sample_count).to(device).detach()
+
+        big_u, _, _ = create_big_u(u, n_masks)
+        big_u = big_u.to(torch.float32).to(device)
+        u = self.vmmd.sample_count_subspaces(n_masks).to(device)
+
+        axis[0, 0].imshow(tensor_to_image(torch.ones(n_channels, height, width)))
+        axis[0, 0].axis("off")
+
+        for i in range(n_masks):
+            axis[0, i + 1].imshow(tensor_to_image(u[i].detach()))
+            axis[0, i + 1].axis("off")
+            axis[0, i + 1].set_title(f"Mask {i + 1}")
+
+        axis[0, n_masks + 1].imshow(tensor_to_image(big_u))
+        axis[0, n_masks + 1].axis("off")
+        axis[0, n_masks + 1].set_title(f"Big U Mask")
+
+        for i in range(1, n_samples + 1):
+
+            image, _ = x_sample[i - 1]
+            image = image.to(torch.float32).to(device)
+
+            axis[i, 0].imshow(tensor_to_image(image))
+            axis[i, 0].set_title(f"Original {i + 1}")
+            axis[i, 0].axis("off")
+
+            u = self.vmmd.sample_count_subspaces(n_masks).to(device)
+            image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1).to(device)
+            ux_data = self.vmmd.apply_subspaces_operator(image, u).to(device).detach()
+
+            for j in range(n_masks):
+                axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
+                axis[i, j + 1].set_title(f"Projection {j + 1}")
+                axis[i, j + 1].axis("off")
+
+            big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=big_u, x_sample_unflattened=image[0].squeeze())
+            big_u_image = big_u_image.to(torch.float32).to(device)
+
+            axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
+            axis[i, n_masks + 1].axis("off")
+            axis[i, n_masks + 1].set_title(f"Big U Projection")
+
+        plt.tight_layout()
+        plt.show()
+
+        if self.base_dir is not None:
+            fig.tight_layout()
+            path_to_plot_dir = self.base_dir / 'plots'
+            if not path_to_plot_dir.exists():
+                os.mkdir(path_to_plot_dir)
+            run_number = int(len(os.listdir(path_to_plot_dir)))
+
+            fig.savefig(path_to_plot_dir / f'plot_{run_number}.png')
+

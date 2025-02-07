@@ -1,39 +1,24 @@
 import random
-import re
 import time
-from typing import Any
 
 import numpy as np
-import torch
-import torchvision
-from pyod.models.ocsvm import OCSVM
-from pyod.models.ecod import ECOD
-from pyod.models.lof import LOF
-from pyod.models.feature_bagging import FeatureBagging
 from pathlib import Path
 import datetime
-from sklearn.preprocessing import normalize
 import pandas as pd
 from sklearn.metrics import roc_auc_score as auc
 from sklearn.metrics import average_precision_score, f1_score
 from sel_suod.models.base import sel_SUOD
-import itertools
-from sklearn.preprocessing import label_binarize
-from joblib.externals.loky import get_reusable_executor
-import json
 import os
 import logging
 
-from src.data.IDataset import IDataset
 from src.data.dataset_loader import load_data
 from src.data.dataset_type import DatasetType
-from src.models.autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.encoder.AbstractEncoder import AbstractEncoder
 from src.models.generator.AbstractGenerator import AbstractGenerator
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV3 import GeneratorOneChannelV3
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4 import GeneratorOneChannelV4
 from src.utils.ImageFlattenerUtility import flatten_images_dataset_3d
-from src.vmmd.VMMDDiagonal1Channel import VMMDDiagonal1Channel
-from src.vmmd.penalty.MMDLossPenalty import MMDLossDiscretePenalty, MMDLossL2Penalty, MMDLossPenaltyJoin
+from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
+from src.vmmd.outlier_detection.VMMDOD import VMMDOD
+from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +37,10 @@ def aggregator_funct(decision_function: np.array, type: str = "avg", weights: np
         return aggregated_scores
 
 
-def launch_outlier_detection_experiments(autoencoder, generator: AbstractGenerator, dataset_type: DatasetType, category: list[str],
-                                         base_estimators: list, epochs: int = 10, seed: int = 777, image_size=(224, 224),
-                                         subspace_count=100, path_to_directory=None, store_stats=True) -> dict:
+def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder, generator: AbstractGenerator, dataset_type: DatasetType,
+                                         category: list[str], base_estimators: list, epochs: int = 10, lr=0.5, seed: int = 777,
+                                         image_size=(224, 224), subspace_count=100, path_to_directory=None, store_stats=True,
+                                         penalty=MMDLossNoPenalty(), batch_size=256, momentum=0.8, weight_decay = 0.1) -> dict:
     """Launch the outlier detection experiments for a given data
 
     Args:
@@ -62,22 +48,28 @@ def launch_outlier_detection_experiments(autoencoder, generator: AbstractGenerat
         tuple: Returns the AUC, PRAUC and F1 of the ensemble obtained by VGAN subspaces
     """
     logger.info("No instance of a pretrained generation model found. Proceeding to train a new Generator.")
-    X_test, X_train, Y_test = __prepare_data(category, dataset_type, image_size)
 
-    vgan = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory)
-    vgan.fit(dataset=X_train, autoencoder=autoencoder, generator=generator)
-    decision_function_scores_ens, decision_time, fit_time = __launch_outlier_detection_ensemble(X_test, X_train,
+    x_train, x_test, y_test = load_data(dataset_type, category, image_size)
+    y_test = np.array(y_test)
+
+    vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
+                                lr=lr, penalty=penalty, filename=filename,
+                                batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)
+
+    vmmd.fit(dataset=x_train, encoder=encoder, generator=generator)
+
+    vmmd_od = VMMDOD(vmmd=vmmd)
+
+    x_train = flatten_images_dataset_3d(x_train).cpu().numpy()
+    x_test = flatten_images_dataset_3d(x_test).cpu().numpy()
+
+    decision_function_scores_ens, decision_time, fit_time = __launch_outlier_detection_ensemble(x_test, x_train,
                                                                                                 base_estimators, seed,
-                                                                                                subspace_count, vgan)
-    stats = __calculate_occ_stats(Y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
-    path_to_store = Path(vgan.path_to_directory) / "od_stats.csv"
-    return stats if not store_stats else __store_stats_csv(path_to_store, stats)
+                                                                                                subspace_count, vmmd)
 
+    stats = __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
+    return stats if not store_stats else vmmd_od.store_od_stats(stats)
 
-def __store_stats_csv(path, stats: dict) -> None:
-    stats = pd.DataFrame([stats])
-    path= Path(path)
-    stats.to_csv(path, index=False)
 
 def __prepare_data(category, dataset_type, image_size):
     X_train, X_test, Y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size)
@@ -103,26 +95,21 @@ def pretrained_launch_outlier_detection_experiments(path_to_generator: str, data
         f"Pretrained generator found!")
     x_train, x_test, y_test = __prepare_data(dataset_type=dataset_type, category=category, image_size=image_size)
 
-    vgan = VMMDDiagonal1Channel()
-    vgan.load_model(path_to_generator)
+    vmmd = VMMDDiagonal1Channel()
+    vmmd.load_model(path_to_generator)
 
     decision_function_scores_ens, decision_time, fit_time = __launch_outlier_detection_ensemble(x_test, x_train,
                                                                                                 base_estimators, seed,
-                                                                                                subspace_count, vgan)
-
-    iteration_number = re.search(r'\d+', path_to_generator.split("/")[-1]).group()
-    path_to_folder = "/".join([p for p in path_to_generator.split("/")[:-2]])
-    filename = "od_stats_" + iteration_number + ".csv"
-    path = Path(path_to_folder) / filename
-
+                                                                                                subspace_count, vmmd)
+    vmmd_od = VMMDOD(vmmd=vmmd)
     stats = __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
-    return stats if not store_stats else __store_stats_csv(path, stats)
+    return stats if not store_stats else vmmd_od.store_od_stats(stats)
 
 
 def __launch_outlier_detection_ensemble(x_test, x_train, base_estimators, seed, subspace_count, vgan):
 
     vgan.seed = seed
-    vgan.approx_subspace_dist(add_leftover_features=False, subspace_count=subspace_count)
+    vgan.approx_subspace_dist(subspace_count=subspace_count)
     subspaces = vgan.subspaces
     print("Number of unique subspaces:", len(subspaces), "/", subspace_count)
 
@@ -177,7 +164,7 @@ def check_if_myopicity_was_uphold(dataset_name: str, gen_model_to_use="VGAN") ->
     return vgan.check_if_myopic(X_train, bandwidth=[
         1, 0.1, 0.001, 0.0001], count=min(1000, X_train.shape[0]))["recommended bandwidth"].item(), vgan.subspaces.shape[0]
 
-def launch_outlier_detection_baseline(dataset_type: DatasetType, category: list[str], base_estimator, image_size=(224, 224), root_dir="../experiments/baselines"):
+def launch_outlier_detection_baseline(dataset_type: DatasetType, category: list[str], base_estimator, image_size=(224, 224), root_dir="../experiments/od_baselines"):
 
     X_train, X_test, Y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size)
 
@@ -198,12 +185,3 @@ def launch_outlier_detection_baseline(dataset_type: DatasetType, category: list[
     filename = base_estimator.__class__.__name__ + str(image_size[0]) + ".csv"
     os.makedirs(path_to_dir, exist_ok=True)
     stats.to_csv(path_to_dir / filename, index=False)
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    dataset_name = "Ionosphere"
-
-    auc_vgan_ens = pretrained_launch_outlier_detection_experiments(dataset_name, [
-        LOF()], gen_model_to_use="VMMD")  # ,   epochs=3000, temperature=1)
-    print(
-        f'AUC obtained by the VGAN-based ensemble model: {print(auc_vgan_ens)}')

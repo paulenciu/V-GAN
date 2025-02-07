@@ -1,7 +1,7 @@
-from src.vmmd.VMMDConvLinearMapping import VMMDConvLinearMapping
+from src.vmmd.model.VMMDConvLinearMapping import VMMDConvLinearMapping
 from src.vmmd.VMMDFlattened import VMMDFlattened
-from src.vmmd.VMMDLinearMapping import VMMDLinearMapping
-from src.vmmd.VMMDRotationMapping import VMMDRotationMapping
+from src.vmmd.model.VMMDLinearMapping import VMMDLinearMapping
+from src.vmmd.model.VMMDRotationMapping import VMMDRotationMapping
 from src.vmmd.VMMDSingleMask import VMMDSingleMask
 
 
