@@ -27,7 +27,6 @@ class GeneratorOneChannelV3(AbstractGenerator):
             nn.Linear(4 * latent_size, 8 * latent_size),
             nn.BatchNorm1d(8 * latent_size),
             nn.LeakyReLU(0.2),
-
             nn.Linear(8 * latent_size, img_size * img_size),
         )
         self.upper_softmax = UpperSoftmax1D()
@@ -46,4 +45,4 @@ class GeneratorOneChannelV3(AbstractGenerator):
         if mode == "test":
             binary_activation = torch.greater_equal(activation_upscaled, 1 / activation.shape[1])
             activation_upscaled = binary_activation
-        return activation_upscaled.view(-1, self._img_shape[0], self._img_shape[1], self._img_shape[2])
+        return activation_upscaled.view(-1, *self._img_shape)

@@ -64,10 +64,7 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
 
     vmmd_od = VMMDOD(vmmd=vmmd)
 
-    x_train = extract_and_flatten_images_dataset_3d(x_train).cpu().numpy()
-    x_test = extract_and_flatten_images_dataset_3d(x_test).cpu().numpy()
-
-    decision_function_scores_ens, decision_time, fit_time = __launch_outlier_detection_ensemble(x_test, x_train,
+    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble(x_test, x_train,
                                                                                                 base_estimators, seed,
                                                                                                 subspace_count, vmmd)
 
@@ -102,23 +99,28 @@ def pretrained_launch_outlier_detection_experiments(path_to_generator: str, data
     vmmd = VMMDDiagonal1Channel()
     vmmd.load_model(path_to_generator)
 
-    decision_function_scores_ens, decision_time, fit_time = __launch_outlier_detection_ensemble(x_test, x_train,
+    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble(x_test, x_train,
                                                                                                 base_estimators, seed,
                                                                                                 subspace_count, vmmd)
+
     vmmd_od = VMMDOD(vmmd=vmmd)
     stats = __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
     return stats if not store_stats else vmmd_od.store_od_stats(stats)
 
 
-def __launch_outlier_detection_ensemble(x_test, x_train, base_estimators, seed, subspace_count, vgan):
+def __launch_outlier_detection_ensemble(x_test, x_train, base_estimators, seed, sample_subspace_count, vgan):
 
     vgan.seed = seed
-    vgan.approx_subspace_dist(subspace_count=subspace_count)
-    subspaces = vgan.subspaces
-    print("Number of unique subspaces:", len(subspaces), "/", subspace_count)
+    vgan.approx_subspace_dist(subspace_count=sample_subspace_count)
+    subspaces = np.array(vgan.subspaces , dtype=int)
+    unique_subspace_count = len(subspaces)
+    print("Number of unique subspaces:", unique_subspace_count, "/", sample_subspace_count)
 
     ensemble_model = sel_SUOD(base_estimators=base_estimators, subspaces=subspaces,
-                              n_jobs=-1, bps_flag=False, approx_flag_global=False)
+                              n_jobs=6, bps_flag=False, approx_flag_global=False)
+
+    x_train = np.array(extract_and_flatten_images_dataset_3d(x_train).cpu().numpy(), dtype=int)
+    x_test =  np.array(extract_and_flatten_images_dataset_3d(x_test).cpu().numpy(), dtype=int)
 
     fit_time_start = time.time()
     ensemble_model.fit(x_train)
@@ -131,7 +133,7 @@ def __launch_outlier_detection_ensemble(x_test, x_train, base_estimators, seed, 
     decision_function_scores_ens = aggregator_funct(
         decision_function_scores_ens, weights=vgan.proba, type="avg")
 
-    return decision_function_scores_ens, decision_time, fit_time
+    return decision_function_scores_ens, decision_time, fit_time, unique_subspace_count
 
 
 def __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time) -> dict:

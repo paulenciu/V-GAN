@@ -114,13 +114,11 @@ class TrainingLogger(ILogger):
             count = len(x_data)
 
         x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        x_data = normalize(x_data, axis=0)
         x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.vmmd.device)
 
         u_subspaces = self.vmmd.sample_count_subspaces(count)
         x_sample = x_sample.view(-1, n_channels, height, width)
-        ux_sample = self.vmmd.apply_subspaces_operator(x_sample, u_subspaces).view(x_sample.shape[0], -1)
-        x_sample = x_sample.view(x_sample.shape[0], -1)
+        ux_sample = self.vmmd.apply_subspaces_operator(x_sample, u_subspaces)
 
         x_sample_embedded = self.vmmd.encode(x_sample)
         ux_sample_embedded = self.vmmd.encode(ux_sample)

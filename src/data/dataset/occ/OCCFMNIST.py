@@ -8,6 +8,11 @@ class OCCFMNIST(OCCDataset):
 
     def fetch_dataset(self, root_dir, train, transform, download, normalize=False):
 
+        transform = transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
+            transform,
+        ])
+
         if normalize:
             transform = transforms.Compose([
                 transform,

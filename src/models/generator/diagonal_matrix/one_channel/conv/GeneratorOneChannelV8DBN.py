@@ -40,7 +40,7 @@ class SelfAttention(nn.Module):
         return self.gamma * out + x
 
 
-class GeneratorOneChannelV8(AbstractGenerator):
+class GeneratorOneChannelV8DBN(AbstractGenerator):
     def __init__(self, latent_size, image_shape):
         super().__init__()
         self._noise_dim = torch.tensor([latent_size])
@@ -73,6 +73,7 @@ class GeneratorOneChannelV8(AbstractGenerator):
 
             #112x112 -> 224x224
             self._upscale_block(16, 8),
+
         )
 
         self.final = nn.Sequential(
@@ -94,4 +95,9 @@ class GeneratorOneChannelV8(AbstractGenerator):
         return self.final(x)
 
     def sample_subspace_masks(self, noise, mode="train"):
-        return self.forward(noise, mode).repeat(1, self._img_shape[0], 1, 1)
+        activation =  self.forward(noise, mode).repeat(1, self._img_shape[0], 1, 1)
+        if mode == "train":
+            return activation
+
+        activation = torch.greater_equal(activation, 1 / 2)
+        return activation
