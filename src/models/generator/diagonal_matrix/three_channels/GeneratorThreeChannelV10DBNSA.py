@@ -1,14 +1,14 @@
 import torch
 from torch import nn
 
-from src.models.generator.modules.BatchDiscrimination import BatchDiscrimination
+from src.models.generator.diagonal_matrix.three_channels.GeneratroOneChannelV10DBN import BatchDiscrimination
 from src.models.generator.modules.GaussianNoise import GaussianNoise
 from src.models.Generator import UpperSoftmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.models.generator.modules.SelfAttention import SelfAttention
 
 
-class GeneratorThreeChannelV10DBN(AbstractGenerator):
+class GeneratorThreeChannelV10DBNSA(AbstractGenerator):
     def __init__(self, latent_size, image_shape, initial_temperature=1.0,
                  min_temperature=0.1, anneal_rate=0.01, bd_out_features=100):
         super().__init__()
@@ -32,6 +32,9 @@ class GeneratorThreeChannelV10DBN(AbstractGenerator):
                                 bd_out_features=self.bd_out_features)
         self.block2 = ConvBlock(256, 128, input_spatial_size=(8, 8),
                                 bd_out_features=self.bd_out_features)
+
+        # Insert a self-attention layer after the second block (this acts on 16x16)
+        self.self_attention1 = SelfAttention(128)
 
         self.block3 = ConvBlock(128, 64, input_spatial_size=(16, 16),
                                 bd_out_features=self.bd_out_features)
@@ -65,8 +68,16 @@ class GeneratorThreeChannelV10DBN(AbstractGenerator):
         # Pass through your upsampling blocks
         x = self.block1(x)  # from 4x4 -> 8x8
         x = self.block2(x)  # from 8x8 -> 16x16
+
+        # Self-attention at 16x16
+        x = self.self_attention1(x)
+
         x = self.block3(x)  # from 16x16 -> 32x32
+
+        #x = self.self_attention2(x)
+
         x = self.to_rgb(x)  # (B, image_shape[0], 32, 32) for example
+
         return self.binarize_ste(x)
 
     def sample_subspace_masks(self, noise, mode="train"):

@@ -14,6 +14,10 @@ class GeneratorOneChannelV4DBN(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape, initial_temperature=1.0, min_temperature=0.1, anneal_rate=0.01):
         super().__init__()
+
+        if isinstance(latent_size, torch.Tensor):
+            latent_size = latent_size.item()
+
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = image_shape
 
@@ -38,18 +42,18 @@ class GeneratorOneChannelV4DBN(AbstractGenerator):
         output_size = round(pow(self.increase, layer) * self.latent_size)
 
         layer = nn.Sequential(
-            #BatchDiscrimination(input_size, input_size),
             nn.utils.spectral_norm(
-                nn.Linear(input_size+1, output_size)
+                nn.Linear(input_size, output_size)
             ),
             GaussianNoise(stddev=0.1),
             nn.BatchNorm1d(output_size),
-            nn.LeakyReLU(0.8),
+            nn.LeakyReLU(0.5),
         )
 
         last_layer = nn.Sequential(
-            #nn.Linear(input_size + 1, self.img_size),
-            nn.Linear(input_size, self.img_size),
+            BatchDiscrimination(input_size, input_size),
+            nn.Linear(input_size + 1, self.img_size),
+            #nn.Linear(input_size, self.img_size),
             nn.Sigmoid(),
         )
 

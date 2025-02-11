@@ -177,6 +177,8 @@ class VMMD(ABC):
         )
         #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50, eta_min=1e-6)
         torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1.0)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
+
         self.generator_optimizer = optimizer.__class__.__name__
 
         loss_function = MMDLossConstrainedV2(penalty=self.penalty, kernel=RBF())
@@ -235,6 +237,7 @@ class VMMD(ABC):
                 self.bandwidth = loss_function.bandwidth
                 batch_loss.backward()
                 optimizer.step()
+                scheduler.step()
 
                 generator_loss += batch_loss.item() / batch_number
                 mmd_loss_avg += mmd_loss.item() / batch_number

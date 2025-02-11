@@ -15,6 +15,8 @@ from src.vmmd.logger.SubspaceProjectionPlotter import SubspaceProjectionPlotter
 from src.vmmd.logger.TrainingLogger import TrainingLogger
 from src.models.encoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
 
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBN import GeneratorOneChannelV4DBN
+
 
 
 class VMMDWrapper:
@@ -28,20 +30,26 @@ class VMMDWrapper:
 
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
+        filename = path_to_generator_params.split('/')[-3]
+        self.vmmd.filename = filename
         return self.vmmd.load_model(generator, autoencoder)
+
+    def get_run_number_from_generator_path(self, path_to_generator_params: str):
+        filename = path_to_generator_params.split('/')[-1]
+        train_iteration_number = int(re.search(r'\d+', filename).group())
+        return train_iteration_number
 
     def __extract_models_from_file(self, path_to_generator_params):
         pt_file_path = Path(path_to_generator_params)
         csv_file_path = pt_file_path.parent.parent / 'params.csv'
 
-        filename = path_to_generator_params.split('/')[-1]
-        train_iteration_number = int(re.search(r'\d+', filename).group())
+        train_iteration_number = self.get_run_number_from_generator_path(path_to_generator_params)
 
         df = pd.read_csv(csv_file_path)
 
         noise_dim_column = df.loc[train_iteration_number, 'noise dim']
         img_shape_column = df.loc[train_iteration_number, 'image shape']
-        autoencoder_column = df.loc[train_iteration_number, 'autoencoder']
+        autoencoder_column = df.loc[train_iteration_number, 'pretrained_autoencoder']
 
         noise_tensor = eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))
         img_shape = eval(img_shape_column)
