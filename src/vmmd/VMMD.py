@@ -196,6 +196,8 @@ class VMMD(ABC):
         data_loader = self.__setup_data_loader(unflattened_images, cuda, mps)
         batch_number = data_loader.__len__()
 
+        print("Device used:", self.device)
+
         # GET NOISE TENSORS#
         noise = self.__setup_noise_tensor(generator_input_shape=generator.noise_dim)
 

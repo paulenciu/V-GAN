@@ -15,7 +15,7 @@ class SyntheticImageDataset(Dataset):
         if inlier_category is None:
             inlier_category = ["1", "2"]
 
-        self.num_samples = 5000
+        self.num_samples = 500
         self.data = []
         self.labels = []
         self.category = inlier_category
