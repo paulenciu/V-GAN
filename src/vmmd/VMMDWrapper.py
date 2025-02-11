@@ -36,6 +36,9 @@ class VMMDWrapper:
         self.vmmd.filename = filename
         return self.vmmd.load_model(generator, autoencoder)
 
+    def get_path_to_directory(self):
+        return "/".join(path_to_generator_params.split('/')[:-3])
+
     def get_run_number_from_generator_path(self, path_to_generator_params: str):
         filename = path_to_generator_params.split('/')[-1]
         train_iteration_number = int(re.search(r'\d+', filename).group())

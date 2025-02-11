@@ -29,30 +29,21 @@ if __name__ == '__main__':
     epochs = 100
     batch_size = 64
 
-    pretrained_launch_outlier_detection_experiments(
-        path_to_generator="../experiments/remote/11-02/v4_softmax_gn_dbn_adam_benchmark_64_sig_wo_emb_occ_fmnist_1D_lr=0.001_ep=100_bs=64/models/generator_10.pt",
-        dataset_type=DatasetType.OCCFMNIST,
+    launch_outlier_detection_experiments(
+        encoder=IdentityEncoder(),
+        generator=GeneratorOneChannelV4DBNSoftmax(latent_size=100, image_shape=(3, 64, 64), initial_temperature=0.1),
+        dataset_type=DatasetType.MVTEC_AD,
         normalize_data=True,
         image_size=(64, 64),
-        category="Trouser",
-        base_estimators=[LUNAR()]
+        category=["bottle"],
+        epochs=epochs,
+        lr=lr,
+        batch_size=batch_size,
+        momentum=0.8,
+        weight_decay=0.1,
+        seed=333,
+        base_estimators=[LUNAR()],
+        path_to_directory="../experiments/remote",
+        filename=f"v4_softmax_gn_dbn_adam_benchmark_64_sig_wo_emb_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        penalty=MMDLossNoPenalty(),
     )
-
-    # launch_outlier_detection_experiments(
-    #     encoder=IdentityEncoder(),
-    #     generator=GeneratorOneChannelV4DBNSoftmax(latent_size=100, image_shape=(3, 64, 64), initial_temperature=0.1),
-    #     dataset_type=DatasetType.MVTEC_AD,
-    #     normalize_data=True,
-    #     image_size=(64, 64),
-    #     category=["bottle"],
-    #     epochs=epochs,
-    #     lr=lr,
-    #     batch_size=batch_size,
-    #     momentum=0.8,
-    #     weight_decay=0.1,
-    #     seed=333,
-    #     base_estimators=[LUNAR()],
-    #     path_to_directory="../experiments/remote",
-    #     filename=f"v4_softmax_gn_dbn_adam_benchmark_64_sig_wo_emb_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
-    #     penalty=MMDLossNoPenalty(),
-    # )

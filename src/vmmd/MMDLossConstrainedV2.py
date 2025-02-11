@@ -30,7 +30,7 @@ class RBF(nn.Module):
 
     def forward(self, X):
         L2_distances = torch.cdist(X, X) ** 2
-        bandwidth = self.get_bandwidth(L2_distances)
+        bandwidth = self.get_bandwidth_v2(L2_distances)
         multipliers = self.bandwidth_multipliers
         return torch.exp(-L2_distances[None, ...] / (bandwidth * multipliers)[:, None, None]).sum(dim=0)
 

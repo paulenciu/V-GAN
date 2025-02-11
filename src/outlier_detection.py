@@ -100,10 +100,12 @@ def pretrained_launch_outlier_detection_experiments(path_to_generator: str, data
         f"Pretrained generator found!")
     x_train = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data, train=True)
 
-    vmmd = VMMDDiagonal1Channel()
+    vmmd = VMMDDiagonal1Channel(path_to_directory)
 
     vmmd_wrapper = VMMDWrapper(vmmd)
     vmmd_wrapper.load_model(path_to_generator)
+
+    vmmd.path_to_directory = vmmd_wrapper.get_path_to_directory(path_to_generator)
 
     decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble( x_train,
                                                                                                 base_estimators, seed,
@@ -132,7 +134,7 @@ def __launch_outlier_detection_ensemble(x_train, base_estimators, seed, sample_s
     print("Number of unique subspaces:", unique_subspace_count, "/", sample_subspace_count)
 
     ensemble_model = sel_SUOD(base_estimators=base_estimators, subspaces=subspaces,
-                              n_jobs=4, bps_flag=False, approx_flag_global=False)
+                              n_jobs=-1, bps_flag=False, approx_flag_global=False)
 
     x_train = np.array(extract_and_flatten_images_dataset_3d(x_train).cpu().numpy(), dtype=int)
     fit_time_start = time.time()
@@ -149,6 +151,7 @@ def __launch_outlier_detection_ensemble(x_train, base_estimators, seed, sample_s
     decision_function_scores_ens = ensemble_model.decision_function(x_test)
     decision_time = time.time() - decision_time_start
 
+    # not needed anymore
     del x_test
 
     decision_function_scores_ens = aggregator_funct(
