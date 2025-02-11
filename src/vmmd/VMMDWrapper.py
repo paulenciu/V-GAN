@@ -16,6 +16,8 @@ from src.vmmd.logger.TrainingLogger import TrainingLogger
 from src.models.encoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBN import GeneratorOneChannelV4DBN
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBNSoftmax import GeneratorOneChannelV4DBNSoftmax
+
 
 
 

@@ -51,8 +51,7 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
     """
     logger.info("No instance of a pretrained generation model found. Proceeding to train a new Generator.")
 
-    x_train, x_test, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data)
-    y_test = np.array(y_test)
+    x_train = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data)
 
     vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
                                 lr=lr, penalty=penalty, filename=filename,
@@ -64,10 +63,16 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
 
     vmmd_od = VMMDOD(vmmd=vmmd)
 
-    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble(x_test, x_train,
+    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble(x_train,
                                                                                                 base_estimators, seed,
-                                                                                                subspace_count, vmmd)
+                                                                                                subspace_count, vmmd,
+                                                                                                dataset_type=dataset_type,
+                                                                                                category=category,
+                                                                                                image_size=image_size,
+                                                                                                normalize=normalize_data)
 
+    _, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data, train=False)
+    y_test = np.array(y_test)
     stats = __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
     return stats if not store_stats else vmmd_od.store_od_stats(stats, run_number=-1)
 
@@ -93,26 +98,32 @@ def pretrained_launch_outlier_detection_experiments(path_to_generator: str, data
     """
     logger.info(
         f"Pretrained generator found!")
-    x_train, x_test, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data)
-    y_test = np.array(y_test)
+    x_train = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data, train=True)
 
     vmmd = VMMDDiagonal1Channel()
 
     vmmd_wrapper = VMMDWrapper(vmmd)
     vmmd_wrapper.load_model(path_to_generator)
 
-    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble(x_test, x_train,
+    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble( x_train,
                                                                                                 base_estimators, seed,
-                                                                                                subspace_count, vmmd)
+                                                                                                subspace_count, vmmd,
+                                                                                                dataset_type=dataset_type,
+                                                                                                category=category,
+                                                                                                image_size=image_size,
+                                                                                                normalize=normalize_data)
 
     vmmd_od = VMMDOD(vmmd=vmmd)
+
+    _, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data, train=False)
+    y_test = np.array(y_test)
+
     stats = __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
-    print("Stats: ", stats)
     train_iteration_number = vmmd_wrapper.get_run_number_from_generator_path(path_to_generator)
     return stats if not store_stats else vmmd_od.store_od_stats(stats, train_iteration_number)
 
 
-def __launch_outlier_detection_ensemble(x_test, x_train, base_estimators, seed, sample_subspace_count, vgan):
+def __launch_outlier_detection_ensemble(x_train, base_estimators, seed, sample_subspace_count, vgan, dataset_type, category, image_size, normalize):
 
     vgan.seed = seed
     vgan.approx_subspace_dist(subspace_count=sample_subspace_count)
@@ -121,18 +132,24 @@ def __launch_outlier_detection_ensemble(x_test, x_train, base_estimators, seed, 
     print("Number of unique subspaces:", unique_subspace_count, "/", sample_subspace_count)
 
     ensemble_model = sel_SUOD(base_estimators=base_estimators, subspaces=subspaces,
-                              n_jobs=-1, bps_flag=False, approx_flag_global=False)
+                              n_jobs=4, bps_flag=False, approx_flag_global=False)
 
     x_train = np.array(extract_and_flatten_images_dataset_3d(x_train).cpu().numpy(), dtype=int)
-    x_test =  np.array(extract_and_flatten_images_dataset_3d(x_test).cpu().numpy(), dtype=int)
-
     fit_time_start = time.time()
     ensemble_model.fit(x_train)
     fit_time = time.time() - fit_time_start
 
+    # not needed anymore
+    del x_train
+
+    x_test, _ = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize, train=False)
+    x_test = np.array(extract_and_flatten_images_dataset_3d(x_test).cpu().numpy(), dtype=int)
+
     decision_time_start = time.time()
     decision_function_scores_ens = ensemble_model.decision_function(x_test)
     decision_time = time.time() - decision_time_start
+
+    del x_test
 
     decision_function_scores_ens = aggregator_funct(
         decision_function_scores_ens, weights=vgan.proba, type="avg")

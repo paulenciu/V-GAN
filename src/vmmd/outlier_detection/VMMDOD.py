@@ -11,6 +11,7 @@ class VMMDOD:
         self.vmmd = vmmd
 
     def store_od_stats(self, stats: dict, run_number: int):
+        print("Stats: ", stats)
         stats = pd.DataFrame([stats])
         path_to_directory = Path(self.vmmd.path_to_directory)
         current_date = datetime.now().strftime("%d-%m")
