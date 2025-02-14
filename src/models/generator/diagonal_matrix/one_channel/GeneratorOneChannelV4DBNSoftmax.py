@@ -65,6 +65,7 @@ class GeneratorOneChannelV4DBNSoftmax(AbstractGenerator):
         return x
 
     def sample_subspace_masks(self, noise, mode="train"):
+
         if mode == "train":
             self.train()
             x = self.forward(noise, mode)

@@ -1,14 +1,14 @@
 import torch
 from torch import nn
 
-from src.models.generator.modules.BatchDiscrimination import BatchDiscrimination
+from src.models.generator.diagonal_matrix.three_channels.GeneratroOneChannelV10DBN import BatchDiscrimination
 from src.models.generator.modules.GaussianNoise import GaussianNoise
 from src.models.Generator import UpperSoftmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.models.generator.modules.SelfAttention import SelfAttention
 
 
-class GeneratorThreeChannelV10DBN(AbstractGenerator):
+class GeneratorThreeChannelV11(AbstractGenerator):
     def __init__(self, latent_size, image_shape, initial_temperature=1.0,
                  min_temperature=0.1, anneal_rate=0.01, bd_out_features=100):
         super().__init__()
@@ -21,23 +21,29 @@ class GeneratorThreeChannelV10DBN(AbstractGenerator):
         self.bd_out_features = bd_out_features
 
         self.init_proj = nn.Sequential(
-            nn.Linear(latent_size, 512 * 4 * 4),
+            nn.Linear(latent_size, 512 * 7 * 7),
             nn.BatchNorm1d(512 * 4 * 4),
             nn.LeakyReLU(0.2)
         )
 
         # Define convolutional blocks (without batch discrimination)
-        self.block1 = ConvBlock(512, 256)
-        self.block2 = ConvBlock(256, 128)
+        self.block1 = ConvBlock(512, 256, input_spatial_size=(7, 7))
+        self.block2 = ConvBlock(256, 128, input_spatial_size=(14, 14))
+
+        # Insert a self-attention layer after the second block (this acts on 16x16)
+        self.self_attention1 = SelfAttention(128)
 
         # Apply Batch Discrimination only in the last block
-        self.block3 = ConvBlock(128, 64, apply_batch_discrimination=True, bd_out_features=self.bd_out_features)
+        self.block3 = ConvBlock(128, 64, input_spatial_size=(28, 28))
+        self.block4 = ConvBlock(64, 32, input_spatial_size=(56, 56))
+        self.block5 = ConvBlock(32, 16, input_spatial_size=(112, 112), apply_batch_discrimination=True,
+                                bd_out_features=self.bd_out_features)
 
         self.self_attention2 = SelfAttention(64)
 
         # Final convolution to produce RGB (or whatever # of channels is in image_shape)
         self.to_rgb = nn.Sequential(
-            nn.Conv2d(64, image_shape[0], kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(16, image_shape[0], kernel_size=3, stride=1, padding=1),
             nn.Sigmoid()
         )
 
@@ -61,8 +67,16 @@ class GeneratorThreeChannelV10DBN(AbstractGenerator):
 
         x = self.block1(x)  # from 4x4 -> 8x8
         x = self.block2(x)  # from 8x8 -> 16x16
+
+        # Self-attention at 16x16
+        x = self.self_attention1(x)
+
         x = self.block3(x)  # from 16x16 -> 32x32 (with Batch Discrimination)
-        x = self.to_rgb(x)  # (B, image_shape[0], 32, 32)
+
+        # x = self.self_attention2(x)
+
+        x = self.to_rgb(x)  # (B, image_shape[0], 32, 32) for example
+
         return self.binarize_ste(x)
 
     def sample_subspace_masks(self, noise, mode="train"):

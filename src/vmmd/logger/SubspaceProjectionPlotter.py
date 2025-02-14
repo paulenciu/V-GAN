@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from src.utils.BigUBuilder import create_big_u
+from src.utils.BigUBuilder import calculate_average_u
 from src.utils.TensorConverter import tensor_to_image
 from src.vmmd import VMMD
 from src.vmmd.logger.ILogger import ILogger
@@ -25,6 +25,10 @@ class SubspaceProjectionPlotter(ILogger):
         n_masks = self.n_masks
         device = self.vmmd.device
 
+        # Use LaTeX in the titles
+        plt.rcParams['text.usetex'] = True
+        fontsize = 20
+
         sample_indices = np.arange(n_samples)
         x_sample = torch.utils.data.Subset(data, sample_indices)
 
@@ -33,8 +37,8 @@ class SubspaceProjectionPlotter(ILogger):
         fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
         u = self.vmmd.sample_count_subspaces(self.sample_count).to(device).detach()
 
-        big_u, _, _ = create_big_u(u, n_masks)
-        big_u = big_u.to(torch.float32).to(device)
+        average_u, _, _ = calculate_average_u(u, n_masks)
+        average_u = average_u.to(torch.float32).to(device)
         u = self.vmmd.sample_count_subspaces(n_masks).to(device)
 
         axis[0, 0].imshow(tensor_to_image(torch.ones(n_channels, height, width)))
@@ -43,11 +47,11 @@ class SubspaceProjectionPlotter(ILogger):
         for i in range(n_masks):
             axis[0, i + 1].imshow(tensor_to_image(u[i].detach()))
             axis[0, i + 1].axis("off")
-            axis[0, i + 1].set_title(f"Mask {i + 1}")
+            axis[0, i + 1].set_title(f"$U_{i + 1}$")
 
-        axis[0, n_masks + 1].imshow(tensor_to_image(big_u))
+        axis[0, n_masks + 1].imshow(tensor_to_image(average_u))
         axis[0, n_masks + 1].axis("off")
-        axis[0, n_masks + 1].set_title(f"Big U Mask")
+        axis[0, n_masks + 1].set_title(f"$Average$", fontsize=fontsize)
 
         for i in range(1, n_samples + 1):
 
@@ -55,7 +59,7 @@ class SubspaceProjectionPlotter(ILogger):
             image = image.to(torch.float32).to(device)
 
             axis[i, 0].imshow(tensor_to_image(image))
-            axis[i, 0].set_title(f"Original {i + 1}")
+            axis[i, 0].set_title(f"$Original {i + 1}$", fontsize=fontsize)
             axis[i, 0].axis("off")
 
             u = self.vmmd.sample_count_subspaces(n_masks).to(device)
@@ -64,15 +68,15 @@ class SubspaceProjectionPlotter(ILogger):
 
             for j in range(n_masks):
                 axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
-                axis[i, j + 1].set_title(f"Projection {j + 1}")
+                axis[i, j + 1].set_title(f"$Projection {j + 1}$", fontsize=fontsize)
                 axis[i, j + 1].axis("off")
 
-            big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=big_u, x_sample_unflattened=image[0].squeeze())
+            big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u, x_sample_unflattened=image[0].squeeze())
             big_u_image = big_u_image.to(torch.float32).to(device)
 
             axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
             axis[i, n_masks + 1].axis("off")
-            axis[i, n_masks + 1].set_title(f"Big U Projection")
+            axis[i, n_masks + 1].set_title(f"$Average Projection$", fontsize=fontsize)
 
         plt.tight_layout()
         plt.show()

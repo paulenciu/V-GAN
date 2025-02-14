@@ -36,7 +36,7 @@ class VMMDWrapper:
         self.vmmd.filename = filename
         return self.vmmd.load_model(generator, autoencoder)
 
-    def get_path_to_directory(self):
+    def get_path_to_directory(self, path_to_generator_params):
         return "/".join(path_to_generator_params.split('/')[:-3])
 
     def get_run_number_from_generator_path(self, path_to_generator_params: str):

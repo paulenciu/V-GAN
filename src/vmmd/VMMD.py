@@ -25,7 +25,7 @@ from src.vmmd.logger.ILogger import ILogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.models.generator.AbstractGenerator import AbstractGenerator
-from src.utils.BigUBuilder import create_big_u
+from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.MMDLossConstrainedV2 import MMDLossConstrainedV2
 
@@ -104,16 +104,19 @@ class VMMD(ABC):
         n_channels, height, width = x_data.image_shape
 
         x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
+        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=0)).to(torch.float32)
+        x_sample = torch.Tensor(pd.DataFrame(x_flattened_normalized).sample(count).to_numpy()).to(self.device)
 
-        x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.device)
+        del x_flattened_normalized, x_data
 
-        u_subspaces = self.sample_count_subspaces(count)
-        x_sample = x_sample.view(-1, n_channels, height, width)
-        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces).view(x_sample.shape[0], -1)
-        x_sample = x_sample.view(x_sample.shape[0], -1)
+        with torch.no_grad():
+            u_subspaces = self.sample_count_subspaces(count)
+            x_sample = x_sample.view(-1, n_channels, height, width)
+            ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces).view(x_sample.shape[0], -1)
+            x_sample = x_sample.view(x_sample.shape[0], -1)
 
-        x_sample_embedded = self.encode(x_sample)
-        ux_sample_embedded = self.encode(ux_sample)
+            x_sample_embedded = self.encode(x_sample)
+            ux_sample_embedded = self.encode(ux_sample)
 
         if type(bandwidth) == float:
             bandwidth = [bandwidth]
@@ -147,7 +150,8 @@ class VMMD(ABC):
         assert width == height, "Error, need square input images."
 
         flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
-        unflattened_images = unflatten_images_3d(flattened_images, n_channels, height, width).to(self.device)
+        x_flattened_normalized = torch.from_numpy(normalize(flattened_images, axis=0)).to(torch.float32)
+        unflattened_images = unflatten_images_3d(x_flattened_normalized, n_channels, height, width).to(self.device)
 
         cuda = torch.cuda.is_available()
         mps = torch.backends.mps.is_available()
@@ -165,17 +169,14 @@ class VMMD(ABC):
 
         # SETUP GENERATOR OPTIMIZATION
         self.generator = generator.to(self.device)
-        #optimizer = torch.optim.Adadelta(self.generator.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-        #ema = EMA(generator, decay=0.999)
 
-        # #TODO no idea if better
         optimizer = torch.optim.Adam(
             self.generator.parameters(),
             lr=self.lr,
             betas = (0.5, 0.9),
             weight_decay=self.weight_decay
         )
-        #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50, eta_min=1e-6)
+
         torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1.0)
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
 

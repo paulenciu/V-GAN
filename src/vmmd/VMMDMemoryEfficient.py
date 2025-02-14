@@ -24,7 +24,7 @@ from src.vmmd.logger.ILogger import ILogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.models.generator.AbstractGenerator import AbstractGenerator
-from src.utils.BigUBuilder import create_big_u
+from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.MMDLossConstrainedV2 import MMDLossConstrainedV2
 
