@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 
-def create_big_u(u, n_masks):
+def calculate_average_u(u, n_masks):
     unique_subspaces, proba = np.unique(
         np.array(u.to('cpu')), axis=0, return_counts=True)
     proba = proba / np.array(u.to('cpu')).shape[0]
