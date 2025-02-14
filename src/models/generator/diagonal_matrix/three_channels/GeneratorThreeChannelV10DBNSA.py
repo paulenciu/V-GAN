@@ -26,23 +26,26 @@ class GeneratorThreeChannelV10DBNSA(AbstractGenerator):
             nn.LeakyReLU(0.2)
         )
 
-        # Define convolutional blocks (without batch discrimination)
-        self.block1 = ConvBlock(512, 256)
-        self.block2 = ConvBlock(256, 128)
+        # We define the ConvBlocks
+        self.block1 = ConvBlock(512, 256, input_spatial_size=(4, 4),
+                                bd_out_features=self.bd_out_features)
+        self.block2 = ConvBlock(256, 128, input_spatial_size=(8, 8),
+                                bd_out_features=self.bd_out_features)
 
         # Insert a self-attention layer after the second block (this acts on 16x16)
         self.self_attention1 = SelfAttention(128)
 
-        # Apply Batch Discrimination only in the last block
-        self.block3 = ConvBlock(128, 64, apply_batch_discrimination=True, bd_out_features=self.bd_out_features)
+        self.block3 = ConvBlock(128, 64, input_spatial_size=(16, 16),
+                                bd_out_features=self.bd_out_features)
 
         self.self_attention2 = SelfAttention(64)
 
         # Final convolution to produce RGB (or whatever # of channels is in image_shape)
         self.to_rgb = nn.Sequential(
             nn.Conv2d(64, image_shape[0], kernel_size=3, stride=1, padding=1),
-            nn.Sigmoid()
         )
+
+        self.softmax = nn.Softmax(dim=-1)
 
     def binarize_ste(self, x):
         if self.training:
@@ -62,18 +65,24 @@ class GeneratorThreeChannelV10DBNSA(AbstractGenerator):
         x = self.init_proj(z)
         x = x.view(-1, 512, 4, 4)
 
+        # Pass through your upsampling blocks
         x = self.block1(x)  # from 4x4 -> 8x8
         x = self.block2(x)  # from 8x8 -> 16x16
 
         # Self-attention at 16x16
         x = self.self_attention1(x)
 
-        x = self.block3(x)  # from 16x16 -> 32x32 (with Batch Discrimination)
+        x = self.block3(x)  # from 16x16 -> 32x32
 
 
         x = self.to_rgb(x)  # (B, image_shape[0], 32, 32) for example
 
-        return self.binarize_ste(x)
+
+        x = x.view(x.shape[0], -1)
+        x = self.softmax(x)
+        if mode == "train":
+            return x.view(-1, 3, 32, 32)
+        return torch.greater_equal(x, 1 / x.shape[0]).view(-1, 3, 32, 32)
 
     def sample_subspace_masks(self, noise, mode="train"):
         masks = self.forward(noise, mode)
@@ -83,35 +92,29 @@ class GeneratorThreeChannelV10DBNSA(AbstractGenerator):
         self.temperature = max(self.min_temperature, self.temperature - self.anneal_rate)
         print(f"New temperature: {self.temperature}")
 
-
 class ConvBlock(nn.Module):
-
-    def __init__(self, in_channels, out_channels, apply_batch_discrimination=False, bd_out_features=100):
+    def __init__(self, in_channels, out_channels, input_spatial_size, bd_out_features=100):
         super().__init__()
-        self.apply_bd = apply_batch_discrimination
-
+        self.in_channels = in_channels
+        H, W = input_spatial_size
+        self.in_features = in_channels * H * W
+        self.bd = BatchDiscrimination(self.in_features, bd_out_features)
         self.conv_transpose = nn.utils.spectral_norm(
-            nn.ConvTranspose2d(in_channels + (1 if apply_batch_discrimination else 0), out_channels, 4, 2, 1,
-                               bias=False)
+            nn.ConvTranspose2d(in_channels + 1, out_channels, 4, 2, 1, bias=False)
         )
         self.gaussian_noise = GaussianNoise(stddev=0.1)
         self.bn = nn.BatchNorm2d(out_channels)
         self.activation = nn.LeakyReLU(0.2)
 
-        if apply_batch_discrimination:
-            self.bd = BatchDiscrimination(in_channels * 16 * 16, bd_out_features)  # Assuming input 16x16 spatial size
-
     def forward(self, x):
-        if self.apply_bd:
-            batch_size = x.shape[0]
-            spatial_size = x.shape[2:]
-            x_flat = x.view(batch_size, -1)
-            x_bd_out = self.bd(x_flat)
-            x_bd = x_bd_out[:, :-1].view(batch_size, x.shape[1], *spatial_size)
-            c_bd = x_bd_out[:, -1].view(batch_size, 1, 1, 1).expand(-1, -1, *spatial_size)
-            x = torch.cat([x_bd, c_bd], dim=1)
-
-        x = self.conv_transpose(x)
+        batch_size = x.shape[0]
+        spatial_size = x.shape[2:]
+        x_flat = x.view(batch_size, -1)
+        x_bd_out = self.bd(x_flat)
+        x_bd = x_bd_out[:, :-1].view(batch_size, self.in_channels, *spatial_size)
+        c_bd = x_bd_out[:, -1].view(batch_size, 1, 1, 1).expand(-1, -1, *spatial_size)
+        x_concat = torch.cat([x_bd, c_bd], dim=1)
+        x = self.conv_transpose(x_concat)
         x = self.gaussian_noise(x)
         x = self.bn(x)
         x = self.activation(x)

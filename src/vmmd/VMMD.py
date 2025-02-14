@@ -27,7 +27,7 @@ from src.models.Mmd_loss_constrained import MMDLossConstrained, RBF
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmd.MMDLossConstrainedV2 import MMDLossConstrainedV2
+from src.vmmd.MMDLossConstrained import MMDLossConstrained
 
 
 class VMMD(ABC):
@@ -122,7 +122,7 @@ class VMMD(ABC):
             bandwidth = [bandwidth]
 
         if not hasattr(self, 'bandwidth'):
-            mmd_loss = MMDLossConstrainedV2()
+            mmd_loss = MMDLossConstrained()
             mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
             self.bandwidth = mmd_loss.bandwidth
 
@@ -182,7 +182,7 @@ class VMMD(ABC):
 
         self.generator_optimizer = optimizer.__class__.__name__
 
-        loss_function = MMDLossConstrainedV2(penalty=self.penalty, kernel=RBF())
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
 
         snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
 
