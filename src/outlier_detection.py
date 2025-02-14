@@ -42,7 +42,7 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
                                          category: list[str], base_estimators: list, epochs: int = 10, lr=0.5, seed: int = 777,
                                          image_size=(224, 224), subspace_count=100, path_to_directory=None, store_stats=True,
                                          penalty=MMDLossNoPenalty(), batch_size=256, momentum=0.8, weight_decay = 0.1,
-                                         normalize_data=False) -> dict:
+                                         normalize_data=False, skip_od=False) -> dict:
     """Launch the outlier detection experiments for a given data
 
     Args:
@@ -61,9 +61,12 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
 
     vmmd.fit(dataset=x_train, encoder=encoder, generator=generator)
 
+    if skip_od:
+        return None
+
     vmmd_od = VMMDOD(vmmd=vmmd)
 
-    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble(x_train,
+    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count, y_test = __launch_outlier_detection_ensemble(x_train,
                                                                                                 base_estimators, seed,
                                                                                                 subspace_count, vmmd,
                                                                                                 dataset_type=dataset_type,
@@ -71,8 +74,6 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
                                                                                                 image_size=image_size,
                                                                                                 normalize=normalize_data)
 
-    _, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data, train=False)
-    y_test = np.array(y_test)
     stats = __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
     return stats if not store_stats else vmmd_od.store_od_stats(stats, run_number=-1)
 
@@ -100,14 +101,14 @@ def pretrained_launch_outlier_detection_experiments(path_to_generator: str, data
         f"Pretrained generator found!")
     x_train = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data, train=True)
 
-    vmmd = VMMDDiagonal1Channel(path_to_directory)
+    vmmd = VMMDDiagonal1Channel()
 
     vmmd_wrapper = VMMDWrapper(vmmd)
     vmmd_wrapper.load_model(path_to_generator)
 
     vmmd.path_to_directory = vmmd_wrapper.get_path_to_directory(path_to_generator)
 
-    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count = __launch_outlier_detection_ensemble( x_train,
+    decision_function_scores_ens, decision_time, fit_time, unique_subspace_count, y_test = __launch_outlier_detection_ensemble( x_train,
                                                                                                 base_estimators, seed,
                                                                                                 subspace_count, vmmd,
                                                                                                 dataset_type=dataset_type,
@@ -116,9 +117,6 @@ def pretrained_launch_outlier_detection_experiments(path_to_generator: str, data
                                                                                                 normalize=normalize_data)
 
     vmmd_od = VMMDOD(vmmd=vmmd)
-
-    _, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize_data, train=False)
-    y_test = np.array(y_test)
 
     stats = __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time)
     train_iteration_number = vmmd_wrapper.get_run_number_from_generator_path(path_to_generator)
@@ -144,8 +142,9 @@ def __launch_outlier_detection_ensemble(x_train, base_estimators, seed, sample_s
     # not needed anymore
     del x_train
 
-    x_test, _ = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize, train=False)
+    x_test, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, normalize=normalize, train=False)
     x_test = np.array(extract_and_flatten_images_dataset_3d(x_test).cpu().numpy(), dtype=int)
+    y_test = np.array(y_test)
 
     decision_time_start = time.time()
     decision_function_scores_ens = ensemble_model.decision_function(x_test)
@@ -157,7 +156,7 @@ def __launch_outlier_detection_ensemble(x_train, base_estimators, seed, sample_s
     decision_function_scores_ens = aggregator_funct(
         decision_function_scores_ens, weights=vgan.proba, type="avg")
 
-    return decision_function_scores_ens, decision_time, fit_time, unique_subspace_count
+    return decision_function_scores_ens, decision_time, fit_time, unique_subspace_count, y_test
 
 
 def __calculate_occ_stats(y_test, dataset_type, decision_function_scores_ens, decision_time, fit_time) -> dict:
