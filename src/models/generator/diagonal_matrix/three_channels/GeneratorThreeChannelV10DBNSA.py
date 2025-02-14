@@ -26,7 +26,6 @@ class GeneratorThreeChannelV10DBNSA(AbstractGenerator):
             nn.LeakyReLU(0.2)
         )
 
-
         # We define the ConvBlocks
         self.block1 = ConvBlock(512, 256, input_spatial_size=(4, 4),
                                 bd_out_features=self.bd_out_features)
@@ -44,8 +43,9 @@ class GeneratorThreeChannelV10DBNSA(AbstractGenerator):
         # Final convolution to produce RGB (or whatever # of channels is in image_shape)
         self.to_rgb = nn.Sequential(
             nn.Conv2d(64, image_shape[0], kernel_size=3, stride=1, padding=1),
-            nn.Sigmoid()
         )
+
+        self.softmax = nn.Softmax(dim=-1)
 
     def binarize_ste(self, x):
         if self.training:
@@ -74,11 +74,15 @@ class GeneratorThreeChannelV10DBNSA(AbstractGenerator):
 
         x = self.block3(x)  # from 16x16 -> 32x32
 
-        #x = self.self_attention2(x)
 
         x = self.to_rgb(x)  # (B, image_shape[0], 32, 32) for example
 
-        return self.binarize_ste(x)
+
+        x = x.view(x.shape[0], -1)
+        x = self.softmax(x)
+        if mode == "train":
+            return x.view(-1, 3, 32, 32)
+        return torch.greater_equal(x, 1 / x.shape[0]).view(-1, 3, 32, 32)
 
     def sample_subspace_masks(self, noise, mode="train"):
         masks = self.forward(noise, mode)
