@@ -31,11 +31,11 @@ if __name__ == '__main__':
 
     launch_outlier_detection_experiments(
         encoder=IdentityEncoder(),
-        generator=GeneratorOneChannelV4DBNSoftmax(latent_size=100, image_shape=(3, 64, 64), initial_temperature=0.1),
-        dataset_type=DatasetType.MVTEC_AD,
+        generator=GeneratorOneChannelV4DBNSoftmax(latent_size=100, image_shape=(3, 32, 32), initial_temperature=0.1),
+        dataset_type=DatasetType.OCCCIFAR10,
         normalize_data=True,
-        image_size=(64, 64),
-        category=["bottle"],
+        image_size=(32, 32),
+        category="cat",
         epochs=epochs,
         lr=lr,
         batch_size=batch_size,
@@ -44,6 +44,6 @@ if __name__ == '__main__':
         seed=333,
         base_estimators=[LUNAR()],
         path_to_directory="../experiments/remote",
-        filename=f"v4_softmax_gn_dbn_adam_benchmark_64_sig_wo_emb_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        filename=f"mmd_sqrt_v4_softmax_gn_dbn_adam_benchmark_64_sig_wo_emb_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
         penalty=MMDLossNoPenalty(),
     )
