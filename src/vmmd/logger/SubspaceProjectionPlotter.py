@@ -27,7 +27,7 @@ class SubspaceProjectionPlotter(ILogger):
 
         # Use LaTeX in the titles
         plt.rcParams['text.usetex'] = True
-        fontsize = 20
+        fontsize = 80
 
         sample_indices = np.arange(n_samples)
         x_sample = torch.utils.data.Subset(data, sample_indices)
@@ -47,11 +47,11 @@ class SubspaceProjectionPlotter(ILogger):
         for i in range(n_masks):
             axis[0, i + 1].imshow(tensor_to_image(u[i].detach()))
             axis[0, i + 1].axis("off")
-            axis[0, i + 1].set_title(f"$U_{i + 1}$")
+            axis[0, i + 1].set_title(f"$U_{i + 1}$", fontsize=fontsize)
 
         axis[0, n_masks + 1].imshow(tensor_to_image(average_u))
         axis[0, n_masks + 1].axis("off")
-        axis[0, n_masks + 1].set_title(f"$Average$", fontsize=fontsize)
+        axis[0, n_masks + 1].set_title(f"Average", fontsize=fontsize)
 
         for i in range(1, n_samples + 1):
 
@@ -59,7 +59,10 @@ class SubspaceProjectionPlotter(ILogger):
             image = image.to(torch.float32).to(device)
 
             axis[i, 0].imshow(tensor_to_image(image))
-            axis[i, 0].set_title(f"$Original {i + 1}$", fontsize=fontsize)
+
+            if i == 1:
+                axis[i, 0].set_title(f"Original", fontsize=fontsize)
+
             axis[i, 0].axis("off")
 
             u = self.vmmd.sample_count_subspaces(n_masks).to(device)
@@ -68,7 +71,7 @@ class SubspaceProjectionPlotter(ILogger):
 
             for j in range(n_masks):
                 axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
-                axis[i, j + 1].set_title(f"$Projection {j + 1}$", fontsize=fontsize)
+                #axis[i, j + 1].set_title(f"$Projection {j + 1}$", fontsize=fontsize)
                 axis[i, j + 1].axis("off")
 
             big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u, x_sample_unflattened=image[0].squeeze())
@@ -76,13 +79,13 @@ class SubspaceProjectionPlotter(ILogger):
 
             axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
             axis[i, n_masks + 1].axis("off")
-            axis[i, n_masks + 1].set_title(f"$Average Projection$", fontsize=fontsize)
+            #axis[i, n_masks + 1].set_title(f"Average Projection", fontsize=fontsize)
 
         plt.tight_layout()
         plt.show()
 
         if self.base_dir is not None:
-            fig.tight_layout()
+
             path_to_plot_dir = self.base_dir / 'plots'
             if not path_to_plot_dir.exists():
                 os.mkdir(path_to_plot_dir)

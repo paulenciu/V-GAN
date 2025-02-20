@@ -10,7 +10,7 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.models.generator.modules.BatchDiscrimination import BatchDiscrimination
 
 
-class GeneratorOneChannelV4DBNSoftmax(AbstractGenerator):
+class GeneratorOneChannelV4DBNSoftmaxImproved(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape, initial_temperature=1.0, min_temperature=0.1, anneal_rate=0.01):
         super().__init__()
@@ -48,9 +48,8 @@ class GeneratorOneChannelV4DBNSoftmax(AbstractGenerator):
             nn.utils.spectral_norm(
                 nn.Linear(input_size, output_size)
             ),
-            GaussianNoise(stddev=0.1),
             nn.BatchNorm1d(output_size),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
         )
 
         last_layer = nn.Sequential(

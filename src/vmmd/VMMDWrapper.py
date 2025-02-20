@@ -16,7 +16,7 @@ from src.vmmd.logger.TrainingLogger import TrainingLogger
 from src.models.encoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBN import GeneratorOneChannelV4DBN
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBNSoftmax import GeneratorOneChannelV4DBNSoftmax
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 
 
 
@@ -87,25 +87,3 @@ class VMMDWrapper:
             os.makedirs(path_to_directory, exist_ok=True)
 
         return path_to_directory
-
-    # def __extract_autoencoder(self, path_to_generator_params):
-    #     pt_file_path = Path(path_to_generator_params)
-    #     csv_file_path = pt_file_path.parent.parent / 'params.csv'
-    #     first_row = pd.read_csv(csv_file_path, header=None).iloc[0]
-    #
-    #     autoencoder_name = first_row['pretrained_autoencoder']
-    #
-    #     autoencoder_manager = AutoEncoderManager()
-    #     return autoencoder_manager.get_autoencoder(autoencoder_name)
-    #
-    # def __extract_noise_dim(self, train_iteration_number, path_to_generator_params) -> torch.Tensor:
-    #     pt_file_path = Path(path_to_generator_params)
-    #     csv_file_path = pt_file_path.parent.parent / 'params.csv'
-    #
-    #     df = pd.read_csv(csv_file_path, header=None)
-    #     row = df.iloc[train_iteration_number]
-    #
-    #     noise_dim_column = row['noise dim']
-    #
-    #     # Convert to torch.Tensor
-    #     return eval(str(noise_dim_column).replace('tensor', 'torch.tensor'))

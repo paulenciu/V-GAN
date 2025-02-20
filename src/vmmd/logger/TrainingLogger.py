@@ -11,8 +11,8 @@ from sklearn.preprocessing import normalize
 from src.data import IDataset
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
 from src.vmmd import VMMD
+from src.vmmd.MMDLossConstrained import MMDLossConstrained
 from src.vmmd.logger.ILogger import ILogger
-from src.vmmd.MMDLossConstrainedV2 import MMDLossConstrainedV2
 
 
 class TrainingLogger(ILogger):
@@ -124,7 +124,7 @@ class TrainingLogger(ILogger):
         ux_sample_embedded = self.vmmd.encode(ux_sample)
 
 
-        mmd_loss = MMDLossConstrainedV2()
+        mmd_loss = MMDLossConstrained()
         _, mmd_loss = mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
         return mmd_loss.item()
 

@@ -2,9 +2,13 @@ import torch
 from pyod.models.feature_bagging import FeatureBagging
 
 from pyod.models.lunar import LUNAR
+from src.models.encoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.encoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBN import GeneratorOneChannelV4DBN
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBNSoftmax import GeneratorOneChannelV4DBNSoftmax
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4SoftmaxImproved import \
+    GeneratorOneChannelV4DBNSoftmaxImproved
 
 from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel import GeneratorThreeChannel
 
@@ -26,24 +30,79 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
 
     lr = 0.001
-    epochs = 100
-    batch_size = 64
+    epochs = 1000
+    latent_size= 128
+
+    #res18_encoder = ResNet18AutoEncoder().get_encoder()
+    #res50_encoder = ResNet50AutoEncoder().get_encoder()
+
+    batch_size = 200
+
 
     launch_outlier_detection_experiments(
         encoder=IdentityEncoder(),
-        generator=GeneratorOneChannelV4DBNSoftmax(latent_size=100, image_shape=(3, 32, 32), initial_temperature=0.1),
-        dataset_type=DatasetType.OCCCIFAR10,
-        normalize_data=True,
-        image_size=(32, 32),
-        category="cat",
+        generator=GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 64, 64)),
+        dataset_type=DatasetType.MVTEC_AD,
+        standardize_data=False,
+        image_size=(64, 64),
+        category=["bottle"],
         epochs=epochs,
         lr=lr,
+        skip_od=False,
         batch_size=batch_size,
         momentum=0.8,
         weight_decay=0.1,
         seed=333,
         base_estimators=[LUNAR()],
         path_to_directory="../experiments/remote",
-        filename=f"mmd_sqrt_v4_softmax_gn_dbn_adam_benchmark_64_sig_wo_emb_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        filename=f"exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_64_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
         penalty=MMDLossNoPenalty(),
     )
+    
+    epochs = 200
+    batch_size = 1500
+
+    launch_outlier_detection_experiments(
+        encoder=IdentityEncoder(),
+        generator=GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 32, 32)),
+        dataset_type=DatasetType.OCCFMNIST,
+        standardize_data=False,
+        image_size=(32, 32),
+        category="Trouser",
+        epochs=epochs,
+        lr=lr,
+        skip_od=False,
+        batch_size=batch_size,
+        momentum=0.8,
+        weight_decay=0.1,
+        seed=333,
+        base_estimators=[LUNAR()],
+        path_to_directory="../experiments/remote",
+        filename=f"exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_fmnist_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        penalty=MMDLossNoPenalty(),
+    )
+
+    launch_outlier_detection_experiments(
+        encoder=IdentityEncoder(),
+        generator=GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 32, 32)),
+        dataset_type=DatasetType.SYNTHETIC,
+        standardize_data=False,
+        image_size=(32, 32),
+        category=["1", "2"],
+        epochs=epochs,
+        lr=lr,
+        skip_od=False,
+        batch_size=batch_size,
+        momentum=0.8,
+        weight_decay=0.1,
+        seed=333,
+        base_estimators=[LUNAR()],
+        path_to_directory="../experiments/remote",
+        filename=f"exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_syn_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        penalty=MMDLossNoPenalty(),
+    )
+
+
+
+
+

@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 class SyntheticImageDataset(Dataset):
 
-    def __init__(self, root_dir, inlier_category=None, transform=None, train=True, image_size=(64, 64), normalize=False):
+    def __init__(self, root_dir, inlier_category=None, transform=None, train=True, image_size=(32, 32), normalize=False):
         """
         Initialize the data.
 
@@ -15,7 +15,7 @@ class SyntheticImageDataset(Dataset):
         if inlier_category is None:
             inlier_category = ["1", "2"]
 
-        self.num_samples = 500
+        self.num_samples = 5000
         self.data = []
         self.labels = []
         self.category = inlier_category
@@ -44,6 +44,7 @@ class SyntheticImageDataset(Dataset):
                 image[:, half_height:, :] = 1.0  # Set lower half to white
                 self.data.append(image)
                 self.labels.append(1)  # Label: 1
+
 
         # Convert lists to tensors
         self.data = torch.stack(self.data)
