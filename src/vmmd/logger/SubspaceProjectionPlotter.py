@@ -82,6 +82,8 @@ class SubspaceProjectionPlotter(ILogger):
             #axis[i, n_masks + 1].set_title(f"Average Projection", fontsize=fontsize)
 
         plt.tight_layout()
+        fig.subplots_adjust(wspace=0.05, hspace=0.05)
+
         plt.show()
 
         if self.base_dir is not None:

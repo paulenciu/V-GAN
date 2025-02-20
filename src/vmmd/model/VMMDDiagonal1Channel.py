@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 from src.vmmd.VMMD import VMMD
-from src.vmmd.VMMDMemoryEfficient import VMMDM
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 
