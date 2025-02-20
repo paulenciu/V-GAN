@@ -14,11 +14,9 @@ class RBF(nn.Module):
         self.bandwidth = bandwidth
 
     def get_bandwidth(self, L2_distances):
-        if self.bandwidth is None:
-            n_samples = L2_distances.shape[0]
-            self.bandwidth = L2_distances.data.sum() / (n_samples ** 2 - n_samples)
-            return L2_distances.data.sum() / (n_samples ** 2 - n_samples)
-        return self.bandwidth
+        n_samples = L2_distances.shape[0]
+        self.bandwidth = L2_distances.data.sum() / (n_samples ** 2 - n_samples)
+        return L2_distances.data.sum() / (n_samples ** 2 - n_samples)
 
     def forward(self, X):
         L2_distances = torch.cdist(X, X) ** 2
@@ -48,13 +46,16 @@ class MMDLossConstrained(nn.Module):
         XY = K[:X_size, X_size:].mean()
         YY = K[X_size:, X_size:].mean()
 
+        print("XX: ", XX)
+        print("YY: ", YY)
+
         mmd_loss = XX - 2 * XY + YY
 
         total_loss = mmd_loss + self.penalty.get_weighted_penalty(U)
 
         return total_loss, mmd_loss
 
-class MMDLossSquaredConstrained(nn.Module):
+class MMDLossSquareRootConstrained(nn.Module):
     '''
     Constrained loss by the number of features selected
     '''

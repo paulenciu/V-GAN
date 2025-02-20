@@ -29,7 +29,7 @@ from src.models.Mmd_loss_constrained import RBF
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmd.MMDLossConstrained import MMDLossConstrained, MMDLossSquaredConstrained
+from src.vmmd.MMDLossConstrained import MMDLossConstrained, MMDLossSquareRootConstrained
 
 
 class VMMD(ABC):
@@ -109,25 +109,22 @@ class VMMD(ABC):
         x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=0)).to(torch.float32)
         x_sample = torch.Tensor(pd.DataFrame(x_flattened_normalized).sample(count).to_numpy()).to(self.device)
 
-        del x_flattened_normalized, x_data
-        with torch.no_grad():
-            u_subspaces = self.sample_count_subspaces(count)
-            x_sample = x_sample.view(-1, n_channels, height, width)
-            ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces)
+        u_subspaces = self.sample_count_subspaces(count)
+        x_sample = x_sample.view(-1, n_channels, height, width)
+        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces)
 
-            x_sample_embedded = self.encode(x_sample)
-            ux_sample_embedded = self.encode(ux_sample)
-
+        x_sample_embedded = self.encode(x_sample)
+        ux_sample_embedded = self.encode(ux_sample)
 
         if type(bandwidth) == float:
             bandwidth = [bandwidth]
 
-        if not hasattr(self, 'bandwidth'):
-            mmd_loss = MMDLossConstrained()
-            mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
-            self.bandwidth = mmd_loss.bandwidth
+        mmd_loss = MMDLossConstrained()
+        mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
+        self.bandwidth = mmd_loss.bandwidth
 
         bw = self.bandwidth.item()
+        print("Bw: ", bw)
         mmd = tts.MMDStatistic(count, count)
         _, distances = mmd(x_sample_embedded, ux_sample_embedded, alphas=[bw], ret_matrix=True)
         pval = mmd.pval(distances)
@@ -145,7 +142,7 @@ class VMMD(ABC):
     def encode(self, x):
         return self.encoder(x).view(x.shape[0], -1)
 
-    def fit_me(self, dataset: IDataset, encoder, generator: AbstractGenerator):
+    def fit_memory_efficient(self, dataset: IDataset, encoder, generator: AbstractGenerator):
         n_channels, width, height = dataset.image_shape
         assert width == height, "Error, need square input images."
 
@@ -173,7 +170,6 @@ class VMMD(ABC):
         )
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
-
 
         snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
 
@@ -219,8 +215,8 @@ class VMMD(ABC):
                     if sub_batch.size(1) == 1:
                         sub_batch = sub_batch.repeat(1, 3, 1, 1)
                         processed_sub = processed_sub.repeat(1, 3, 1, 1)
-                    sub_batch = F.interpolate(sub_batch, size=224, mode='bilinear', align_corners=False)
-                    processed_sub = F.interpolate(processed_sub, size=224, mode='bilinear', align_corners=False)
+                    #sub_batch = F.interpolate(sub_batch, size=224, mode='bilinear', align_corners=False)
+                    #processed_sub = F.interpolate(processed_sub, size=224, mode='bilinear', align_corners=False)
 
                     embedded_batch = self.encode(sub_batch)
                     embedded_processed = self.encode(processed_sub)
@@ -291,16 +287,8 @@ class VMMD(ABC):
         )
 
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
-        #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
 
-
-        # optimizer = torch.optim.RMSprop(
-        #     self.generator.parameters(),
-        #     lr=self.lr,
-        #     weight_decay=self.weight_decay
-        # )
-
-        torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1.0)
+        #torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1.0)
 
         self.generator_optimizer = optimizer.__class__.__name__
 
@@ -354,14 +342,11 @@ class VMMD(ABC):
                     batch = batch.repeat(1, 3, 1, 1)
                     processed_batch = processed_batch.repeat(1, 3, 1, 1)
 
-                batch = F.interpolate(batch, size=(224, 224), mode='bilinear', align_corners=False)
-                processed_batch = F.interpolate(processed_batch, size=(224, 224), mode='bilinear', align_corners=False)
+                #batch = F.interpolate(batch, size=(224, 224), mode='bilinear', align_corners=False)
+                #processed_batch = F.interpolate(processed_batch, size=(224, 224), mode='bilinear', align_corners=False)
 
-                with torch.no_grad():
-                    embedded_batch = self.encode(batch).to(self.device)
-                    embedded_processed_batch = self.encode(processed_batch).to(self.device)
-
-                del batch, processed_batch
+                embedded_batch = self.encode(batch)
+                embedded_processed_batch = self.encode(processed_batch)
 
                 batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 
@@ -372,8 +357,6 @@ class VMMD(ABC):
                 generator_loss += batch_loss.item() / batch_number
                 mmd_loss_avg += mmd_loss.item() / batch_number
 
-                # Clean up intermediate variables
-                del u_mappings, processed_batch, embedded_batch, embedded_processed_batch
 
             generator.anneal_temperature()
             scheduler.step()

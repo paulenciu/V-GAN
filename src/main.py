@@ -30,14 +30,13 @@ if __name__ == '__main__':
     torch.cuda.empty_cache()
 
     lr = 0.001
-    epochs = 1000
     latent_size= 128
 
     #res18_encoder = ResNet18AutoEncoder().get_encoder()
     #res50_encoder = ResNet50AutoEncoder().get_encoder()
 
+    epochs = 1000
     batch_size = 200
-
 
     launch_outlier_detection_experiments(
         encoder=IdentityEncoder(),
@@ -50,15 +49,15 @@ if __name__ == '__main__':
         lr=lr,
         skip_od=False,
         batch_size=batch_size,
-        momentum=0.8,
+        momentum=0,
         weight_decay=0.1,
         seed=333,
         base_estimators=[LUNAR()],
         path_to_directory="../experiments/remote",
-        filename=f"exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_64_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        filename=f"fit_bw_adj_exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
         penalty=MMDLossNoPenalty(),
     )
-    
+
     epochs = 200
     batch_size = 1500
 
@@ -78,7 +77,7 @@ if __name__ == '__main__':
         seed=333,
         base_estimators=[LUNAR()],
         path_to_directory="../experiments/remote",
-        filename=f"exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_fmnist_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        filename=f"fit_bw_adj_exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_fmnist_1D_lr={lr}_ep={epochs}_bs={batch_size}",
         penalty=MMDLossNoPenalty(),
     )
 
@@ -98,7 +97,7 @@ if __name__ == '__main__':
         seed=333,
         base_estimators=[LUNAR()],
         path_to_directory="../experiments/remote",
-        filename=f"exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_syn_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        filename=f"fit_bw_adj_exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_syn_1D_lr={lr}_ep={epochs}_bs={batch_size}",
         penalty=MMDLossNoPenalty(),
     )
 
