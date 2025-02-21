@@ -46,7 +46,6 @@ class UpperSoftmax1D(nn.Module):
         super().__init__()  # Dummy intialization as there is no parameter to learn
 
     def forward(self, x):
-        print(x[0])
         d = x.shape[1]
         x = torch.nn.functional.softmax(x, 1)
         x = torch.less(x, 1 / d) * x + \

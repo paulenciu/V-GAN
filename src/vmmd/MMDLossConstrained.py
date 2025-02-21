@@ -2,7 +2,6 @@ import torch
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from torch import nn
 
-
 class RBF(nn.Module):
 
     def __init__(self, n_kernels=5, mul_factor=2.0, bandwidth=None):
@@ -38,25 +37,20 @@ class MMDLossConstrained(nn.Module):
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
 
     def forward(self, X, Y, U):
-        K = self.kernel(torch.vstack([X, Y]))
+        stack = torch.vstack([X, Y])
+        K = self.kernel(stack)
         self.bandwidth = self.kernel.bandwidth
         self.bandwidth_multipliers = self.kernel.bandwidth_multipliers
         X_size = X.shape[0]
         XX = K[:X_size, :X_size].mean()
         XY = K[:X_size, X_size:].mean()
-        YY = K[X_size:, X_size:]
         YY = K[X_size:, X_size:].mean()
-
-        print("Y:", Y[0])
-        print("X:", X[0])
-        print("XX: ", XX)
-        print("YY: ", YY)
 
         mmd_loss = XX - 2 * XY + YY
 
         total_loss = mmd_loss + self.penalty.get_weighted_penalty(U)
 
-        return total_loss, mmd_loss
+        return total_loss, mmd_loss, XX.item(), XY.item(), YY.item()
 
 class MMDLossSquareRootConstrained(nn.Module):
     '''

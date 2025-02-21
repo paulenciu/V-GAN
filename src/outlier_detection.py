@@ -61,7 +61,7 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
 
     vmmd_wrapper = VMMDWrapper(vmmd)
 
-    vmmd.fit_memory_efficient(dataset=x_train, encoder=encoder, generator=generator)
+    vmmd.fit(dataset=x_train, encoder=encoder, generator=generator)
 
     if skip_od:
         return None

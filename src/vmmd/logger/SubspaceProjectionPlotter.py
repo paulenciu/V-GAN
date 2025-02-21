@@ -20,7 +20,7 @@ class SubspaceProjectionPlotter(ILogger):
         self.base_dir = base_dir
         self.sample_count = sample_count
 
-    def log(self, data):
+    def log(self, data, epoch=0):
         n_samples = self.n_samples
         n_masks = self.n_masks
         device = self.vmmd.device

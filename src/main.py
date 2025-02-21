@@ -15,7 +15,8 @@ from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannel i
 from src.models.generator.diagonal_matrix.three_channels.GeneratorThreeChannelV10DBNSA import GeneratorThreeChannelV10DBNSA
 from src.models.generator.diagonal_matrix.three_channels.GeneratroOneChannelV10DBN import GeneratorThreeChannelV10DBN
 
-from src.vmmd.penalty.MMDLossPenalty import MMDLossDiscretePenalty, MMDLossL2Penalty, MMDLossNoPenalty
+from src.vmmd.penalty.MMDLossPenalty import MMDLossDiscretePenalty, MMDLossL2Penalty, MMDLossNoPenalty, \
+    MMDDiversityPenalty
 from src.data.dataset_type import DatasetType
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 
@@ -35,16 +36,16 @@ if __name__ == '__main__':
     #res18_encoder = ResNet18AutoEncoder().get_encoder()
     #res50_encoder = ResNet50AutoEncoder().get_encoder()
 
-    epochs = 1000
-    batch_size = 200
+    epochs = 100
+    batch_size = 1024
 
     launch_outlier_detection_experiments(
         encoder=IdentityEncoder(),
-        generator=GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 64, 64)),
-        dataset_type=DatasetType.OCCCIFAR10,
+        generator=GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 32, 32)),
+        dataset_type=DatasetType.SYNTHETIC,
         standardize_data=False,
-        image_size=(64, 64),
-        category="cat",
+        image_size=(32, 32),
+        category=["1", "2"],
         epochs=epochs,
         lr=lr,
         skip_od=False,

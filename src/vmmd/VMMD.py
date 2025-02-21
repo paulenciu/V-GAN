@@ -25,11 +25,10 @@ import torch.nn.functional as F
 from src.models.encoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
 from src.vmmd.logger.ILogger import ILogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
-from src.models.Mmd_loss_constrained import RBF
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmd.MMDLossConstrained import MMDLossConstrained, MMDLossSquareRootConstrained
+from src.vmmd.MMDLossConstrained import MMDLossConstrained, MMDLossSquareRootConstrained, RBF
 
 
 class VMMD(ABC):
@@ -63,9 +62,9 @@ class VMMD(ABC):
     def add_logger_subscriber(self, subscriber):
         self.logger_subscriber.append(subscriber)
 
-    def notify_logging_subscriber(self, data: IDataset):
+    def notify_logging_subscriber(self, data: IDataset, epoch):
         for logger in self.logger_subscriber:
-            logger.log(data)
+            logger.log(data, epoch)
 
     @abstractmethod
     def sample_count_subspaces(self, count):
@@ -208,6 +207,7 @@ class VMMD(ABC):
                 for sub_batch in sub_batches:
                     noise = torch.randn(sub_batch.size(0), *self.generator.noise_dim, device=device)
                     u_mappings = self.generator.sample_subspace_masks(noise)
+
                     processed_sub = self.apply_subspaces_operator(sub_batch, u_mappings)
 
                     # Preprocess if needed (e.g., channel repeat and resize)
@@ -253,7 +253,6 @@ class VMMD(ABC):
         self.generator = generator
 
     def fit(self, dataset: IDataset, encoder, generator: AbstractGenerator):
-
         n_channels, width, height = dataset.image_shape
         assert width == height, "Error, need square input images."
 
@@ -287,8 +286,6 @@ class VMMD(ABC):
 
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
 
-        #torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1.0)
-
         self.generator_optimizer = optimizer.__class__.__name__
 
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
@@ -300,7 +297,7 @@ class VMMD(ABC):
         self.encoder = self.encoder.to(self.device)
 
         #INITIAL SNAPSHOT
-        self.notify_logging_subscriber(dataset)
+        #self.notify_logging_subscriber(dataset, 0)
 
         # DATA LOADER#
         data_loader = self.__setup_data_loader(unflattened_images, cuda, mps)
@@ -347,7 +344,7 @@ class VMMD(ABC):
                 embedded_batch = self.encode(batch)
                 embedded_processed_batch = self.encode(processed_batch)
 
-                batch_loss, mmd_loss = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
+                batch_loss, mmd_loss, XX, XY, YY = loss_function(embedded_batch, embedded_processed_batch, u_mappings)
 
                 self.bandwidth = loss_function.bandwidth
                 batch_loss.backward()
@@ -356,6 +353,10 @@ class VMMD(ABC):
                 generator_loss += batch_loss.item() / batch_number
                 mmd_loss_avg += mmd_loss.item() / batch_number
 
+            self.train_history["XX"].append(XX)
+            self.train_history["XY"].append(XY)
+            self.train_history["YY"].append(YY)
+            self.train_history["bandwidth"].append(self.bandwidth.item())
 
             generator.anneal_temperature()
             scheduler.step()
@@ -368,21 +369,27 @@ class VMMD(ABC):
             if epoch in snapshot_intervals:
                 self.train_history["training_time"] -= snapshot_duration
                 snapshot_start = time.time()
-                self.notify_logging_subscriber(dataset)
+                self.notify_logging_subscriber(dataset, epoch)
                 snapshot_duration = time.time() - snapshot_start
 
             print(f"Average loss in the epoch: {generator_loss}")
             self.train_history["generator_loss"].append(generator_loss)
             self.train_history["mmd_loss"].append(mmd_loss_avg)
 
+
         generator.anneal_temperature()
 
         #FINAL SNAPSHOT
-        self.notify_logging_subscriber(dataset)
+        self.notify_logging_subscriber(dataset, epoch)
 
         self.train_history["training_time"] = total_training_time
 
         self.generator = generator
+        self.__close_logger()
+
+    def __close_logger(self):
+        for logger in self.logger_subscriber:
+            logger.close()
 
     def __setup_data_loader(self, x_unflattened, cuda, mps):
         if cuda:

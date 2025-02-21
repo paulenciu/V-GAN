@@ -24,13 +24,46 @@ class TrainingLogger(ILogger):
          self.path_to_train_history_plot,
          self.path_to_model_params) = self.__init_base_dir(base_dir)
 
-    def log(self, data):
+    def log(self, data, epochs=0):
         run_number = int(len(os.listdir(self.path_to_model_params)))
 
         self.__update_model_parms(run_number)
         self.__update_generator_loss(run_number)
         self.__update_params(run_number)
         self.__plot_loss(run_number, data)
+        #self.__plot_mmd_val()
+
+    def __plot_mmd_val(self):
+        train_history = self.vmmd.train_history
+        plt.style.use('ggplot')
+        XX = train_history['XX']
+        XY = train_history['XY']
+        YY = train_history['YY']
+        bw = train_history["bandwidth"]
+
+        x = np.linspace(1, len(XX), len(XX))
+        fig, ax = plt.subplots()
+
+        plt.plot(x, XX, color="cornflowerblue", linewidth=2)
+        plt.title("XX")
+        plt.show()
+
+        plt.plot(x, YY, color="red", label="YY", linewidth=2)
+        plt.title("YY")
+        plt.show()
+
+        plt.plot(x, XY, color="green", label="XY", linewidth=2)
+        plt.title("XY")
+        plt.show()
+
+        plt.plot(x, bw, color="orange", label="bw", linewidth=2)
+        plt.title("BW")
+
+        plt.show()
+
+
+        #ax.legend(loc="upper right")
+        #plt.show()
 
     def __init_base_dir(self, base_dir):
         path_to_train_history_csv = base_dir / "csv"
@@ -125,7 +158,7 @@ class TrainingLogger(ILogger):
         ux_sample_embedded = self.vmmd.encode(ux_sample)
 
         mmd_loss = MMDLossConstrained()
-        _, mmd_loss = mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
+        _, mmd_loss, _, _, _ = mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
         return mmd_loss.item()
 
     def __count_unique_subspaces(self, count):

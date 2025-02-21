@@ -17,7 +17,7 @@ class SubspaceDistributionPlotter(ILogger):
         self.path_to_distribution_plots = self.__init_base_dir()
 
 
-    def log(self, data):
+    def log(self, data, epoch=0):
         run_number = int(len(os.listdir(self.path_to_distribution_plots)))
 
         plot = self._create_mask_frequency_plot().to("cpu")
