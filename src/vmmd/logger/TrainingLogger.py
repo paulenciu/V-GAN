@@ -114,7 +114,8 @@ class TrainingLogger(ILogger):
             count = len(x_data)
 
         x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.vmmd.device)
+        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=0)).to(torch.float32)
+        x_sample = torch.Tensor(pd.DataFrame(x_flattened_normalized).sample(count).to_numpy()).to(self.vmmd.device)
 
         u_subspaces = self.vmmd.sample_count_subspaces(count)
         x_sample = x_sample.view(-1, n_channels, height, width)
@@ -122,7 +123,6 @@ class TrainingLogger(ILogger):
 
         x_sample_embedded = self.vmmd.encode(x_sample)
         ux_sample_embedded = self.vmmd.encode(ux_sample)
-
 
         mmd_loss = MMDLossConstrained()
         _, mmd_loss = mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
@@ -136,5 +136,3 @@ class TrainingLogger(ILogger):
     def __update_model_parms(self, run_number=0):
         torch.save(self.vmmd.generator.state_dict(),
                    self.path_to_model_params / f'generator_{run_number}.pt')
-
-

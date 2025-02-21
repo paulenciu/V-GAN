@@ -99,8 +99,7 @@ class VMMD(ABC):
         Returns:
             pd.DataFrame: DataFrame containing the p.value of the test with all the different bandwidths.
         """
-        if count > len(x_data):
-            count = len(x_data)
+        count = min(count, len(x_data))
         results = []
 
         n_channels, height, width = x_data.image_shape
@@ -392,11 +391,10 @@ class VMMD(ABC):
             return DataLoader(x_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=mps, shuffle=True)
 
 
-    def _generate_subspaces(self, count, threshold = None):
+    def _generate_subspaces(self, count):
 
         generator_input_shape = self.generator.noise_dim
 
-        # Need to load in cpu as mps Tensor module doesn't properly fix the seed
         noise_tensor = self.__setup_noise_tensor(batch_size=count, generator_input_shape=generator_input_shape)
 
         if not self.seed is None:

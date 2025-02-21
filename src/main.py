@@ -41,10 +41,10 @@ if __name__ == '__main__':
     launch_outlier_detection_experiments(
         encoder=IdentityEncoder(),
         generator=GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 64, 64)),
-        dataset_type=DatasetType.MVTEC_AD,
+        dataset_type=DatasetType.OCCCIFAR10,
         standardize_data=False,
         image_size=(64, 64),
-        category=["bottle"],
+        category="cat",
         epochs=epochs,
         lr=lr,
         skip_od=False,
@@ -53,10 +53,12 @@ if __name__ == '__main__':
         weight_decay=0.1,
         seed=333,
         base_estimators=[LUNAR()],
-        path_to_directory="../experiments/remote",
-        filename=f"fit_bw_adj_exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}",
+        path_to_directory="../experiments/local",
+        filename="test",
         penalty=MMDLossNoPenalty(),
     )
+
+    a = f"fit_bw_adj_exp_scheduler_epochupdate_resized_normalized_unstandardized_mmd_v4_softmax_adam_32_occ_mvtec_1D_lr={lr}_ep={epochs}_bs={batch_size}"
 
     epochs = 200
     batch_size = 1500

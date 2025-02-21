@@ -44,8 +44,11 @@ class MMDLossConstrained(nn.Module):
         X_size = X.shape[0]
         XX = K[:X_size, :X_size].mean()
         XY = K[:X_size, X_size:].mean()
+        YY = K[X_size:, X_size:]
         YY = K[X_size:, X_size:].mean()
 
+        print("Y:", Y[0])
+        print("X:", X[0])
         print("XX: ", XX)
         print("YY: ", YY)
 
