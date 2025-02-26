@@ -158,7 +158,7 @@ class TrainingLogger(ILogger):
         ux_sample_embedded = self.vmmd.encode(ux_sample)
 
         mmd_loss = MMDLossConstrained()
-        _, mmd_loss, _, _, _ = mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
+        _, mmd_loss= mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
         return mmd_loss.item()
 
     def __count_unique_subspaces(self, count):

@@ -79,8 +79,8 @@ class VMMD(ABC):
     def approx_subspace_dist(self, subspace_count=500):
         u = self.sample_count_subspaces(subspace_count)
         unique_subspaces, proba = np.unique(np.array(u.detach().to('cpu')), axis=0, return_counts=True)
-        self.subspaces = torch.tensor(unique_subspaces)
-        self.proba = proba / proba.sum()
+        self.subspaces = torch.Tensor(unique_subspaces)
+        self.proba = torch.Tensor(proba / proba.sum())
 
     def load_model(self, generator: AbstractGenerator, autoencoder):
         if autoencoder is not None:
@@ -150,9 +150,9 @@ class VMMD(ABC):
         elif torch.backends.mps.is_available():
             torch.mps.manual_seed(self.seed)
 
-    def setup_optimizer_and_scheduler(self, generator):
+    def setup_optimizer_and_scheduler(self):
         optimizer = torch.optim.Adam(
-            generator.parameters(),
+            self.generator.parameters(),
             lr=self.lr,
             betas=(0.5, 0.9),
             weight_decay=self.weight_decay
@@ -163,7 +163,7 @@ class VMMD(ABC):
     def setup_data_loader(self, dataset, n_channels, height, width, preprocess_fn=normalize_images,
                           **preprocess_kwargs):
         flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
-        x_flattened_preprocessed = torch.from_numpy(preprocess_fn(flattened_images, **preprocess_kwargs)).to(torch.float32)
+        x_flattened_preprocessed = torch.from_numpy(preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).to(torch.float32)
         unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
         return DataLoader(
             unflattened_images,
@@ -178,11 +178,11 @@ class VMMD(ABC):
         assert width == height, "Error, need square input images."
 
         self.setup_device_and_seed()
-        self.generator = generator.to(self.device)
-        self.encoder = encoder.to(self.device)
+        self.generator = self.generator.to(self.device)
+        self.encoder = self.encoder.to(self.device)
         self.encoder.eval()
 
-        optimizer, scheduler = self.setup_optimizer_and_scheduler(generator)
+        optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
 
@@ -231,7 +231,6 @@ class VMMD(ABC):
 
         self.notify_logging_subscriber(dataset, self.epochs)
         self.train_history["training_time"] = total_training_time
-        self.generator = generator
 
 
     def __setup_data_loader(self, x_unflattened, cuda, mps):

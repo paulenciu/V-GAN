@@ -5,9 +5,9 @@ import torch
 class BaseOutlierDetector(ABC):
 
     @abstractmethod
-    def fit(self, subspaces):
+    def fit(self, subspaces, x):
         pass
 
     @abstractmethod
-    def decision_function(self, x):
+    def decision_score(self, x):
         pass

@@ -2,17 +2,21 @@
 import time
 import numpy as np
 from src.od.BaseOutlierDetection import BaseOutlierDetector
+from src.od.DistanceOutlierDetector import DistanceOutlierDetector
+from src.od.EnsembleOutlierDetector import EnsembleOutlierDetector
 
 
 class CombinedOutlierDetector(BaseOutlierDetector):
 
-    def __init__(self, weight_ensemble=0.5, base_estimators=None, max_n_jobs=4):
+    def __init__(self, vmmd, weight_ensemble=0.5, base_estimators=None, max_n_jobs=4):
+        super().__init__()
         self.weight_ensemble = weight_ensemble
         self.weight_distance = 1 - weight_ensemble
 
         self.ensemble_detector = EnsembleOutlierDetector(
             base_estimators=base_estimators,
-            max_n_jobs=max_n_jobs
+            max_n_jobs=max_n_jobs,
+            vmmd=vmmd
         )
         self.distance_detector = DistanceOutlierDetector()
 
@@ -29,14 +33,13 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.fit_time = time.time() - fit_start
         return self
 
-    def decision_function(self, x_test):
+    def decision_score(self, x_test):
         decision_start = time.time()
 
         ensemble_scores = self.ensemble_detector.decision_score(x_test)
         distance_scores = self.distance_detector.decision_score(x_test)
 
-        self.decision_scores = (self.weight_ensemble * ensemble_scores +
-                                self.weight_distance * distance_scores)
+        self.decision_scores = self.weight_ensemble * ensemble_scores + self.weight_distance * distance_scores
 
         self.decision_time = time.time() - decision_start
         return self.decision_scores

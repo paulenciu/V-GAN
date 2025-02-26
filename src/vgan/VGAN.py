@@ -35,7 +35,7 @@ import os
 import torch_two_sample as tts
 import torch.nn.functional as F
 
-from src.models.encoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
+from src.models.autoencoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
 from src.vmmd.logger.ILogger import ILogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.generator.AbstractGenerator import AbstractGenerator
@@ -99,9 +99,9 @@ class VGAN:
 
         n_channels, height, width = x_data.image_shape
 
-        x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=1)).to(torch.float32)
-        x_sample = torch.Tensor(pd.DataFrame(x_flattened_normalized).sample(count).to_numpy()).to(self.device)
+        #x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
+        #x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=1)).to(torch.float32)
+        x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.device)
 
         u_subspaces = self.sample_count_subspaces(count)
         x_sample = x_sample.view(-1, n_channels, height, width)

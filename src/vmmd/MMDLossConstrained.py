@@ -50,7 +50,7 @@ class MMDLossConstrained(nn.Module):
 
         total_loss = mmd_loss + self.penalty.get_weighted_penalty(U)
 
-        return total_loss, mmd_loss, XX.item(), XY.item(), YY.item()
+        return total_loss, mmd_loss
 
 class MMDLossSquareRootConstrained(nn.Module):
     '''

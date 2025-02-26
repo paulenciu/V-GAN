@@ -1,3 +1,6 @@
+import numpy as np
+import torch
+import time
 from src.od.BaseOutlierDetection import BaseOutlierDetector
 
 class DistanceOutlierDetector(BaseOutlierDetector):
@@ -12,14 +15,16 @@ class DistanceOutlierDetector(BaseOutlierDetector):
 
     def decision_score(self, x_test):
         decision_time_start = time.time()
+        subspace_min_distance = []
         max_dist = float("inf")
         for point in x_test:
             min_distance = max_dist
             for subspace in self.subspaces:
                 sub_dist = np.linalg.norm(point - subspace * point)
                 min_distance = min(min_distance, sub_dist)
-            self.subspace_min_distance.append(min_distance)
+            subspace_min_distance.append(min_distance)
 
         self.decision_scores = torch.Tensor(subspace_min_distance) / max_dist
         self.decision_scores.cpu().numpy()
         self.decision_time = time.time() - decision_time_start
+        return self.decision_scores.cpu().numpy()
