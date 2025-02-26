@@ -23,14 +23,14 @@ class ResNet18AutoEncoder(AbstractEncoder):
         self.model.load_state_dict(new_state_dict)
 
     def forward(self, x):
-        x = self.model(x)
-        return x
+        x_encoded = self.model.encoder(x)
+        x_reconstructed = self.model.decoder(x_encoded)
+        return x_encoded, x_reconstructed
 
 
     def get_encoder(self):
         return self.model.encoder
 
     def get_decoder(self):
-        self.model.decoder.latent_size = 512
         return self.model.decoder
 

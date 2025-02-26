@@ -32,15 +32,11 @@ if __name__ == '__main__':
 
     lr = 0.001
     latent_size= 128
-
-    #res18_encoder = ResNet18AutoEncoder().get_encoder()
-    #res50_encoder = ResNet50AutoEncoder().get_encoder()
-
     epochs = 100
-    batch_size = 1024
+    batch_size = 64
 
     launch_outlier_detection_experiments(
-        encoder=IdentityEncoder(),
+        encoder=ResNet18AutoEncoder(),
         generator=GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 32, 32)),
         dataset_type=DatasetType.SYNTHETIC,
         standardize_data=False,

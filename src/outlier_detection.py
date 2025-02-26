@@ -23,6 +23,8 @@ from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
+from src.vgan.VGAN import VGAN
+
 logger = logging.getLogger(__name__)
 
 def aggregator_funct(decision_function: np.array, type: str = "avg", weights: np.ndarray = None) -> np.ndarray:
@@ -55,13 +57,16 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
 
     x_train = load_data(dataset_type=dataset_type, category=category, image_size=image_size, standardize=standardize_data)
 
-    vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
-                                lr=lr, penalty=penalty, filename=filename,
-                                batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)
+    # vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
+    #                             lr=lr, penalty=penalty, filename=filename,
+    #                             batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)
 
-    vmmd_wrapper = VMMDWrapper(vmmd)
+    vgan = VGAN(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
+                                 filename=filename, batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)
 
-    vmmd.fit(dataset=x_train, encoder=encoder, generator=generator)
+    vmmd_wrapper = VMMDWrapper(vgan)
+
+    vgan.fit(dataset=x_train, detector=encoder, generator=generator)
 
     if skip_od:
         return None
@@ -131,7 +136,7 @@ def __launch_outlier_detection_ensemble(x_train, base_estimators, seed, sample_s
                               n_jobs=4, bps_flag=False, approx_flag_global=False)
 
     x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu")
-    x_train_flattened = normalize(x_train_flattened, axis=0)
+    x_train_flattened = normalize(x_train_flattened, axis=1)
 
     fit_time_start = time.time()
     ensemble_model.fit(x_train_flattened)
@@ -143,7 +148,7 @@ def __launch_outlier_detection_ensemble(x_train, base_estimators, seed, sample_s
     x_test, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, standardize=standardize, train=False)
 
     x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu")
-    x_test_flattened = normalize(x_test_flattened, axis=0)
+    x_test_flattened = normalize(x_test_flattened, axis=1)
     y_test = np.array(y_test)
 
     n_samples = x_test_flattened.shape[0]
@@ -224,7 +229,7 @@ def launch_outlier_detection_baseline(dataset_type: DatasetType, category: list[
     x_train= load_data(dataset_type=dataset_type, category=category, image_size=image_size, train=True)
 
     x_train = extract_and_flatten_images_dataset_3d(x_train).cpu().numpy()
-    x_train = normalize(x_train, axis=0)
+    x_train = normalize(x_train, axis=1)
 
     fit_time_start = time.time()
     base_estimator.fit(x_train)
@@ -235,7 +240,7 @@ def launch_outlier_detection_baseline(dataset_type: DatasetType, category: list[
     x_test, y_test = load_data(dataset_type=dataset_type, category=category, image_size=image_size, train=False)
 
     x_test = extract_and_flatten_images_dataset_3d(x_test).cpu().numpy()
-    x_test = normalize(x_test, axis=0)
+    x_test = normalize(x_test, axis=1)
 
     n_samples = x_test.shape[0]
     decision_function_scores = np.zeros(n_samples)
