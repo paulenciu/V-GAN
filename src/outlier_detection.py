@@ -57,9 +57,9 @@ def launch_outlier_detection_experiments(filename: str, encoder: AbstractEncoder
 
     x_train = load_data(dataset_type=dataset_type, category=category, image_size=image_size, standardize=standardize_data)
 
-    # vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
-    #                             lr=lr, penalty=penalty, filename=filename,
-    #                             batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)
+    vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
+                                lr=lr, penalty=penalty, filename=filename,
+                                batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)
 
     vgan = VGAN(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
                                  filename=filename, batch_size=batch_size, momentum=momentum, weight_decay=weight_decay)

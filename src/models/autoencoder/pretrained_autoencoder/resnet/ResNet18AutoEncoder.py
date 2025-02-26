@@ -2,8 +2,8 @@ import torch
 from torch import nn
 
 from src.models.encoder.AbstractEncoder import AbstractEncoder
-from src.models.encoder.pretrained_autoencoder.resnet.ResNetConfig import get_configs
-from src.models.encoder.pretrained_autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNetConfig import get_configs
+from src.models.autoencoder.pretrained_autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
 
 
 class ResNet18AutoEncoder(AbstractEncoder):

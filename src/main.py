@@ -2,8 +2,8 @@ import torch
 from pyod.models.feature_bagging import FeatureBagging
 
 from pyod.models.lunar import LUNAR
-from src.models.encoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
-from src.models.encoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBN import GeneratorOneChannelV4DBN
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
@@ -23,6 +23,9 @@ from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.outlier_detection import launch_outlier_detection_experiments, pretrained_launch_outlier_detection_experiments, \
     launch_outlier_detection_baseline
 
+from src.od import CombinedOutlierDetector
+from src.experiments import OutlierDetectionExperiment
+
 if __name__ == '__main__':
     import os
 
@@ -32,8 +35,44 @@ if __name__ == '__main__':
 
     lr = 0.001
     latent_size= 128
-    epochs = 100
+    epochs = 1
     batch_size = 64
+    store_stats = True
+    penalty = MMDLossNoPenalty()
+    batch_size = 256
+    momentum = 0.8
+    weight_decay = 0.1
+    standardize_data = False
+    seed = 777
+    image_size_generator = (32, 32)
+
+    path_to_directory = "../experiments/local"
+    filename = "test"
+
+
+    generator = GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(3, 32, 32))
+    encoder = IdentityEncoder()
+
+    vmmd = VMMDDiagonal1Channel(epochs=epochs, seed=seed, path_to_directory=path_to_directory,
+                                lr=lr, penalty=penalty, filename=filename,
+                                batch_size=batch_size, momentum=momentum, weight_decay=weight_decay,
+                                encoder=encoder, generator=generator
+                                )
+
+    od_model = CombinedOutlierDetector(
+        base_estimators=[LUNAR()]
+    )
+
+    experiement = OutlierDetectionExperiment(
+        vmmd=vmmd,
+        od_model=od_model,
+        dataset_type=DatasetType.SYNTHETIC,
+        category=["1", "2"],
+        image_size_generator=image_size_generator,
+        standardize_data=standardize_data,
+    )
+
+    experiement.run()
 
     launch_outlier_detection_experiments(
         encoder=ResNet18AutoEncoder(),

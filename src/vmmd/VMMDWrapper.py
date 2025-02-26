@@ -13,7 +13,7 @@ from src.vmmd import VMMD
 from src.vmmd.logger.SubspaceDistributionPlotter import SubspaceDistributionPlotter
 from src.vmmd.logger.SubspaceProjectionPlotter import SubspaceProjectionPlotter
 from src.vmmd.logger.TrainingLogger import TrainingLogger
-from src.models.encoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
+from src.models.autoencoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBN import GeneratorOneChannelV4DBN
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax

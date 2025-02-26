@@ -1,4 +1,4 @@
-from src.models.encoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 
 
 class AutoEncoderManager:
