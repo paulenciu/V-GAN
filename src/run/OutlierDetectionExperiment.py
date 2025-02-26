@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from src.data.dataset_loader import load_data
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
-from src.utils.preprocessing import normalize_images
+from src.utils.preprocessing import normalize_images_col
 from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from torch.nn.functional import interpolate
@@ -26,13 +26,13 @@ class OutlierDetectionExperiment:
         self.preprocessing_fn = preprocessing_fn
         self.n_subspace_sample = n_subspaces_sample
 
-    def run(self, store_stats=True):
+    def fit(self):
         x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_generator, standardize=self.standardize_data)
         self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
         del x_train
 
         self.vmmd.approx_subspace_dist(subspace_count=self.n_subspace_sample)
-        subspaces = self.vmmd.subspaces[:2]
+        subspaces = self.vmmd.subspaces
 
         #Preparing subspaces for OD
         subspaces = interpolate(subspaces, (self.image_size_od[0], self.image_size_od[1]))
@@ -40,17 +40,22 @@ class OutlierDetectionExperiment:
         print("Number of unique subspaces:", len(subspaces), "/", self.n_subspace_sample)
         subspaces = np.array(subspaces , dtype=int)
 
+        # TRAIN OUTLIER DETECTION METHOD
         x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od, standardize=self.standardize_data)
         x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
         x_train_flattened = self.preprocessing_fn(x_train_flattened)
         self.od_model.fit(subspaces, x_train_flattened)
         del x_train_flattened
 
-        x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od, standardize=self.standardize_data, train=False)
+    def evaluate(self, store_stats=True, weight_ensemble=0.5):
+        # CALCULATE OD SCORES
+        x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
+                                   image_size=self.image_size_od, standardize=self.standardize_data, train=False)
         x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
         x_test_flattened = self.preprocessing_fn(x_test_flattened)
         y_test = np.array(y_test)
 
+        self.od_model.update_tradeoff(weight_ensemble=weight_ensemble)
         decision_scores = self.od_model.decision_score(x_test_flattened)
 
         od_stats = self.calculate_od_stats(y_test, decision_scores)
@@ -63,4 +68,5 @@ class OutlierDetectionExperiment:
                 "PRAUC": average_precision_score(y_test, decision_scores),
                 "F1": f1_score(y_test, (decision_scores > np.quantile(decision_scores, .80)) * 1),
                 "Training Time": str(datetime.timedelta(seconds=self.od_model.fit_time)),
-                "Decision Time": str(datetime.timedelta(seconds=self.od_model.decision_time))}
+                "Decision Time": str(datetime.timedelta(seconds=self.od_model.decision_time)),
+                "OD Method": self.od_model.get_model_description()}

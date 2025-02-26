@@ -19,11 +19,21 @@ class SyntheticImageDataset(Dataset):
         self.data = []
         self.labels = []
         self.category = inlier_category
-        self._generate_data(image_size)
+
+        if train:
+            self._generate_inlier_data(image_size)
+        else:
+            self._generate_inlier_data(image_size)
+
+            ## CREATE SYNTHETIC OUTLIER
+            rnd_idx = torch.randint(0, len(self.data), (1000,))
+            for i in rnd_idx:
+                self.data[i] = torch.rand(3, 32, 32)
+                self.labels[i] = 1  # Set label to 1
 
         self.image_shape = self.data[0].shape
 
-    def _generate_data(self, image_size):
+    def _generate_inlier_data(self, image_size):
         """
         Generate the synthetic data.
         """
@@ -43,7 +53,7 @@ class SyntheticImageDataset(Dataset):
                 image = torch.zeros(3, height, width)
                 image[:, half_height:, :] = 1.0  # Set lower half to white
                 self.data.append(image)
-                self.labels.append(1)  # Label: 1
+                self.labels.append(0)  # Label 0
 
 
         # Convert lists to tensors

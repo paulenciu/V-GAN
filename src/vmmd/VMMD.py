@@ -29,7 +29,7 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.MMDLossConstrained import MMDLossConstrained, MMDLossSquareRootConstrained, RBF
-from src.utils.preprocessing import normalize_images
+from src.utils.preprocessing import normalize_images_col
 
 
 class VMMD(ABC):
@@ -160,7 +160,7 @@ class VMMD(ABC):
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
         return optimizer, scheduler
 
-    def setup_data_loader(self, dataset, n_channels, height, width, preprocess_fn=normalize_images,
+    def setup_data_loader(self, dataset, n_channels, height, width, preprocess_fn=normalize_images_col,
                           **preprocess_kwargs):
         flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
         x_flattened_preprocessed = torch.from_numpy(preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).to(torch.float32)
@@ -172,7 +172,7 @@ class VMMD(ABC):
             pin_memory=torch.cuda.is_available()
         )
 
-    def fit(self, dataset: IDataset, preprocess_fn=normalize_images):
+    def fit(self, dataset: IDataset, preprocess_fn=normalize_images_col):
 
         n_channels, width, height = dataset.image_shape
         assert width == height, "Error, need square input images."

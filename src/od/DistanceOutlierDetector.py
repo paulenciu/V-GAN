@@ -28,3 +28,8 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         self.decision_scores.cpu().numpy()
         self.decision_time = time.time() - decision_time_start
         return self.decision_scores.cpu().numpy()
+
+    def get_model_description(self):
+        return {
+            "Model": self.__class__.__name__,
+        }

@@ -11,3 +11,7 @@ class BaseOutlierDetector(ABC):
     @abstractmethod
     def decision_score(self, x):
         pass
+
+    @abstractmethod
+    def get_model_description(self):
+        pass

@@ -23,7 +23,11 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.fit_time = 0.0
         self.decision_time = 0.0
         self.decision_scores = None
-
+    
+    def update_tradeoff(self, weight_ensemble):
+        self.weight_ensemble = weight_ensemble
+        self.weight_distance = 1 - weight_ensemble
+    
     def fit(self, subspaces, x_train):
         fit_start = time.time()
 
@@ -43,3 +47,15 @@ class CombinedOutlierDetector(BaseOutlierDetector):
 
         self.decision_time = time.time() - decision_start
         return self.decision_scores
+
+    def get_model_description(self):
+        ensemble_description = self.ensemble_detector.get_model_description()
+        distance_description = self.distance_detector.get_model_description()
+
+        ensemble_description["ensemble weight"] = self.weight_ensemble
+        distance_description["distance weight"] = self.weight_distance
+
+        return {
+            "Ensemble Description": ensemble_description,
+            "Distance Description": distance_description
+        }
