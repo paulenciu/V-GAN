@@ -4,6 +4,7 @@ import numpy as np
 from src.od.BaseOutlierDetection import BaseOutlierDetector
 from src.od.DistanceOutlierDetector import DistanceOutlierDetector
 from src.od.EnsembleOutlierDetector import EnsembleOutlierDetector
+from src.utils.preprocessing import min_max_scaling
 
 
 class CombinedOutlierDetector(BaseOutlierDetector):
@@ -31,17 +32,54 @@ class CombinedOutlierDetector(BaseOutlierDetector):
     def fit(self, subspaces, x_train):
         fit_start = time.time()
 
+        print("Ensemble Outlier Detector Fit")
         self.ensemble_detector.fit(subspaces, x_train)
+
+        print("Distance Outlier Detector Fit")
         self.distance_detector.fit(subspaces)
 
         self.fit_time = time.time() - fit_start
         return self
 
+    def decision_score_interval(self, x_test, ensemble_weight_start, ensemble_weight_end, step):
+        ensemble_scores = self.ensemble_detector.decision_score(x_test)
+        distance_scores = self.distance_detector.decision_score(x_test)
+
+        ensemble_scores = min_max_scaling(ensemble_scores)
+        distance_scores = min_max_scaling(distance_scores)
+        decision_scores_list = []
+        description_list = []
+
+        for ensemble_weight in np.arange(ensemble_weight_start, ensemble_weight_end + step, step):
+            self.update_tradeoff(ensemble_weight)
+            decision_scores = self.weight_ensemble * ensemble_scores + self.weight_distance * distance_scores
+            description = self.get_model_description()
+
+            decision_scores_list.append(decision_scores)
+            description_list.append(description)
+
+        return decision_scores_list, description_list
+
     def decision_score(self, x_test):
         decision_start = time.time()
 
+        if self.weight_ensemble == 0:
+            distance_scores = self.distance_detector.decision_score(x_test)
+            distance_scores = min_max_scaling(distance_scores)
+            self.decision_time = time.time() - decision_start
+            return distance_scores
+
+        elif self.weight_ensemble == 1:
+            ensemble_scores = self.ensemble_detector.decision_score(x_test)
+            ensemble_scores = min_max_scaling(ensemble_scores)
+            self.decision_time = time.time() - decision_start
+            return ensemble_scores
+
         ensemble_scores = self.ensemble_detector.decision_score(x_test)
         distance_scores = self.distance_detector.decision_score(x_test)
+
+        ensemble_scores = min_max_scaling(ensemble_scores)
+        distance_scores = min_max_scaling(distance_scores)
 
         self.decision_scores = self.weight_ensemble * ensemble_scores + self.weight_distance * distance_scores
 

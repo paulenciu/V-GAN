@@ -16,7 +16,7 @@ class DistanceOutlierDetector(BaseOutlierDetector):
     def decision_score(self, x_test):
         decision_time_start = time.time()
         subspace_min_distance = []
-        max_dist = float("inf")
+        max_dist = 10.000 ** 0.5
         for point in x_test:
             min_distance = max_dist
             for subspace in self.subspaces:

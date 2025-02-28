@@ -31,21 +31,27 @@ class OutlierDetectionExperiment:
         self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
         del x_train
 
+        self.fit_outlier_detection()
+
+    def fit_outlier_detection(self):
         self.vmmd.approx_subspace_dist(subspace_count=self.n_subspace_sample)
         subspaces = self.vmmd.subspaces
-
-        #Preparing subspaces for OD
+        # Preparing subspaces for OD
         subspaces = interpolate(subspaces, (self.image_size_od[0], self.image_size_od[1]))
         subspaces = subspaces.view(subspaces.shape[0], -1)
         print("Number of unique subspaces:", len(subspaces), "/", self.n_subspace_sample)
-        subspaces = np.array(subspaces , dtype=int)
-
+        subspaces = np.array(subspaces, dtype=int)
         # TRAIN OUTLIER DETECTION METHOD
-        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od, standardize=self.standardize_data)
+        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
+                            standardize=self.standardize_data)
         x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
         x_train_flattened = self.preprocessing_fn(x_train_flattened)
         self.od_model.fit(subspaces, x_train_flattened)
         del x_train_flattened
+
+    def fit_pretrained_model(self, path_to_generator: str):
+        self.vmmd_wrapper.load_model(path_to_generator)
+        self.fit_outlier_detection()
 
     def evaluate(self, store_stats=True, weight_ensemble=0.5):
         # CALCULATE OD SCORES
@@ -61,6 +67,20 @@ class OutlierDetectionExperiment:
         od_stats = self.calculate_od_stats(y_test, decision_scores)
         return od_stats if not store_stats else self.vmmd_od.store_od_stats(od_stats, run_number=-1)
 
+    def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step):
+        # CALCULATE OD SCORES
+        x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
+                                   image_size=self.image_size_od, standardize=self.standardize_data, train=False)
+        x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
+        x_test_flattened = self.preprocessing_fn(x_test_flattened)
+        y_test = np.array(y_test)
+
+        decision_scores, descriptions = self.od_model.decision_score_interval(x_test_flattened, ensemble_weight_start, ensemble_weight_end, step)
+
+        for i, ds in enumerate(decision_scores):
+            od_stats = self.calculate_od_stats(y_test, ds)
+            od_stats["OD Method"] = descriptions[i]
+            self.vmmd_od.store_od_stats(od_stats, run_number=-1)
 
     def calculate_od_stats(self, y_test, decision_scores):
         return {"Dataset": self.dataset_type,

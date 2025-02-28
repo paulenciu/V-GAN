@@ -36,12 +36,14 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
         self.n_subspaces = None
 
     def fit(self, subspaces, x):
+        # Convert to float32 to save memory
+        x = x.astype(np.float32)
+
         self.ensemble_model = sel_SUOD(base_estimators=self.base_estimators, subspaces=subspaces, n_jobs=self.max_n_jobs, bps_flag=False, approx_flag_global=False)
         fit_time_start = time.time()
         self.ensemble_model.fit(x)
         self.train_time = time.time() - fit_time_start
         self.n_subspaces = subspaces.shape[0]
-
 
     def decision_score(self, x, batch_size=512):
         n_samples = x.shape[0]
@@ -59,7 +61,7 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
                     batch_scores,
                     weights=self.vmmd.proba,
                     type="avg"
-                )
+            )
 
 
         self.decision_time = time.time() - decision_time_start

@@ -169,7 +169,7 @@ class VMMD(ABC):
             unflattened_images,
             batch_size=self.batch_size,
             shuffle=True,
-            pin_memory=torch.cuda.is_available()
+            pin_memory=torch.cuda.is_available(),
         )
 
     def fit(self, dataset: IDataset, preprocess_fn=normalize_images_col):
