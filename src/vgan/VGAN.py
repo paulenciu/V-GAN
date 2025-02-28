@@ -236,7 +236,7 @@ class VGAN:
                     with torch.no_grad():
                         noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
                         fake_subspaces = self.generator.sample_subspace_masks(noise).clone().detach()
-                        fake_subspaces = F.interpolate(fake_subspaces, size=224, mode='bilinear', align_corners=False)
+                        fake_subspaces = F.interpolate(fake_subspaces, size=224, mode='nearest', align_corners=False)
                         fake_subspaces = fake_subspaces.view(self.batch_size, -1)
 
                     projected_batch = fake_subspaces*batch
