@@ -35,8 +35,9 @@ class OutlierDetectionExperiment:
     def fit_outlier_detection(self):
         self.vmmd.approx_subspace_dist(subspace_count=self.n_subspace_sample)
         subspaces = self.vmmd.subspaces
+
         # Preparing subspaces for OD
-        subspaces = interpolate(subspaces, (self.image_size_od[0], self.image_size_od[1]))
+        subspaces = interpolate(subspaces, size=self.image_size_od[0], mode='bilinear', align_corners=False)
         subspaces = subspaces.view(subspaces.shape[0], -1)
         print("Number of unique subspaces:", len(subspaces), "/", self.n_subspace_sample)
         subspaces = np.array(subspaces, dtype=int)

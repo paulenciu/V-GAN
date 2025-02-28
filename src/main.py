@@ -4,18 +4,14 @@ import os
 from pyod.models.lunar import LUNAR
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
 
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
-
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
-from src.run.config.BaseConfiguration import BaseConfiguration
-from src.run.config.TestConfiguration import TestConfiguration
-from src.utils.preprocessing import normalize_features, normalize_images, normalize_images_col_softmax
+from src.run.config.vgan.VGANTestConfiguration import VGANTestConfiguration
+from src.run.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
+from src.utils.preprocessing import normalize_features
+from src.vgan.VGAN import VGAN
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
-from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.data.dataset_type import DatasetType
-from src.models.encoder.IdentityEncoder import IdentityEncoder
-from tqdm import tqdm
 
 
 def configure_environment():
@@ -34,80 +30,32 @@ if __name__ == '__main__':
     configure_environment()
 
     configs = [
-        # TestConfiguration(
-        #     dataset_type=DatasetType.OCCCIFAR10,
-        #     dateset_category="cat",
-        # ),
-        BaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
-            preprocessing_fn=normalize_features,
-        ),
-        BaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category="Trouser",
-            preprocessing_fn=normalize_features,
-            image_size_od=(28, 28),
-            image_size_generator=(28, 28),
-        ),
-        BaseConfiguration(
-            dataset_type=DatasetType.MVTEC_AD,
-            dateset_category=["bottle"],
-            preprocessing_fn=normalize_features,
-            image_size_od=(64, 64),
-            image_size_generator=(128, 128),
-        ),
-        # BaseConfiguration(
-        #     dataset_type=DatasetType.OCCCIFAR10,
-        #     dateset_category="cat",
-        #     preprocessing_fn=normalize_images,
-        # ),
-        # BaseConfiguration(
-        #     dataset_type=DatasetType.OCCFMNIST,
-        #     dateset_category="Trouser",
-        #     preprocessing_fn=normalize_images,
-        #     image_size_od=(28, 28),
-        #     image_size_generator=(28, 28),
-        # ),
-        # BaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     preprocessing_fn=normalize_images,
-        #     image_size_od=(64, 64),
-        #     image_size_generator=(128, 128),
-        # ),
-        # BaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     preprocessing_fn=normalize_features,
-        #     image_size_od=(64, 64),
-        #     image_size_generator=(256, 256),
-        # ),
-        # BaseConfiguration(
-        #     dataset_type=DatasetType.OCCFMNIST,
-        #     dateset_category="Trouser",
-        #     preprocessing_fn=normalize_images_col_softmax,
-        #     image_size_od=(28, 28),
-        #     image_size_generator=(28, 28),
-        # ),
+        VGANTestConfiguration()
     ]
 
     for i, config in enumerate(configs):
 
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
 
-        vmmd = VMMDDiagonal1Channel(
+        # vmmd = VMMDDiagonal1Channel(
+        #     epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
+        #     lr=config.lr, penalty=config.penalty, filename=config.filename,
+        #     batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
+        #     encoder=config.encoder, generator=config.generator
+        # )
+
+        vgan = VGAN(
             epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
-            lr=config.lr, penalty=config.penalty, filename=config.filename,
+            lr_G=config.lr_g, lr_D=config.lr_d, penalty=config.penalty, filename=config.filename,
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-            encoder=config.encoder, generator=config.generator
+            detector=config.detector, generator=config.generator
         )
 
         experiement = OutlierDetectionExperiment(
-            vmmd=vmmd,
+            vmmd=vgan,
             od_model=CombinedOutlierDetector(
                 base_estimators=[LUNAR()],
-                vmmd=vmmd, max_n_jobs=1,
+                vmmd=vgan, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
             dataset_type=config.dataset_type,

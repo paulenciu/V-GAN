@@ -36,6 +36,7 @@ import torch_two_sample as tts
 import torch.nn.functional as F
 
 from src.models.autoencoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
+from src.utils.preprocessing import normalize_features
 from src.vmmd.logger.ILogger import ILogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.generator.AbstractGenerator import AbstractGenerator
@@ -53,7 +54,7 @@ class VGAN:
     kernel learning is performed. The default values for the kernel are
     '''
 
-    def __init__(self, filename, batch_size=500, temperature=1, epochs=30, lr_G=0.007, lr_D=0.007, iternum_d=1, iternum_g=5, momentum=0.99, seed=777, weight_decay=0.04, path_to_directory= Path(os.getcwd()).parent / "experiments" / "local",):
+    def __init__(self, filename, generator, detector, penalty = MMDLossNoPenalty(), batch_size=500, temperature=1, epochs=30, lr_G=0.007, lr_D=0.007, iternum_d=1, iternum_g=5, momentum=0.99, seed=777, weight_decay=0.04, path_to_directory= Path(os.getcwd()).parent / "experiments" / "local",):
         self.storage = locals()
         self.train_history = defaultdict(list)
         self.batch_size = batch_size
@@ -73,6 +74,9 @@ class VGAN:
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
         self.seed = 777
         self.filename = filename
+        self.generator = generator
+        self.detector = detector
+        self.penalty = penalty
         self.logger_subscriber: list[ILogger] = []
 
     def add_logger_subscriber(self, subscriber):
@@ -99,8 +103,8 @@ class VGAN:
 
         n_channels, height, width = x_data.image_shape
 
-        #x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        #x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=1)).to(torch.float32)
+        x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
+        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=0)).to(torch.float32)
         x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.device)
 
         u_subspaces = self.sample_count_subspaces(count)
@@ -129,6 +133,9 @@ class VGAN:
 
         bandwidth.append("recommended bandwidth")
         return pd.DataFrame([results], columns=bandwidth, index=["p-val"])
+
+    def sample_count_subspaces(self, count):
+        return self._generate_subspaces(count)
 
     def __normalize(x, dim=1):
         return x.div(x.norm(2, dim=dim).expand_as(x))
@@ -160,52 +167,41 @@ class VGAN:
             m.weight.data.normal_(0.0, 0.1)
             m.bias.data.fill_(0)
 
-    def fit(self, dataset: IDataset, detector, generator: AbstractGenerator):
+    def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
+        return u_subspaces * x_sample_unflattened
+
+    def setup_device_and_seed(self):
+        torch.manual_seed(self.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(self.seed)
+        elif torch.backends.mps.is_available():
+            torch.mps.manual_seed(self.seed)
+
+    def fit(self, dataset: IDataset, preprocess_fn=normalize_features):
+
         n_channels, width, height = dataset.image_shape
         assert width == height, "Error, need square input images."
 
-        flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
-        x_flattened_normalized = torch.from_numpy(normalize(flattened_images, axis=1)).to(torch.float32)
-        unflattened_images = unflatten_images_3d(x_flattened_normalized, n_channels, height, width)  # Keep on CPU
+        self.setup_device_and_seed()
+        self.generator = self.generator.to(self.device)
+        self.detector = self.detector.to(self.device)
+        self.generator.apply(self.__weights_init)
+        self.detector.apply(self.__weights_init)
 
-        cuda = torch.cuda.is_available()
-        mps = torch.backends.mps.is_available()
-
-        torch.manual_seed(self.seed)
-        if cuda:
-            torch.cuda.manual_seed(self.seed)
-        elif mps:
-            torch.mps.manual_seed(self.seed)
-
-        # MODEL INTIALIZATION#
-        epochs = self.epochs
-        train_size = x_flattened_normalized.shape[0]
-        self.batch_size = min(self.batch_size, train_size)
-
-        detector = detector.to(self.device)
-        generator = generator.to(self.device)
-
-        generator.apply(self.__weights_init)
-        detector.apply(self.__weights_init)
-
-        gen_optimizer = torch.optim.Adadelta(
-            generator.parameters(), lr=self.lr_G, weight_decay=self.weight_decay)
-
-        det_optimizer = torch.optim.Adadelta(
-            detector.parameters(), lr=self.lr_D, weight_decay=self.weight_decay)
-
+        gen_optimizer, det_optimizer = self.setup_optimizer()
         self.generator_optimizer = gen_optimizer.__class__.__name__
         self.detector_optimizer = det_optimizer.__class__.__name__
 
-        loss_function = MMDLossConstrained()
+        data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
+
+        total_training_time = 0.0
+        snapshot_duration = 0.0
+        snapshot_intervals = [int(i * 0.10 * self.epochs) for i in range(1, 11)]
 
         # OPTIMIZATION STUFF
         one = torch.mps.Tensor([1])
         minusone = one * -1
-
-        # DATA LOADER#
-        data_loader = self.__setup_data_loader(unflattened_images, cuda, mps)
-        batch_number = data_loader.__len__()
 
         # BATCH LOOP#
         iternum_d = 1
@@ -213,99 +209,96 @@ class VGAN:
         detector_loss = np.nan
         generator_loss = np.nan
 
-        snapshot_intervals = [int(i * 0.10 * epochs) for i in range(1, 11)]
-
-        # GET NOISE TENSORS#
-        # GET NOISE TENSORS#
-        noise_tensor = self.__setup_noise_tensor(generator_input_shape=generator.noise_dim)
-
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')
 
             # ELM
             if self.__elm == True:
-                for p in detector.get_encoder().parameters():
-                    p.requires_grad = False
+                self.detector.freeze_encoder()
+
             if iternum_d <= self.iternum_d:
                 detector_loss = 0
                 for batch in tqdm(data_loader, leave=False):
-                    # Make sure there is only 1 observation per row.
-                    batch = batch.view(self.batch_size, -1)
-                    if cuda:
-                        batch = batch.cuda()
-                    elif mps:
-                        batch = batch.to(torch.float32).to(
-                            torch.device('mps'))  # float64 not suported with mps
+                    batch = batch.to(self.device, non_blocking=True)
+                    self.batch_size = batch.size(0)
 
                     # GET SUBSPACES AND ENCODING-DECODING
-                    for p in detector.get_decoder().parameters():
-                        p.requires_grad = True
+                    self.detector.unfreeze_decoder()
 
                     batch = batch.view(-1, n_channels, width, height)
                     batch = F.interpolate(batch, size=224, mode='bilinear', align_corners=False)
-                    batch_enc, batch_dec = detector(batch)
+                    batch_enc, batch_dec = self.detector(batch)
+
+                    batch = batch.view(self.batch_size, -1)
+                    batch_dec = batch_dec.view(self.batch_size, -1)
+                    batch_enc = batch_enc.view(self.batch_size, -1)
 
                     with torch.no_grad():
-                        noise_tensor = Variable(noise_tensor.normal_())
-                        fake_subspaces = Variable(generator.sample_subspace_masks(noise_tensor).clone().detach())  # Freeze G
+                        noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
+                        fake_subspaces = self.generator.sample_subspace_masks(noise).clone().detach()
                         fake_subspaces = F.interpolate(fake_subspaces, size=224, mode='bilinear', align_corners=False)
+                        fake_subspaces = fake_subspaces.view(self.batch_size, -1)
 
-                    projected_batch_enc, projected_batch_dec = detector(fake_subspaces*batch)
+                    projected_batch = fake_subspaces*batch
+                    projected_batch = projected_batch.view(self.batch_size, n_channels, 224, 224)
 
-                    L2_distance_batch = self.__distance(batch.view(self.batch_size, -1), batch_dec, 'L2')
+                    projected_batch_enc, projected_batch_dec = self.detector(projected_batch)
 
-                    L2_distance_projected_batch = self.__distance((fake_subspaces*batch).view(self.batch_size, -1), projected_batch_dec, 'L2')
+                    projected_batch = projected_batch.view(self.batch_size, -1)
+                    projected_batch_enc = projected_batch_enc.view(self.batch_size, -1)
+                    projected_batch_dec = projected_batch_dec.view(self.batch_size, -1)
+
+                    L2_distance_batch = self.__distance(
+                        batch,
+                        batch_dec,
+                        'L2'
+                    )
+                    L2_distance_projected_batch = self.__distance(
+                        projected_batch,
+                        projected_batch_dec,
+                        'L2'
+                    )
 
                     # OPTIMIZATION STEP DETECTOR
                     det_optimizer.zero_grad()
-                    batch_loss_D = minusone.to('mps')*(loss_function(batch_enc, projected_batch_enc, fake_subspaces) - .1 *
-                                                       L2_distance_batch - .1*L2_distance_projected_batch)  # Constrained MMD Loss
+                    total_loss, mmd_loss = loss_function(batch_enc, projected_batch_enc, fake_subspaces)
+                    batch_loss_D = minusone.to('mps') * (total_loss - 0.1 * L2_distance_batch - 0.1 * L2_distance_projected_batch)  # Constrained MMD Loss
                     self.bandwidth = loss_function.bandwidth
+
                     batch_loss_D.backward()
                     det_optimizer.step()
-                    detector_loss += float(batch_loss_D.to(
-                        'cpu').detach().numpy())/batch_number
+
+                    detector_loss += float(batch_loss_D.to('cpu').detach().numpy()) / len(data_loader)
+
                 iternum_d += 1
                 iternum_g = 1
 
             elif iternum_g <= self.iternum_g:
                 generator_loss = 0
                 for batch in tqdm(data_loader, leave=False):
-                    # Make sure there is only 1 observation per row.
-                    batch = batch.view(self.batch_size, -1)
-                    if cuda:
-                        batch = batch.cuda()
-                    elif mps:
-                        batch = batch.to(torch.float32).to(
-                            torch.device('mps'))  # float64 not suported with mps
+                    batch = batch.to(self.device, non_blocking=True)
+
                     # GET SUBSPACES AND ENCODING-DECODING
-                    batch_enc, batch_dec = detector(batch)
-                    noise_tensor = Variable(noise_tensor.normal_())
-                    fake_subspaces = Variable(
-                        generator(noise_tensor))  # Unfreeze G
+                    batch_enc, batch_dec = self.detector(batch)
+                    noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
+                    fake_subspaces = self.generator(noise)  # Unfreeze G
                     fake_subspaces.requires_grad = True
-                    projected_batch_enc, projected_batch_dec = detector(
-                        fake_subspaces*batch + torch.less(batch, 1/batch.shape[1])*torch.mean(batch, dim=0))
-                    L2_distance_batch = self.__distance(
-                        batch.view(self.batch_size, -1), batch_dec, 'L2')
-                    L2_distance_projected_batch = self.__distance((fake_subspaces*batch + torch.less(
-                        batch, 1/batch.shape[1])*torch.mean(batch, dim=0)).view(self.batch_size, -1), projected_batch_dec, 'L2')
+                    projected_batch_enc, projected_batch_dec = self.detector(fake_subspaces*batch + torch.less(batch, 1/batch.shape[1])*torch.mean(batch, dim=0))
 
                     # OPTIMIZATION STEP GENERATOR
-                    for p in detector.parameters():
-                        p.requires_grad = False
-                    gen_optimizer.zero_grad()
+                    self.detector.freeze_detector()
 
-                    batch_loss_G = loss_function(
-                        batch_enc, projected_batch_enc, fake_subspaces)  # Constrained MMD Loss
+                    gen_optimizer.zero_grad()
+                    batch_loss_G = loss_function(batch_enc, projected_batch_enc, fake_subspaces)  # Constrained MMD Loss
                     self.bandwidth = loss_function.bandwidth
                     batch_loss_G.backward()
                     gen_optimizer.step()
-                    generator_loss += float(batch_loss_G.to(
-                        'cpu').detach().numpy())/batch_number
+                    generator_loss += float(batch_loss_G.to('cpu').detach().numpy()) / len(data_loader)
+
                 iternum_g += 1
                 if iternum_g > self.iternum_g:
                     iternum_d = 1
+
             # INBETWEEN SNAPSHOTS
             if epoch in snapshot_intervals:
                 self.train_history["training_time"] -= snapshot_duration
@@ -317,22 +310,6 @@ class VGAN:
             print(f"Average loss in the epoch Detector: {detector_loss}")
             self.train_history["generator_loss"].append(generator_loss)
             self.train_history["detector_loss"].append(detector_loss)
-
-        if not self.path_to_directory == None:
-            path_to_directory = Path(self.path_to_directory)
-            if operator.not_(path_to_directory.exists()):
-                os.mkdir(path_to_directory)
-                if operator.not_(Path(path_to_directory/'models').exists()):
-                    os.mkdir(path_to_directory / 'models')
-            run_number = int(len(os.listdir(path_to_directory/'models'))/2)
-            torch.save(generator.state_dict(),
-                       path_to_directory/'models'/f'generator_{run_number}.pt')
-            torch.save(generator.state_dict(),
-                       path_to_directory/'models'/f'detector_{run_number}.pt')
-            self.model_snapshot(path_to_directory, run_number, show=True)
-
-        self.generator = generator
-        self.detector = detector
 
     def _generate_subspaces(self, count):
         generator_input_shape = self.generator.noise_dim
@@ -360,3 +337,24 @@ class VGAN:
 
         shape = (batch_size, *generator_input_shape)
         return torch.empty(shape, dtype=torch.float32, device=self.device)
+
+    def setup_optimizer(self):
+        gen_optimizer = torch.optim.Adadelta(
+            self.generator.parameters(), lr=self.lr_G, weight_decay=self.weight_decay)
+
+        det_optimizer = torch.optim.Adadelta(
+            self.detector.get_trainable_parameters(), lr=self.lr_D, weight_decay=self.weight_decay)
+        return gen_optimizer, det_optimizer
+
+    def setup_data_loader(self, dataset, n_channels, height, width, preprocess_fn=normalize_features,
+                          **preprocess_kwargs):
+        flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
+        x_flattened_preprocessed = torch.from_numpy(preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).to(
+            torch.float32)
+        unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
+        return DataLoader(
+            unflattened_images,
+            batch_size=self.batch_size,
+            shuffle=True,
+            pin_memory=torch.cuda.is_available(),
+        )

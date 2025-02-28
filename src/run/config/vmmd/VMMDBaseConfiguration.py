@@ -4,7 +4,7 @@ from src.utils.preprocessing import normalize_images_col_softmax, normalize_feat
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 
-class BaseConfiguration:
+class VMMDBaseConfiguration:
 
     def __init__(self, lr = 0.001,
                 latent_size = 128,
