@@ -3,10 +3,10 @@ import scipy
 import torch
 from sklearn.preprocessing import normalize
 
-def normalize_images_col(images):
+def normalize_features(images):
     return normalize(images, axis=0)
 
-def normalize_images_row(images):
+def normalize_images(images):
     return normalize(images, axis=1)
 
 def min_max_scaling(x):

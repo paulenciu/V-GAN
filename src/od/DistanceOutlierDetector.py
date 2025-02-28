@@ -2,13 +2,16 @@ import numpy as np
 import torch
 import time
 from src.od.BaseOutlierDetection import BaseOutlierDetector
+from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images
+
 
 class DistanceOutlierDetector(BaseOutlierDetector):
 
-    def __init__(self):
+    def __init__(self, preprocessing_fn):
         self.decision_time = 0.0
         self.subspaces = []
         self.decision_scores = None
+        self.preprocessing_fn = preprocessing_fn
 
     def fit(self, subspaces):
         self.subspaces = subspaces
@@ -16,7 +19,7 @@ class DistanceOutlierDetector(BaseOutlierDetector):
     def decision_score(self, x_test):
         decision_time_start = time.time()
         subspace_min_distance = []
-        max_dist = 10.000 ** 0.5
+        max_dist = self.get_max_distance(x_test)
         for point in x_test:
             min_distance = max_dist
             for subspace in self.subspaces:
@@ -33,3 +36,13 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         return {
             "Model": self.__class__.__name__,
         }
+
+    def get_max_distance(self, x_test):
+        dimensions = 0
+        if self.preprocessing_fn == normalize_features or self.preprocessing_fn == normalize_images_col_softmax:
+            dimensions = x_test.shape[0]
+        elif self.preprocessing_fn == normalize_images:
+            dimensions = x_test.shape[1]
+        else:
+            raise NotImplementedError
+        return dimensions ** 0.5

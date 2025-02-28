@@ -9,7 +9,7 @@ from src.utils.preprocessing import min_max_scaling
 
 class CombinedOutlierDetector(BaseOutlierDetector):
 
-    def __init__(self, vmmd, weight_ensemble=0.5, base_estimators=None, max_n_jobs=4):
+    def __init__(self, vmmd, preprocessing_fn, weight_ensemble=0.5, base_estimators=None, max_n_jobs=4):
         super().__init__()
         self.weight_ensemble = weight_ensemble
         self.weight_distance = 1 - weight_ensemble
@@ -17,9 +17,11 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.ensemble_detector = EnsembleOutlierDetector(
             base_estimators=base_estimators,
             max_n_jobs=max_n_jobs,
-            vmmd=vmmd
+            vmmd=vmmd,
         )
-        self.distance_detector = DistanceOutlierDetector()
+        self.distance_detector = DistanceOutlierDetector(
+            preprocessing_fn=preprocessing_fn
+        )
 
         self.fit_time = 0.0
         self.decision_time = 0.0

@@ -4,7 +4,6 @@ import numpy as np
 import torch
 from src.data.dataset_loader import load_data
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
-from src.utils.preprocessing import normalize_images_col
 from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from torch.nn.functional import interpolate
