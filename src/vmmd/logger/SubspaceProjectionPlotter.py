@@ -74,7 +74,7 @@ class SubspaceProjectionPlotter(ILogger):
                 #axis[i, j + 1].set_title(f"$Projection {j + 1}$", fontsize=fontsize)
                 axis[i, j + 1].axis("off")
 
-            big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u, x_sample_unflattened=image[0].squeeze())
+            big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u, x_sample=image[0].squeeze())
             big_u_image = big_u_image.to(torch.float32).to(device)
 
             axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))

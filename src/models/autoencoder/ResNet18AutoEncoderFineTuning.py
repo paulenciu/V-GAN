@@ -1,7 +1,9 @@
 import torch
+from src.models.generator.modules.BatchDiscrimination import BatchDiscrimination
 from torch import nn
 
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from torch.nn.utils.parametrizations import spectral_norm
 
 
 class ResNet18AutoEncoderFineTuning(nn.Module):
@@ -28,10 +30,15 @@ class ResNet18AutoEncoderFineTuning(nn.Module):
         self.finetune_latent_dim = int(self.pretrained_latent_dim_flattened / 16)
 
         self.encoder_last_layer = nn.Sequential(
-            nn.Linear(self.pretrained_latent_dim_flattened,self.finetune_latent_dim),
+            spectral_norm(
+                nn.Linear(self.pretrained_latent_dim_flattened, self.finetune_latent_dim)
+            ),
+            BatchDiscrimination(self.finetune_latent_dim, self.finetune_latent_dim),
+            nn.Linear(self.finetune_latent_dim + 1, self.finetune_latent_dim)
         )
         self.decoder_last_layer = nn.Sequential(
-            nn.Linear(self.finetune_latent_dim, self.pretrained_latent_dim_flattened),
+            BatchDiscrimination(self.finetune_latent_dim, self.finetune_latent_dim),
+            nn.Linear(self.finetune_latent_dim + 1, self.pretrained_latent_dim_flattened)
         )
 
     def forward(self, x):
@@ -46,6 +53,12 @@ class ResNet18AutoEncoderFineTuning(nn.Module):
         x_reconstructed = self.pretrained_decoder(x_decoder_input)
 
         return x_encoded_flat, x_reconstructed
+
+    def encode(self, x):
+        x_encoded = self.pretrained_encoder(x)
+        x_flat = x_encoded.flatten(1)
+        x_encoded_flat = self.encoder_last_layer(x_flat)
+        return x_encoded_flat
 
     def freeze_encoder(self):
         for p in self.encoder_last_layer.parameters():

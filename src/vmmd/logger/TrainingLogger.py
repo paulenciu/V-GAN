@@ -10,7 +10,8 @@ from sklearn.preprocessing import normalize
 
 from src.data import IDataset
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
-from src.vmmd import VMMD
+from src.vgan.VGAN import VGAN
+from src.vmmd.VMMD import VMMD
 from src.vmmd.MMDLossConstrained import MMDLossConstrained
 from src.vmmd.logger.ILogger import ILogger
 
@@ -83,16 +84,30 @@ class TrainingLogger(ILogger):
 
     def get_params(self) -> dict:
         vmmd = self.vmmd
-        return {'batch size': vmmd.batch_size, 'epochs': vmmd.epochs, 'lr_g': vmmd.lr,
-                'momentum': vmmd.momentum, 'weight decay': vmmd.weight_decay,
-                'batch_size': vmmd.batch_size, 'seed': vmmd.seed,
-                'generator optimizer': vmmd.generator_optimizer,
-                'generator name': vmmd.generator.__class__.__name__,
-                'image shape': vmmd.generator.img_shape,
-                'noise dim': vmmd.generator.noise_dim,
-                'pretrained_autoencoder': vmmd.encoder.__class__.__name__,
-                'mmd_penalty': vmmd.penalty.__class__.__name__,
-                'mmd_penalty_stats': vmmd.penalty.get_stats()}
+
+        if isinstance(vmmd, VMMD):
+            return {'batch size': vmmd.batch_size, 'epochs': vmmd.epochs, 'lr_g': vmmd.lr,
+                    'momentum': vmmd.momentum, 'weight decay': vmmd.weight_decay,
+                    'batch_size': vmmd.batch_size, 'seed': vmmd.seed,
+                    'generator optimizer': vmmd.generator_optimizer,
+                    'generator name': vmmd.generator.__class__.__name__,
+                    'image shape': vmmd.generator.img_shape,
+                    'noise dim': vmmd.generator.noise_dim,
+                    'pretrained_autoencoder': vmmd.encoder.__class__.__name__,
+                    'mmd_penalty': vmmd.penalty.__class__.__name__,
+                    'mmd_penalty_stats': vmmd.penalty.get_stats()}
+        elif isinstance(vmmd, VGAN):
+            return {'batch size': vmmd.batch_size, 'epochs': vmmd.epochs, 'lr_g': vmmd.lr_G, 'lr_d': vmmd.lr_D,
+                    'momentum': vmmd.momentum, 'weight decay': vmmd.weight_decay,
+                    'batch_size': vmmd.batch_size, 'seed': vmmd.seed,
+                    'generator optimizer': vmmd.generator_optimizer,
+                    'generator name': vmmd.generator.__class__.__name__,
+                    'image shape': vmmd.generator.img_shape,
+                    'noise dim': vmmd.generator.noise_dim,
+                    'autoencoder': vmmd.detector.__class__.__name__,
+                    'autoencoder_latent_size': vmmd.detector.finetune_latent_dim,
+                    'mmd_penalty': vmmd.penalty.__class__.__name__,
+                    'mmd_penalty_stats': vmmd.penalty.get_stats()}
 
     def __update_generator_loss(self, run_number=0):
         pd.DataFrame(self.vmmd.train_history["generator_loss"]).to_csv(
@@ -118,14 +133,19 @@ class TrainingLogger(ILogger):
         train_history = self.vmmd.train_history
         plt.style.use('ggplot')
         generator_y = train_history['generator_loss']
-        mmd_y = train_history['mmd_loss']
-        training_time = train_history['training_time']
-
         x = np.linspace(1, len(generator_y), len(generator_y))
         fig, ax = plt.subplots()
 
+        if isinstance(self.vmmd, VGAN):
+            detector_y = train_history['detector_loss']
+            ax.plot(x, detector_y, color="red", label="Detector loss", linewidth=2)
+
+        else:
+            mmd_y = train_history['mmd_loss']
+            ax.plot(x, mmd_y, color="red", label="MMD loss", linewidth=2)
+
+        training_time = train_history['training_time']
         ax.plot(x, generator_y, color="cornflowerblue", label="Generator loss", linewidth=2)
-        ax.plot(x, mmd_y, color="red", label="MMD loss", linewidth=2)
 
         ax.plot([], [], ' ', label="pval: " + str(pval_of_recommended_bw))
         ax.plot([], [], ' ', label="mmd: " + str(mmd_loss))
@@ -153,6 +173,7 @@ class TrainingLogger(ILogger):
         u_subspaces = self.vmmd.sample_count_subspaces(count)
         x_sample = x_sample.view(-1, n_channels, height, width)
         ux_sample = self.vmmd.apply_subspaces_operator(x_sample, u_subspaces)
+
 
         x_sample_embedded = self.vmmd.encode(x_sample)
         ux_sample_embedded = self.vmmd.encode(ux_sample)

@@ -5,6 +5,7 @@ from pyod.models.lunar import LUNAR
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
 
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
+from src.run.config.vgan.VGANBaseConfiguration import VGANBaseConfiguration
 from src.run.config.vgan.VGANTestConfiguration import VGANTestConfiguration
 from src.run.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.utils.preprocessing import normalize_features
@@ -30,7 +31,14 @@ if __name__ == '__main__':
     configure_environment()
 
     configs = [
-        VGANTestConfiguration()
+        VGANBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            n_subspace_sample=100,
+            lr_g=0.5,
+            lr_d=0.5,
+            epochs=100,
+        )
     ]
 
     for i, config in enumerate(configs):

@@ -1,3 +1,4 @@
+from src.models.autoencoder.ResNet18AutoEncoderFineTuning import ResNet18AutoEncoderFineTuning
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_features
@@ -23,7 +24,7 @@ class VGANBaseConfiguration:
                  image_size_generator=(32, 32),
                  image_size_od=(32, 32),
                  path_to_directory="../experiments/remote",
-                 detector=None,
+                 detector=ResNet18AutoEncoderFineTuning(),
                  generator=None,
                  n_subspace_sample=None,
                  filename=None,
@@ -59,7 +60,8 @@ class VGANBaseConfiguration:
             f"_{self.preprocessing_fn.__name__}"
             f"_train{self.image_size_generator[0]}"
             f"_od{self.image_size_od[0]}"
-            f"_lr={self.lr}"
+            f"_lr_d={self.lr_d}"
+            f"_lr_g={self.lr_g}"
             f"_bs={self.batch_size}"
             f"_ep={self.epochs}"
         )
