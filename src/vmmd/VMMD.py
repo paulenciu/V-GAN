@@ -12,6 +12,7 @@ from src.data.IDataset import IDataset
 from sklearn.preprocessing import normalize
 from src.utils.EMA import EMA
 from src.utils.preprocessing import normalize_features
+from torch.nn.functional import interpolate
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -107,12 +108,12 @@ class VMMD(ABC):
         n_channels, height, width = x_data.image_shape
 
         x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=0)).to(torch.float32)
+        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=1)).to(torch.float32)
         x_sample = torch.Tensor(pd.DataFrame(x_flattened_normalized).sample(count).to_numpy()).to(self.device)
-
-        u_subspaces = self.sample_count_subspaces(count)
         x_sample = x_sample.view(-1, n_channels, height, width)
-        ux_sample = self.apply_subspaces_operator(x_sample, u_subspaces)
+
+        u_mappings = self.sample_count_subspaces(count).to(torch.float32)
+        ux_sample = self.apply_subspaces_operator(x_sample, u_mappings)
 
         x_sample_embedded = self.encode(x_sample)
         ux_sample_embedded = self.encode(ux_sample)
@@ -121,7 +122,7 @@ class VMMD(ABC):
             bandwidth = [bandwidth]
 
         mmd_loss = MMDLossConstrained()
-        mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
+        mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_mappings * 1)
         self.bandwidth = mmd_loss.bandwidth
 
         bw = self.bandwidth.item()
@@ -138,6 +139,11 @@ class VMMD(ABC):
         return pd.DataFrame([results], columns=bandwidth, index=["p-val"])
 
     def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
+        u_subspaces = u_subspaces.to(torch.float32)
+
+        if x_sample_unflattened.shape[2] != u_subspaces.shape[2]:
+            u_subspaces = interpolate(u_subspaces, size=x_sample_unflattened.shape[2], mode="nearest")
+
         return u_subspaces * x_sample_unflattened
 
     def encode(self, x):
@@ -188,7 +194,7 @@ class VMMD(ABC):
 
         total_training_time = 0.0
         snapshot_duration = 0.0
-        snapshot_intervals = [int(i * 0.10 * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(1 * self.epochs) for i in range(1, 11)]
 
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')
@@ -202,6 +208,7 @@ class VMMD(ABC):
 
                 noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
                 u_mappings = self.generator.sample_subspace_masks(noise)
+
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
 
                 embedded_batch = self.encode(batch)

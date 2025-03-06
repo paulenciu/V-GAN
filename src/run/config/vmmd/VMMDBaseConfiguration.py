@@ -19,6 +19,7 @@ class VMMDBaseConfiguration:
                 n_channels = 3,
                 preprocessing_fn = normalize_features,
                 image_size_generator = (32, 32),
+                image_size_train=(32, 32),
                 image_size_od = (32, 32),
                 path_to_directory = "../experiments/remote",
                 encoder = IdentityEncoder(),
@@ -26,7 +27,8 @@ class VMMDBaseConfiguration:
                 n_subspace_sample = None,
                 filename=None,
                 dataset_type=None,
-                dateset_category=None):
+                dateset_category=None,
+                add_to_title: str=None):
 
         self.generator = generator or GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
         self.encoder = encoder
@@ -47,15 +49,19 @@ class VMMDBaseConfiguration:
         self.n_subspace_sample = n_subspace_sample or 100
         self.dataset_type = dataset_type
         self.dateset_category = dateset_category
-        self.filename = filename or self.create_filename()
+        self.image_size_train = image_size_train
+        self.filename = filename or self.create_filename(add_to_title)
 
-    def create_filename(self):
+    def create_filename(self, add_to_title: str = ""):
         return (f"{self.dataset_type.name}"
                 f"_{self.preprocessing_fn.__name__}"
-                f"_train{self.image_size_generator[0]}"
+                f"gen{self.image_size_generator[0]}"
                 f"_od{self.image_size_od[0]}"
+                f"train{self.image_size_train[0]}"
                 f"_lr={self.lr}"
                 f"_bs={self.batch_size}"
-                f"_ep={self.epochs}")
+                f"_ep={self.epochs}"
+                f"_{add_to_title}")
+
 
 
