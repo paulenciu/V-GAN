@@ -23,6 +23,7 @@ class DatasetType(Enum):
     # Define enum members
     CIFAR10 = Cifar10Dataset, "../datasets/cifar10"
     OCCCIFAR10 = OCCCifar10, "../datasets/cifar10"
+    OCCCIFAR100 = OCCCIFAR100, "../datasets/cifar100"
     OCCFMNIST = OCCFMNIST, "../datasets/fashion_mnist"
     OCCMNIST = OCCMNIST, "../datasets/mnist"
     FASHION_MNIST = FashionMNISTDataset, "../datasets/fashion_mnist"
