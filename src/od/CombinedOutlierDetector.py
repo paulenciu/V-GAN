@@ -38,7 +38,7 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.ensemble_detector.fit(subspaces, x_train)
 
         print("Distance Outlier Detector Fit")
-        self.distance_detector.fit(subspaces)
+        self.distance_detector.fit(subspaces, x_train)
 
         self.fit_time = time.time() - fit_start
         return self
@@ -47,8 +47,6 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         ensemble_scores = self.ensemble_detector.decision_score(x_test)
         distance_scores = self.distance_detector.decision_score(x_test)
 
-        ensemble_scores = min_max_scaling(ensemble_scores)
-        distance_scores = min_max_scaling(distance_scores)
         decision_scores_list = []
         description_list = []
 

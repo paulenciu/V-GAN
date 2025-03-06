@@ -13,7 +13,7 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         self.decision_scores = None
         self.preprocessing_fn = preprocessing_fn
 
-    def fit(self, subspaces):
+    def fit(self, subspaces, x_train):
         self.subspaces = subspaces
 
     def decision_score(self, x_test):
@@ -28,9 +28,12 @@ class DistanceOutlierDetector(BaseOutlierDetector):
             subspace_min_distance.append(min_distance)
 
         self.decision_scores = torch.Tensor(subspace_min_distance) / max_dist
-        self.decision_scores.cpu().numpy()
+        self.decision_scores = self.scale_scores(self.decision_scores).cpu().numpy()
         self.decision_time = time.time() - decision_time_start
-        return self.decision_scores.cpu().numpy()
+        return self.decision_scores
+
+    def scale_scores(self, x):
+        return 2 * torch.nn.functional.sigmoid(x) - 1
 
     def get_model_description(self):
         return {

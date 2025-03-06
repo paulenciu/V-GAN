@@ -12,21 +12,21 @@ from sklearn.metrics import average_precision_score, f1_score
 
 class OutlierDetectionExperiment:
 
-    def __init__(self, vmmd, od_model, dataset_type, category, image_size_generator, standardize_data=False, image_size_od=None, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
+    def __init__(self, vmmd, od_model, dataset_type, category, image_size_train, standardize_data=False, image_size_od=None, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
         self.vmmd = vmmd
         self.vmmd_od = VMMDOD(vmmd)
         self.vmmd_wrapper = VMMDWrapper(vmmd)
         self.dataset_type = dataset_type
         self.category = category
-        self.image_size_generator = image_size_generator
-        self.image_size_od = image_size_od or image_size_generator
+        self.image_size_train = image_size_train
+        self.image_size_od = image_size_od or image_size_train
         self.standardize_data = standardize_data
         self.od_model = od_model
         self.preprocessing_fn = preprocessing_fn
         self.n_subspace_sample = n_subspaces_sample
 
     def fit(self):
-        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_generator, standardize=self.standardize_data)
+        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_train, standardize=self.standardize_data)
         self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
         del x_train
 
@@ -36,16 +36,18 @@ class OutlierDetectionExperiment:
         self.vmmd.approx_subspace_dist(subspace_count=self.n_subspace_sample)
         subspaces = self.vmmd.subspaces
 
-        # Preparing subspaces for OD
-        subspaces = interpolate(subspaces, size=self.image_size_od[0], mode='bilinear', align_corners=False)
+        # PREPARE SUBSPACE FOR OD
+        subspaces = interpolate(subspaces, size=self.image_size_od[0], mode='nearest')
         subspaces = subspaces.view(subspaces.shape[0], -1)
         print("Number of unique subspaces:", len(subspaces), "/", self.n_subspace_sample)
         subspaces = np.array(subspaces, dtype=int)
-        # TRAIN OUTLIER DETECTION METHOD
+
+        # PREPARE DATA FOR OD
         x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
                             standardize=self.standardize_data)
         x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
         x_train_flattened = self.preprocessing_fn(x_train_flattened)
+
         self.od_model.fit(subspaces, x_train_flattened)
         del x_train_flattened
 

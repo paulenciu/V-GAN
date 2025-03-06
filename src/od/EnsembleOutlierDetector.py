@@ -2,6 +2,7 @@ import time
 import numpy as np
 import random
 
+import torch.nn.functional
 from sel_suod.models.base import sel_SUOD
 from src.data.dataset_loader import load_data
 
@@ -34,15 +35,25 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
         self.decision_scores_ens = None
         self.vmmd = vmmd
         self.n_subspaces = None
+        self.ens_train_min = None
+        self.ens_train_max = None
 
     def fit(self, subspaces, x):
-        # Convert to float32 to save memory
         x = x.astype(np.float32)
 
         self.ensemble_model = sel_SUOD(base_estimators=self.base_estimators, subspaces=subspaces, n_jobs=self.max_n_jobs, bps_flag=False, approx_flag_global=False)
         fit_time_start = time.time()
         self.ensemble_model.fit(x)
         self.train_time = time.time() - fit_time_start
+
+        #NORMALIZE SCORES USING TRAINING DATA STATISTICS
+        train_scores = self.ensemble_model.decision_function(x)
+        train_scores_agg = aggregator_funct(
+            train_scores, weights=self.vmmd.proba, type="avg"
+        )
+
+        self.ens_train_min = np.min(train_scores_agg)
+        self.ens_train_max = np.max(train_scores_agg)
         self.n_subspaces = subspaces.shape[0]
 
     def decision_score(self, x, batch_size=512):
@@ -63,10 +74,12 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
                     type="avg"
             )
 
-
         self.decision_time = time.time() - decision_time_start
         self.decision_scores_ens = decision_scores_ens
-        return decision_scores_ens
+        return self.decision_scores_ens
+
+    def scale_scores(self, x):
+        return 2 * (1 / (1 + np.exp(-x))) - 1
 
     def get_model_description(self):
         return {
