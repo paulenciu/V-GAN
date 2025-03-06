@@ -75,11 +75,12 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
             )
 
         self.decision_time = time.time() - decision_time_start
-        self.decision_scores_ens = decision_scores_ens
+        self.decision_scores_ens = self.scale_scores(decision_scores_ens)
+
         return self.decision_scores_ens
 
     def scale_scores(self, x):
-        return 2 * (1 / (1 + np.exp(-x))) - 1
+        return 1 / (1 + np.exp(-(x - self.ens_train_max)))
 
     def get_model_description(self):
         return {

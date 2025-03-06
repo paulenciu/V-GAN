@@ -3,8 +3,9 @@ import os
 
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
+from src.data.dataset.occ.OCCCifar10 import OCCCifar10
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
-
+from src.models.autoencoder.ResNet18AutoEncoderFineTuneV2 import ResNet18AutoEncoderFineTuneV2
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
 from src.run.config.vgan.VGANBaseConfiguration import VGANBaseConfiguration
 from src.run.config.vgan.VGANTestConfiguration import VGANTestConfiguration
@@ -32,6 +33,29 @@ def configure_environment():
 if __name__ == '__main__':
     configure_environment()
     configs = [
+        # VGANBaseConfiguration(
+        #     dataset_type=DatasetType.OCCCIFAR10,
+        #     dateset_category="cat",
+        #     detector=ResNet18AutoEncoderFineTuneV2(),
+        #     iternum_g=10,
+        #     iternum_d=5,
+        #     epochs=200,
+        #     lr_g=0.0001,
+        #     lr_d=0.0001,
+        # ),
+        VMMDTestConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category=["bottle"],
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category=["bottle"],
+            image_size_generator=(64, 64),
+            image_size_train=(256, 256),
+            image_size_od=(256, 256),
+            preprocessing_fn=normalize_images,
+            n_subspace_sample=100,
+        ),
         VMMDBaseConfiguration(
             dataset_type=DatasetType.MVTEC_AD,
             dateset_category=["bottle"],
@@ -41,6 +65,7 @@ if __name__ == '__main__':
             preprocessing_fn=normalize_features,
             n_subspace_sample=100,
         ),
+
         # VMMDBaseConfiguration(
         #     dataset_type=DatasetType.MVTEC_AD,
         #     dateset_category=["bottle"],
@@ -72,7 +97,7 @@ if __name__ == '__main__':
             encoder=config.encoder, generator=config.generator
         )
 
-        # vgan = VGAN(
+        # vmmd = VGAN(
         #     epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
         #     lr_G=config.lr_g, lr_D=config.lr_d, penalty=config.penalty, filename=config.filename,
         #     batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
@@ -82,7 +107,7 @@ if __name__ == '__main__':
         experiement = OutlierDetectionExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[LOF()],
+                base_estimators=[LUNAR()],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),

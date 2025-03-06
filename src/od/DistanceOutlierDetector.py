@@ -12,9 +12,12 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         self.subspaces = []
         self.decision_scores = None
         self.preprocessing_fn = preprocessing_fn
+        self.train_score_max = None
 
     def fit(self, subspaces, x_train):
         self.subspaces = subspaces
+        train_decision_scores = self.decision_score(x_train)
+        self.train_score_max = np.max(train_decision_scores)
 
     def decision_score(self, x_test):
         decision_time_start = time.time()
@@ -33,7 +36,11 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         return self.decision_scores
 
     def scale_scores(self, x):
-        return 2 * torch.nn.functional.sigmoid(x) - 1
+
+        if self.train_score_max is None:
+            return x
+
+        return torch.nn.functional.sigmoid(x - self.train_score_max)
 
     def get_model_description(self):
         return {
@@ -41,7 +48,6 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         }
 
     def get_max_distance(self, x_test):
-        dimensions = 0
         if self.preprocessing_fn == normalize_features or self.preprocessing_fn == normalize_images_col_softmax:
             dimensions = x_test.shape[0]
         elif self.preprocessing_fn == normalize_images:
