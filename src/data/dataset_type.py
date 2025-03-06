@@ -7,6 +7,7 @@ from src.data.dataset.Cifar10Dataset import Cifar10Dataset
 from src.data.dataset.FashionMNISTDataset import FashionMNISTDataset
 from src.data.dataset.MVTecADDataset import MVTecADDataset
 from src.data.dataset.occ.OCCCifar10 import OCCCifar10
+from src.data.dataset.occ.OCCCifar100 import OCCCifar100
 from src.data.dataset.occ.OCCDataset import OCCDataset
 from src.data.dataset.SyntheticImageDataset import SyntheticImageDataset
 from src.data.dataset.occ.OCCFMNIST import OCCFMNIST
