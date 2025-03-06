@@ -1,6 +1,7 @@
 import torch
 from collections import defaultdict
 import torch_two_sample as tts
+from src.vmmd.MMDLossConstrained import MMDLossConstrained, RBF
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
@@ -117,12 +118,11 @@ class VGAN:
         if type(bandwidth) == float:
             bandwidth = [bandwidth]
 
-        mmd_loss = MMDLossConstrainedFixKernel()
+        mmd_loss = MMDLossConstrained()
         mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces * 1)
-#        self.bandwidth = mmd_loss.bandwidth
+        self.bandwidth = mmd_loss.bandwidth
 
-        #bw = self.bandwidth.item()
-        bw = 7
+        bw = self.bandwidth.item()
         print("Bw: ", bw)
         mmd = tts.MMDStatistic(count, count)
         _, distances = mmd(x_sample_embedded, ux_sample_embedded, alphas=[bw], ret_matrix=True)
@@ -211,8 +211,8 @@ class VGAN:
         self.detector_optimizer = det_optimizer.__class__.__name__
 
         data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)
-        #loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
-        loss_function = MMDLossConstrainedFixKernel()
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
+        #loss_function = MMDLossConstrainedFixKernel()
 
         total_training_time = 0.0
         snapshot_duration = 0.0
@@ -232,64 +232,7 @@ class VGAN:
             print(f'\rEpoch {epoch} of {self.epochs}')
             epoch_start = time.time()
 
-            # ELM
-            if self.__elm == True:
-                self.detector.freeze_encoder()
-
-            if iternum_d <= self.iternum_d:
-                detector_loss = 0
-                for batch in tqdm(data_loader, leave=False):
-                    batch = batch.to(self.device, non_blocking=True)
-
-                    batch = batch.view(batch.size(0), -1)
-                    self.batch_size = batch.size(0)
-
-                    # GET SUBSPACES AND ENCODING-DECODING
-                    self.detector.unfreeze_decoder()
-
-                    with torch.no_grad():
-                        noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
-                        fake_subspaces = self.generator.sample_subspace_masks(noise).clone().detach()
-                        fake_subspaces = fake_subspaces.view(self.batch_size, -1)
-
-                    projected_batch = self.apply_subspaces_operator(fake_subspaces, batch)
-
-                    batch = batch.view(self.batch_size, n_channels, height, width)
-#                    batch = F.interpolate(batch, size=224, mode='bilinear', align_corners=False)
-                    batch = F.interpolate(batch, size=224, mode='nearest')
-
-                    batch_enc, batch_dec = self.detector(batch)
-                    batch = batch.view(self.batch_size, -1)
-                    batch_dec = batch_dec.view(self.batch_size, -1)
-                    batch_enc = batch_enc.view(self.batch_size, -1)
-
-                    projected_batch = projected_batch.view(self.batch_size, n_channels, height, width)
-                    #projected_batch = F.interpolate(projected_batch, size=224, mode='bilinear', align_corners=False)
-                    projected_batch = F.interpolate(projected_batch, size=224, mode='nearest')
-
-                    projected_batch_enc, projected_batch_dec = self.detector(projected_batch)
-                    projected_batch = projected_batch.view(self.batch_size, -1)
-                    projected_batch_enc = projected_batch_enc.view(self.batch_size, -1)
-                    projected_batch_dec = projected_batch_dec.view(self.batch_size, -1)
-
-                    L2_distance_batch = self.__distance(batch, batch_dec, 'L2')
-                    L2_distance_projected_batch = self.__distance(projected_batch, projected_batch_dec, 'L2')
-
-                    # OPTIMIZATION STEP DETECTOR
-                    det_optimizer.zero_grad()
-                    total_loss, mmd_loss = loss_function(batch_enc, projected_batch_enc, fake_subspaces)
-                    batch_loss_D = minusone.to(self.device) * (total_loss - 0.1 * L2_distance_batch - 0.1 * L2_distance_projected_batch)  # Constrained MMD Loss
-                    #self.bandwidth = loss_function.bandwidth
-
-                    batch_loss_D.backward()
-                    det_optimizer.step()
-
-                    detector_loss += float(batch_loss_D.to('cpu').detach().numpy()) / len(data_loader)
-
-                iternum_d += 1
-                iternum_g = 1
-
-            elif iternum_g <= self.iternum_g:
+            if iternum_g <= self.iternum_g:
                 generator_loss = 0
                 for batch in tqdm(data_loader, leave=False):
                     batch = batch.to(self.device, non_blocking=True)
@@ -318,15 +261,72 @@ class VGAN:
                     self.detector.freeze_detector()
 
                     gen_optimizer.zero_grad()
-                    total_batch_loss_G, mmd_loss = loss_function(batch_enc, projected_batch_enc, fake_subspaces)  # Constrained MMD Loss
-#                    self.bandwidth = loss_function.bandwidth
-                    total_batch_loss_G.backward()
+                    total_batch_loss_G, mmd_loss = loss_function(batch_enc, projected_batch_enc, fake_subspaces)
+                    self.bandwidth = loss_function.bandwidth
+                    with torch.autograd.detect_anomaly():
+                        total_batch_loss_G.backward()
+
                     gen_optimizer.step()
                     generator_loss += float(total_batch_loss_G.to('cpu').detach().numpy()) / len(data_loader)
 
                 iternum_g += 1
                 if iternum_g > self.iternum_g:
                     iternum_d = 1
+
+            elif iternum_d <= self.iternum_d:
+                detector_loss = 0
+                for batch in tqdm(data_loader, leave=False):
+                    batch = batch.to(self.device, non_blocking=True)
+
+                    batch = batch.view(batch.size(0), -1)
+                    self.batch_size = batch.size(0)
+
+                    # GET SUBSPACES AND ENCODING-DECODING
+                    self.detector.unfreeze_decoder()
+
+                    with torch.no_grad():
+                        noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
+                        fake_subspaces = self.generator.sample_subspace_masks(noise).clone().detach()
+                        fake_subspaces = fake_subspaces.view(self.batch_size, -1)
+
+                    projected_batch = self.apply_subspaces_operator(fake_subspaces, batch)
+
+                    batch = batch.view(self.batch_size, n_channels, height, width)
+                    batch = F.interpolate(batch, size=224, mode='bilinear', align_corners=False)
+                    #batch = F.interpolate(batch, size=224, mode='nearest')
+
+                    batch_enc, batch_dec = self.detector(batch)
+                    batch = batch.view(self.batch_size, -1)
+                    batch_dec = batch_dec.view(self.batch_size, -1)
+                    batch_enc = batch_enc.view(self.batch_size, -1)
+
+                    projected_batch = projected_batch.view(self.batch_size, n_channels, height, width)
+                    projected_batch = F.interpolate(projected_batch, size=224, mode='bilinear', align_corners=False)
+                    #projected_batch = F.interpolate(projected_batch, size=224, mode='nearest')
+
+                    projected_batch_enc, projected_batch_dec = self.detector(projected_batch)
+                    projected_batch = projected_batch.view(self.batch_size, -1)
+                    projected_batch_enc = projected_batch_enc.view(self.batch_size, -1)
+                    projected_batch_dec = projected_batch_dec.view(self.batch_size, -1)
+
+                    L2_distance_batch = self.__distance(batch, batch_dec, 'L2')
+                    L2_distance_projected_batch = self.__distance(projected_batch, projected_batch_dec, 'L2')
+
+                    # OPTIMIZATION STEP DETECTOR
+                    det_optimizer.zero_grad()
+                    total_loss, mmd_loss = loss_function(batch_enc, projected_batch_enc, fake_subspaces)
+                    batch_loss_D = minusone.to(self.device) * (total_loss - 0.1 * L2_distance_batch - 0.1 * L2_distance_projected_batch)  # Constrained MMD Loss
+
+                    self.bandwidth = loss_function.bandwidth
+
+                    batch_loss_D.backward()
+                    det_optimizer.step()
+
+                    detector_loss += float(batch_loss_D.to('cpu').detach().numpy()) / len(data_loader)
+
+                iternum_d += 1
+                iternum_g = 1
+
 
             epoch_duration = time.time() - epoch_start
             total_training_time += epoch_duration
@@ -367,11 +367,11 @@ class VGAN:
         return torch.empty(shape, dtype=torch.float32, device=self.device)
 
     def setup_optimizer(self):
-        gen_optimizer = torch.optim.Adadelta(
-            self.generator.parameters(), lr=self.lr_G, weight_decay=self.weight_decay)
+        gen_optimizer = torch.optim.Adam(
+            self.generator.parameters(), lr=self.lr_G, weight_decay=self.weight_decay, betas=(0.5, 0.999))
 
-        det_optimizer = torch.optim.Adadelta(
-            self.detector.get_trainable_parameters(), lr=self.lr_D, weight_decay=self.weight_decay)
+        det_optimizer = torch.optim.Adam(
+            self.detector.get_trainable_parameters(), lr=self.lr_D, weight_decay=self.weight_decay, betas=(0.5, 0.999))
         return gen_optimizer, det_optimizer
 
     def setup_data_loader(self, dataset, n_channels, height, width, preprocess_fn=normalize_features,

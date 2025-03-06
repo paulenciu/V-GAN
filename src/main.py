@@ -1,6 +1,7 @@
 import torch
 import os
 
+from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
 
@@ -8,7 +9,8 @@ from src.od.CombinedOutlierDetector import CombinedOutlierDetector
 from src.run.config.vgan.VGANBaseConfiguration import VGANBaseConfiguration
 from src.run.config.vgan.VGANTestConfiguration import VGANTestConfiguration
 from src.run.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
-from src.utils.preprocessing import normalize_features
+from src.run.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
+from src.utils.preprocessing import normalize_features, normalize_images_col_softmax, normalize_images
 from src.vgan.VGAN import VGAN
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
@@ -29,46 +31,64 @@ def configure_environment():
 
 if __name__ == '__main__':
     configure_environment()
-
     configs = [
-        VGANBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category=["bottle"],
+            image_size_generator=(64, 64),
+            image_size_train=(256, 256),
+            image_size_od=(256, 256),
+            preprocessing_fn=normalize_features,
             n_subspace_sample=100,
-            lr_g=0.5,
-            lr_d=0.5,
-            epochs=100,
-        )
+        ),
+        # VMMDBaseConfiguration(
+        #     dataset_type=DatasetType.MVTEC_AD,
+        #     dateset_category=["bottle"],
+        #     image_size_generator=(64, 64),
+        #     image_size_train=(224, 224),
+        #     image_size_od=(224, 224),
+        #     epochs=2000,
+        #     preprocessing_fn=normalize_images,
+        # ),
+        # VMMDBaseConfiguration(
+        #     dataset_type=DatasetType.MVTEC_AD,
+        #     dateset_category=["Trouser"],
+        #     image_size_generator=(64, 64),
+        #     image_size_train=(224, 224),
+        #     image_size_od=(224, 224),
+        #     epochs=2000,
+        #     preprocessing_fn=normalize_features,
+        # ),
     ]
 
     for i, config in enumerate(configs):
 
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
 
-        # vmmd = VMMDDiagonal1Channel(
-        #     epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
-        #     lr=config.lr, penalty=config.penalty, filename=config.filename,
-        #     batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-        #     encoder=config.encoder, generator=config.generator
-        # )
-
-        vgan = VGAN(
+        vmmd = VMMDDiagonal1Channel(
             epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
-            lr_G=config.lr_g, lr_D=config.lr_d, penalty=config.penalty, filename=config.filename,
+            lr=config.lr, penalty=config.penalty, filename=config.filename,
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-            detector=config.detector, generator=config.generator
+            encoder=config.encoder, generator=config.generator
         )
 
+        # vgan = VGAN(
+        #     epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
+        #     lr_G=config.lr_g, lr_D=config.lr_d, penalty=config.penalty, filename=config.filename,
+        #     batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
+        #     detector=config.detector, generator=config.generator, iternum_g=config.iternum_g, iternum_d=config.iternum_d,
+        # )
+
         experiement = OutlierDetectionExperiment(
-            vmmd=vgan,
+            vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[LUNAR()],
-                vmmd=vgan, max_n_jobs=1,
+                base_estimators=[LOF()],
+                vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
             dataset_type=config.dataset_type,
             category=config.dateset_category,
-            image_size_generator=config.image_size_generator,
+            image_size_train=config.image_size_train,
             image_size_od=config.image_size_od,
             standardize_data=config.standardize_data,
             preprocessing_fn=config.preprocessing_fn,

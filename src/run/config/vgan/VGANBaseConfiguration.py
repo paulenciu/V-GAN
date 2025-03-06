@@ -20,6 +20,8 @@ class VGANBaseConfiguration:
                  standardize_data=False,
                  seed=333,
                  n_channels=3,
+                 iternum_g = 1,
+                 iternum_d = 10,
                  preprocessing_fn=normalize_features,
                  image_size_generator=(32, 32),
                  image_size_od=(32, 32),
@@ -51,6 +53,8 @@ class VGANBaseConfiguration:
         self.n_subspace_sample = n_subspace_sample or 100
         self.dataset_type = dataset_type
         self.dateset_category = dateset_category
+        self.iternum_g = iternum_g
+        self.iternum_d = iternum_d
         self.filename = filename or self.create_filename()
 
     def create_filename(self):
@@ -62,6 +66,8 @@ class VGANBaseConfiguration:
             f"_od{self.image_size_od[0]}"
             f"_lr_d={self.lr_d}"
             f"_lr_g={self.lr_g}"
+            f"iternum_d={self.iternum_d}"
+            f"iternum_g={self.iternum_g}"
             f"_bs={self.batch_size}"
             f"_ep={self.epochs}"
         )

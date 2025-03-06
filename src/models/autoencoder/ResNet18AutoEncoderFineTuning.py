@@ -1,9 +1,7 @@
 import torch
-from src.models.generator.modules.BatchDiscrimination import BatchDiscrimination
 from torch import nn
 
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
-from torch.nn.utils.parametrizations import spectral_norm
 
 
 class ResNet18AutoEncoderFineTuning(nn.Module):
@@ -27,18 +25,17 @@ class ResNet18AutoEncoderFineTuning(nn.Module):
 
         self.pretrained_latent_shape = torch.Size([512, 7, 7])
         self.pretrained_latent_dim_flattened = 512 * 7 * 7
-        self.finetune_latent_dim = int(self.pretrained_latent_dim_flattened / 16)
+        self.finetune_latent_dim = int(self.pretrained_latent_dim_flattened / 4)
 
         self.encoder_last_layer = nn.Sequential(
-            spectral_norm(
-                nn.Linear(self.pretrained_latent_dim_flattened, self.finetune_latent_dim)
-            ),
-            BatchDiscrimination(self.finetune_latent_dim, self.finetune_latent_dim),
-            nn.Linear(self.finetune_latent_dim + 1, self.finetune_latent_dim)
+            nn.Linear(self.pretrained_latent_dim_flattened, self.finetune_latent_dim),
+            nn.BatchNorm1d(self.finetune_latent_dim),
+            nn.ReLU(),
         )
         self.decoder_last_layer = nn.Sequential(
-            BatchDiscrimination(self.finetune_latent_dim, self.finetune_latent_dim),
-            nn.Linear(self.finetune_latent_dim + 1, self.pretrained_latent_dim_flattened)
+            nn.Linear(self.finetune_latent_dim, self.pretrained_latent_dim_flattened),
+            nn.BatchNorm1d(self.pretrained_latent_dim_flattened),
+            nn.ReLU(),
         )
 
     def forward(self, x):

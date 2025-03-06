@@ -127,7 +127,6 @@ class TrainingLogger(ILogger):
     def __plot_loss(self, run_number, data, sample_count=500):
         myopic_test_df = self.vmmd.check_if_myopic(data, count=sample_count)
         pval_of_recommended_bw = myopic_test_df.iat[0, 1]
-        mmd_loss = self.__calculate_mmd_loss(x_data=data, count=sample_count)
         n_unique_subspaces = self.__count_unique_subspaces(count=sample_count)
 
         train_history = self.vmmd.train_history
@@ -148,7 +147,6 @@ class TrainingLogger(ILogger):
         ax.plot(x, generator_y, color="cornflowerblue", label="Generator loss", linewidth=2)
 
         ax.plot([], [], ' ', label="pval: " + str(pval_of_recommended_bw))
-        ax.plot([], [], ' ', label="mmd: " + str(mmd_loss))
         ax.plot([], [], ' ', label="n_u_subs: " + str(n_unique_subspaces) + f"/{sample_count}")
         ax.plot([], [], ' ', label="generator: " + self.vmmd.generator.__class__.__name__)
         ax.plot([], [], ' ', label="tr_time: " + training_time.__str__())
@@ -158,29 +156,6 @@ class TrainingLogger(ILogger):
         ax.legend(loc="upper right")
         plt.savefig(self.path_to_train_history_plot / f"train_history_{run_number}.pdf", format="pdf", dpi=1200)
         plt.show()
-
-
-    def __calculate_mmd_loss(self, x_data: IDataset, count=500):
-        n_channels, height, width = x_data.image_shape
-
-        if count > len(x_data):
-            count = len(x_data)
-
-        x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=0)).to(torch.float32)
-        x_sample = torch.Tensor(pd.DataFrame(x_flattened_normalized).sample(count).to_numpy()).to(self.vmmd.device)
-
-        u_subspaces = self.vmmd.sample_count_subspaces(count)
-        x_sample = x_sample.view(-1, n_channels, height, width)
-        ux_sample = self.vmmd.apply_subspaces_operator(x_sample, u_subspaces)
-
-
-        x_sample_embedded = self.vmmd.encode(x_sample)
-        ux_sample_embedded = self.vmmd.encode(ux_sample)
-
-        mmd_loss = MMDLossConstrained()
-        _, mmd_loss= mmd_loss.forward(x_sample_embedded, ux_sample_embedded, u_subspaces)
-        return mmd_loss.item()
 
     def __count_unique_subspaces(self, count):
         u = self.vmmd.sample_count_subspaces(count=count)
