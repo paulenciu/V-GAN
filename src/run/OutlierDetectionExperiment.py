@@ -5,6 +5,7 @@ import torch
 from src.data.dataset_loader import load_data
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
 from src.vmmd.VMMDWrapper import VMMDWrapper
+from src.vmmd.logger.od.OutlierDetectionLogger import OutlierDetectionLogger
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from torch.nn.functional import interpolate
 from sklearn.metrics import roc_auc_score as auc
@@ -22,6 +23,7 @@ class OutlierDetectionExperiment:
         self.image_size_od = image_size_od or image_size_train
         self.standardize_data = standardize_data
         self.od_model = od_model
+        self.od_logger = OutlierDetectionLogger(od_model, self.vmmd_od)
         self.preprocessing_fn = preprocessing_fn
         self.n_subspace_sample = n_subspaces_sample
 
@@ -77,6 +79,7 @@ class OutlierDetectionExperiment:
         x_test_flattened = self.preprocessing_fn(x_test_flattened)
         y_test = np.array(y_test)
 
+        self.od_logger.log(x_test_flattened, y_test)
         decision_scores, descriptions = self.od_model.decision_score_interval(x_test_flattened, ensemble_weight_start, ensemble_weight_end, step)
 
         for i, ds in enumerate(decision_scores):

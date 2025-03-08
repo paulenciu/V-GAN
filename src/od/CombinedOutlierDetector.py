@@ -26,7 +26,7 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.fit_time = 0.0
         self.decision_time = 0.0
         self.decision_scores = None
-    
+
     def update_tradeoff(self, weight_ensemble):
         self.weight_ensemble = weight_ensemble
         self.weight_distance = 1 - weight_ensemble
