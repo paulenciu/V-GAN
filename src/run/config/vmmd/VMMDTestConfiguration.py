@@ -4,11 +4,11 @@ from src.data.dataset_type import DatasetType
 
 class VMMDTestConfiguration(VMMDBaseConfiguration):
 
-    def __init__(self, dataset_type=DatasetType.OCCCIFAR10, dateset_category = "cat"):
+    def __init__(self, dataset_type=DatasetType.OCCCIFAR10, dateset_category = "cat", epochs=1):
         super().__init__(
             filename="test",
             n_subspace_sample=2,
             dataset_type=dataset_type,
             dateset_category=dateset_category,
-            epochs=1
+            epochs=epochs
         )
