@@ -5,10 +5,10 @@ from matplotlib import pyplot as plt
 
 from src.utils.TensorConverter import tensor_to_image
 from src.vmmd import VMMD
-from src.vmmd.logger.ILogger import ILogger
+from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
 
 
-class SubspaceDistributionPlotter(ILogger):
+class SubspaceDistributionPlotter(IVMMDLogger):
 
     def __init__(self, vmmd: VMMD, base_dir: Path, sample_count=500):
         self.vmmd = vmmd
