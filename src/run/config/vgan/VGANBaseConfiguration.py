@@ -20,10 +20,10 @@ class VGANBaseConfiguration:
                  standardize_data=False,
                  seed=333,
                  n_channels=3,
-                 iternum_g = 1,
-                 iternum_d = 10,
+                 iternum_g = 10,
+                 iternum_d = 2,
                  preprocessing_fn=normalize_features,
-                 image_size_generator=(32, 32),
+                 image_size_train=(32, 32),
                  image_size_od=(32, 32),
                  path_to_directory="../experiments/remote",
                  detector=ResNet18AutoEncoderFineTuning(),
@@ -33,7 +33,7 @@ class VGANBaseConfiguration:
                  dataset_type=None,
                  dateset_category=None):
         self.generator = generator or GeneratorOneChannelV4Softmax(latent_size=latent_size,
-                                                                   image_shape=(n_channels, *image_size_generator))
+                                                                   image_shape=(n_channels, *image_size_train))
         self.detector = detector
         self.lr_g = lr_g
         self.lr_d = lr_d
@@ -47,7 +47,7 @@ class VGANBaseConfiguration:
         self.seed = seed
         self.n_channels = n_channels
         self.preprocessing_fn = preprocessing_fn
-        self.image_size_generator = image_size_generator
+        self.image_size_train = image_size_train
         self.image_size_od = image_size_od
         self.path_to_directory = path_to_directory
         self.n_subspace_sample = n_subspace_sample or 100
@@ -62,7 +62,7 @@ class VGANBaseConfiguration:
             "vgan_"
             f"{self.dataset_type.name}"
             f"_{self.preprocessing_fn.__name__}"
-            f"_train{self.image_size_generator[0]}"
+            f"_train{self.image_size_train[0]}"
             f"_od{self.image_size_od[0]}"
             f"_lr_d={self.lr_d}"
             f"_lr_g={self.lr_g}"

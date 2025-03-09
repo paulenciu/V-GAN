@@ -100,7 +100,6 @@ class TrainingLogger(IVMMDLogger):
                     'image shape': vmmd.generator.img_shape,
                     'noise dim': vmmd.generator.noise_dim,
                     'autoencoder': vmmd.detector.__class__.__name__,
-                    'autoencoder_latent_size': vmmd.detector.finetune_latent_dim,
                     'mmd_penalty': vmmd.penalty.__class__.__name__,
                     'mmd_penalty_stats': vmmd.penalty.get_stats()}
 

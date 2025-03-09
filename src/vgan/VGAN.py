@@ -158,8 +158,8 @@ class VGAN:
         self.subspaces = torch.Tensor(unique_subspaces)
         self.proba = torch.Tensor(proba / proba.sum())
 
-    def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor):
-        return u_subspaces * x_sample
+    def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
+        return u_subspaces * x_sample_unflattened
 
     def setup_device_and_seed(self):
         torch.manual_seed(self.seed)
@@ -188,8 +188,8 @@ class VGAN:
         self.detector_optimizer = det_optimizer.__class__.__name__
 
         data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)
-        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
-        #loss_function = MMDLossConstrainedFixKernel()
+        #loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
+        loss_function = MMDLossConstrainedFixKernel()
 
         total_training_time = 0.0
         snapshot_duration = 0.0
@@ -214,14 +214,14 @@ class VGAN:
                 for batch in tqdm(data_loader, leave=False):
                     batch = batch.to(self.device, non_blocking=True)
                     self.batch_size = batch.size(0)
-                    batch = batch.view( self.batch_size, -1)
+                    batch = batch.view(self.batch_size, -1)
 
                     noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
                     fake_subspaces = self.generator.sample_subspace_masks(noise) # Unfreeze G
                     fake_subspaces = fake_subspaces.view(self.batch_size, -1)
                     #fake_subspaces.requires_grad = True
 
-                    projected_batch = fake_subspaces*batch
+                    projected_batch = fake_subspaces * batch
 
                     # GET SUBSPACES AND ENCODING-DECODING
                     batch = batch.view(self.batch_size, n_channels, height, width)
@@ -240,8 +240,7 @@ class VGAN:
                     gen_optimizer.zero_grad()
                     total_batch_loss_G, mmd_loss = loss_function(batch_enc, projected_batch_enc, fake_subspaces)
                     self.bandwidth = loss_function.bandwidth
-                    with torch.autograd.detect_anomaly():
-                        total_batch_loss_G.backward()
+                    total_batch_loss_G.backward()
 
                     gen_optimizer.step()
                     generator_loss += float(total_batch_loss_G.to('cpu').detach().numpy()) / len(data_loader)
@@ -302,8 +301,9 @@ class VGAN:
                     detector_loss += float(batch_loss_D.to('cpu').detach().numpy()) / len(data_loader)
 
                 iternum_d += 1
-                iternum_g = 1
 
+                if iternum_d > self.iternum_d:
+                    iternum_g = 1
 
             epoch_duration = time.time() - epoch_start
             total_training_time += epoch_duration
@@ -354,8 +354,7 @@ class VGAN:
     def setup_data_loader(self, dataset, n_channels, height, width, preprocess_fn=normalize_features,
                           **preprocess_kwargs):
         flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
-        x_flattened_preprocessed = torch.from_numpy(preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).to(
-            torch.float32)
+        x_flattened_preprocessed = torch.from_numpy(preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).to(torch.float32)
         unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
         return DataLoader(
             unflattened_images,

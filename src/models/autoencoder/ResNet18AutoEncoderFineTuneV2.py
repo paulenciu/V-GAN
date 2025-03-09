@@ -2,7 +2,7 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder im
 from torch import nn
 
 
-class ResNet18AutoEncoderFineTuning(nn.Module):
+class ResNet18AutoEncoderFineTuneV2(nn.Module):
     def __init__(self):
         super().__init__()
 

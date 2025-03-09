@@ -8,6 +8,7 @@ class MMDLossConstrainedFixKernel(nn.Module):
         super().__init__()
         self.penalty = penalty
         self.bandwidths = bandwidths
+        self.bandwidth = 7
 
     def forward(self, x, y, u):
         mmd_loss = 0.0
