@@ -45,13 +45,23 @@ class OutlierDetectionExperiment:
         subspaces = np.array(subspaces, dtype=int)
 
         # PREPARE DATA FOR OD
-        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
-                            standardize=self.standardize_data)
-        x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
-        x_train_flattened = self.preprocessing_fn(x_train_flattened)
+        # x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
+        #                     standardize=self.standardize_data)
+        # x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
+        # x_train_flattened = self.preprocessing_fn(x_train_flattened)
 
-        self.od_model.fit(subspaces, x_train_flattened)
-        del x_train_flattened
+        x_train_standardized = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
+                            standardize=True)
+        x_train_standardized = extract_and_flatten_images_dataset_3d(x_train_standardized).to("cpu").numpy()
+        x_train_standardized = self.preprocessing_fn(x_train_standardized)
+
+        x_train_unstandardized = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
+                            standardize=False)
+        x_train_unstandardized = extract_and_flatten_images_dataset_3d(x_train_unstandardized).to("cpu").numpy()
+        x_train_unstandardized = self.preprocessing_fn(x_train_unstandardized)
+
+        self.od_model.fit(subspaces, x_train_standardized, x_train_unstandardized)
+        del x_train_standardized, x_train_unstandardized
 
     def fit_pretrained_model(self, path_to_generator: str):
         self.vmmd_wrapper.load_model(path_to_generator)
@@ -73,14 +83,26 @@ class OutlierDetectionExperiment:
 
     def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step):
         # CALCULATE OD SCORES
-        x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
-                                   image_size=self.image_size_od, standardize=self.standardize_data, train=False)
-        x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
-        x_test_flattened = self.preprocessing_fn(x_test_flattened)
-        y_test = np.array(y_test)
+        # x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
+        #                            image_size=self.image_size_od, standardize=self.standardize_data, train=False)
+        # x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
+        # x_test_flattened = self.preprocessing_fn(x_test_flattened)
+        # y_test = np.array(y_test)
 
-        self.od_logger.log(x_test_flattened, y_test)
-        decision_scores, descriptions = self.od_model.decision_score_interval(x_test_flattened, ensemble_weight_start, ensemble_weight_end, step)
+        x_test_standardized, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
+                                         image_size=self.image_size_od,
+                                         standardize=True, train=False)
+        x_test_standardized = extract_and_flatten_images_dataset_3d(x_test_standardized).to("cpu").numpy()
+        x_test_standardized = self.preprocessing_fn(x_test_standardized)
+
+        x_test_unstandardized, _ = load_data(dataset_type=self.dataset_type, category=self.category,
+                                           image_size=self.image_size_od,
+                                           standardize=False, train=False)
+        x_test_unstandardized = extract_and_flatten_images_dataset_3d(x_test_unstandardized).to("cpu").numpy()
+        x_test_unstandardized = self.preprocessing_fn(x_test_unstandardized)
+
+        self.od_logger.log(x_test_standardized, x_test_unstandardized, y_test)
+        decision_scores, descriptions = self.od_model.decision_score_interval(x_test_standardized, x_test_unstandardized, ensemble_weight_start, ensemble_weight_end, step)
 
         for i, ds in enumerate(decision_scores):
             od_stats = self.calculate_od_stats(y_test, ds)

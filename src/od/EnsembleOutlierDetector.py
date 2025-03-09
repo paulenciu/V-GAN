@@ -61,7 +61,7 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
 
         self.ens_train_min = np.min(train_scores_agg)
         self.ens_train_max = np.percentile(train_scores_agg, 95)
-        self.ens_train_score_std = np.std(train_scores_agg)
+        self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
         print("Ensemble train score max: ", self.ens_train_max, "Ensemble train score std: ", self.ens_train_score_std)
         self.n_subspaces = subspaces.shape[0]
 
@@ -86,7 +86,7 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
         return self.decision_scores_ens
 
     def scale_scores(self, x):
-        return 1 / (1 + np.exp(- 10 * (x - self.ens_train_max) / self.ens_train_score_std))
+        return 1 / (1 + np.exp(-(x - self.ens_train_max) / self.ens_train_score_std))
 
     def get_model_description(self):
         return {

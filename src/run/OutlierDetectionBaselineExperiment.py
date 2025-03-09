@@ -55,4 +55,4 @@ class OutlierDetectionBaselineExperiment:
                 "AUC": auc(y_test, decision_scores),
                 "PRAUC": average_precision_score(y_test, decision_scores),
                 "F1": f1_score(y_test, (decision_scores > np.quantile(decision_scores, .80)) * 1),
-                "OD Method": self.od_model.__class__.__name__ + self.od_model.n_estimators if isinstance(self.od_model, FeatureBagging) else "" + self.od_model.base_estimator.__class__.__name__ if isinstance(self.od_model, FeatureBagging) else "",}
+                "OD Method": self.od_model.__class__.__name__ + str(self.od_model.n_estimators) if isinstance(self.od_model, FeatureBagging) else "" + self.od_model.base_estimator.__class__.__name__ if isinstance(self.od_model, FeatureBagging) else "",}

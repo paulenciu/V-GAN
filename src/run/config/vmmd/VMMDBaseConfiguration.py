@@ -1,3 +1,6 @@
+from pyod.models.lof import LOF
+from pyod.models.lunar import LUNAR
+
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images
@@ -28,7 +31,8 @@ class VMMDBaseConfiguration:
                 filename=None,
                 dataset_type=None,
                 dateset_category=None,
-                add_to_title: str=None):
+                add_to_title: str=None,
+                ens_base_estimator=LOF(),):
 
         self.generator = generator or GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
         self.encoder = encoder
@@ -51,9 +55,11 @@ class VMMDBaseConfiguration:
         self.dateset_category = dateset_category
         self.image_size_train = image_size_train
         self.filename = filename or self.create_filename(add_to_title)
+        self.ens_base_estimator = ens_base_estimator
 
     def create_filename(self, add_to_title: str = ""):
         return (f"{self.dataset_type.name}"
+                f"[{self.dateset_category}]"
                 f"_{self.preprocessing_fn.__name__}"
                 f"gen{self.image_size_generator[0]}"
                 f"_od{self.image_size_od[0]}"

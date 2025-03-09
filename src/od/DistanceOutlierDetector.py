@@ -42,7 +42,7 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         if self.train_score_max is None:
             return x
 
-        return torch.nn.functional.sigmoid(10*(x - self.train_score_max) / self.train_score_std)
+        return torch.nn.functional.sigmoid((x - self.train_score_max) / self.train_score_std)
 
     def get_model_description(self):
         return {

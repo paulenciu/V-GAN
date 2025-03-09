@@ -31,21 +31,21 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.weight_ensemble = weight_ensemble
         self.weight_distance = 1 - weight_ensemble
     
-    def fit(self, subspaces, x_train):
+    def fit(self, subspaces, x_train_standard, x_train_unstandard):
         fit_start = time.time()
 
         print("Ensemble Outlier Detector Fit")
-        self.ensemble_detector.fit(subspaces, x_train)
+        self.ensemble_detector.fit(subspaces, x_train_standard)
 
         print("Distance Outlier Detector Fit")
-        self.distance_detector.fit(subspaces, x_train)
+        self.distance_detector.fit(subspaces, x_train_unstandard)
 
         self.fit_time = time.time() - fit_start
         return self
 
-    def decision_score_interval(self, x_test, ensemble_weight_start, ensemble_weight_end, step):
-        ensemble_scores = self.ensemble_detector.decision_score(x_test)
-        distance_scores = self.distance_detector.decision_score(x_test)
+    def decision_score_interval(self, x_test_standard, x_test_unstandard, ensemble_weight_start, ensemble_weight_end, step):
+        ensemble_scores = self.ensemble_detector.decision_score(x_test_standard)
+        distance_scores = self.distance_detector.decision_score(x_test_unstandard)
 
         decision_scores_list = []
         description_list = []
