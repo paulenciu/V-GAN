@@ -1,8 +1,6 @@
-import re
 import time
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Union
 
 import torch
@@ -10,27 +8,21 @@ from collections import defaultdict
 from src.data.IDataset import IDataset
 
 from sklearn.preprocessing import normalize
-from src.utils.EMA import EMA
 from src.utils.preprocessing import normalize_features
 from torch.nn.functional import interpolate
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
 from pathlib import Path
-import matplotlib.pyplot as plt
 import os
 import torch_two_sample as tts
-import torch.nn.functional as F
 
-from src.models.autoencoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
-from src.vmmd.logger.ILogger import ILogger
+from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.generator.AbstractGenerator import AbstractGenerator
-from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmd.MMDLossConstrained import MMDLossConstrained, MMDLossSquareRootConstrained, RBF
+from src.vmmd.MMDLossConstrained import MMDLossConstrained, RBF
 
 
 class VMMD(ABC):
@@ -61,7 +53,7 @@ class VMMD(ABC):
         self.filename = filename
         self.device = torch.device('cuda:0' if torch.cuda.is_available(
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
-        self.logger_subscriber: list[ILogger] = []
+        self.logger_subscriber: list[IVMMDLogger] = []
 
     def add_logger_subscriber(self, subscriber):
         self.logger_subscriber.append(subscriber)

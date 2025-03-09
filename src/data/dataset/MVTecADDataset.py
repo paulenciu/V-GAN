@@ -26,7 +26,7 @@ class MVTecADDataset(IDataset):
         if normalize:
             transform = transforms.Compose([
                 transform,
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet values (standard for RGB)
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
         self.transform = transform

@@ -1,22 +1,17 @@
 import os
-from abc import ABC
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
 from matplotlib import pyplot as plt
-from sklearn.preprocessing import normalize
 
-from src.data import IDataset
-from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
 from src.vgan.VGAN import VGAN
 from src.vmmd.VMMD import VMMD
-from src.vmmd.MMDLossConstrained import MMDLossConstrained
-from src.vmmd.logger.ILogger import ILogger
+from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
 
 
-class TrainingLogger(ILogger):
+class TrainingLogger(IVMMDLogger):
 
     def __init__(self, vmmd: VMMD, base_dir: Path):
         self.vmmd = vmmd

@@ -3,22 +3,15 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import torch
-from matplotlib import pyplot as plt
 
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.vmmd import VMMD
-from src.vmmd.logger.SubspaceDistributionPlotter import SubspaceDistributionPlotter
-from src.vmmd.logger.SubspaceProjectionPlotter import SubspaceProjectionPlotter
-from src.vmmd.logger.TrainingLogger import TrainingLogger
-from src.models.autoencoder.pretrained_autoencoder.AutoEncoderManager import AutoEncoderManager
-
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4DBN import GeneratorOneChannelV4DBN
+from src.vmmd.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributionPlotter
+from src.vmmd.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
+from src.vmmd.logger.vmmd.TrainingLogger import TrainingLogger
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
-
-
 
 
 class VMMDWrapper:

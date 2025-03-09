@@ -1,6 +1,6 @@
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
-from src.utils.preprocessing import normalize_images_col_softmax, normalize_features
+from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 
@@ -17,7 +17,7 @@ class VMMDBaseConfiguration:
                 standardize_data = False,
                 seed = 333,
                 n_channels = 3,
-                preprocessing_fn = normalize_features,
+                preprocessing_fn = normalize_images,
                 image_size_generator = (32, 32),
                 image_size_train=(32, 32),
                 image_size_od = (32, 32),

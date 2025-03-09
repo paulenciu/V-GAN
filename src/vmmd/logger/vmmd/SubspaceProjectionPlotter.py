@@ -8,10 +8,10 @@ from matplotlib import pyplot as plt
 from src.utils.BigUBuilder import calculate_average_u
 from src.utils.TensorConverter import tensor_to_image
 from src.vmmd import VMMD
-from src.vmmd.logger.ILogger import ILogger
+from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
 
 
-class SubspaceProjectionPlotter(ILogger):
+class SubspaceProjectionPlotter(IVMMDLogger):
 
     def __init__(self, vmmd: VMMD, base_dir: Path, n_samples=5, n_masks=5, sample_count=500):
         self.vmmd = vmmd

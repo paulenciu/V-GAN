@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from src.data.IDataset import IDataset
 
 
-class ILogger(ABC):
+class IVMMDLogger(ABC):
 
     @abstractmethod
     def log(self, data: IDataset, epoch=0):
