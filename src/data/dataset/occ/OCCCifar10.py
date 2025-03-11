@@ -14,9 +14,8 @@ class OCCCifar10(OCCDataset):
 
         if normalize:
             transform = transforms.Compose([
-                transforms.Grayscale(num_output_channels=3),
-                transform
-                #transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+                transform,
+                transforms.Normalize(mean=[0.491, 0.482, 0.446], std=[0.247, 0.243, 0.261])
             ])
 
         return torchvision.datasets.CIFAR10(

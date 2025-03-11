@@ -6,6 +6,8 @@ from pyod.models.knn import KNN
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 from src.data.dataset.occ.OCCCifar10 import OCCCifar10
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.run.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
@@ -138,105 +140,13 @@ def configure_environment():
 
 if __name__ == '__main__':
     configure_environment()
-    # vgan_config = [
-    #     VGANBaseConfiguration(
-    #         dataset_type=DatasetType.OCCCIFAR10,
-    #         dateset_category="cat",
-    #         detector=ResNet18AutoEncoderFineTuneV2(),
-    #         iternum_g=10,
-    #         iternum_d=5,
-    #         epochs=200,
-    #         lr_g=0.0001,
-    #         lr_d=0.0001,
-    #     ),
-    # ]
-    vmmd_configs = [
-
-        # VMMDTestConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     epochs=2000,
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     image_size_generator=(64, 64),
-        #     image_size_train=(256, 256),
-        #     image_size_od=(256, 256),
-        #     preprocessing_fn=normalize_images,
-        #     standardize_data=True,
-        # ),
+    config = [
         VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category="Trouser",
-            image_size_generator=(28, 28),
-            image_size_train=(28, 28),
-            image_size_od=(28, 28),
-            preprocessing_fn=normalize_images,
-            standardize_data=True,
-            n_subspace_sample=100,
-            ens_base_estimator=LUNAR()
-        ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     image_size_generator=(64, 64),
-        #     image_size_train=(900, 900),
-        #     image_size_od=(900, 900),
-        #     preprocessing_fn=normalize_images,
-        #     standardize_data=True,
-        #     n_subspace_sample=100,
-        #     ens_base_estimator=LUNAR()
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCFMNIST,
-        #     dateset_category="Trouser",
-        #     image_size_generator=(28, 28),
-        #     image_size_train=(28, 28),
-        #     image_size_od=(28, 28),
-        #     preprocessing_fn=normalize_images,
-        #     standardize_data=False,
-        #     n_subspace_sample=20
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     image_size_generator=(64, 64),
-        #     image_size_train=(512, 512),
-        #     image_size_od=(512, 512),
-        #     preprocessing_fn=normalize_images,
-        #     standardize_data=True,
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     image_size_generator=(64, 64),
-        #     image_size_train=(900, 900),
-        #     image_size_od=(900, 900),
-        #     preprocessing_fn=normalize_features,
-        #     n_subspace_sample=20
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     image_size_generator=(64, 64),
-        #     image_size_train=(224, 224),
-        #     image_size_od=(224, 224),
-        #     epochs=2000,
-        #     preprocessing_fn=normalize_images,
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["Trouser"],
-        #     image_size_generator=(64, 64),
-        #     image_size_train=(224, 224),
-        #     image_size_od=(224, 224),
-        #     epochs=2000,
-        #     preprocessing_fn=normalize_features,
-        # ),
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category=["bottle"],
+            n_subspace_sample=1,
+            image_size_od=(256, 256),
+            standardize_data=False
+        )
     ]
-    pretrained_vmmd_experiment(vmmd_configs,
-                                "../experiments/remote/08-03/OCCFMNIST_normalize_features_train28_od28_lr=0.001_bs=1024_ep=2001_None/models/generator_9.pt")
-    #pretrained_vmmd_experiment(vmmd_configs,
-    #                           "../experiments/remote/08-03/MVTEC_AD_normalize_imagesgen64_od256train256_lr=0.001_bs=1024_ep=2000_None/models/generator_0.pt")
-    #launch_vmmd_experiment(vmmd_configs)
+    pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/06-03/MVTEC_AD_normalize_imagesgen64_od256train256_lr=0.001_bs=1024_ep=2000_None/models/generator_1.pt")

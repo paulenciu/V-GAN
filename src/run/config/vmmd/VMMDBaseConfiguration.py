@@ -32,7 +32,7 @@ class VMMDBaseConfiguration:
                 dataset_type=None,
                 dateset_category=None,
                 add_to_title: str=None,
-                ens_base_estimator=LOF(),):
+                ens_base_estimator=LUNAR()):
 
         self.generator = generator or GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
         self.encoder = encoder

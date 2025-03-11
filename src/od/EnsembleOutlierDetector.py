@@ -86,7 +86,8 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
         return self.decision_scores_ens
 
     def scale_scores(self, x):
-        return 1 / (1 + np.exp(-(x - self.ens_train_max) / self.ens_train_score_std))
+        #return 1 / (1 + np.exp(-(x - self.ens_train_max) / self.ens_train_score_std))
+        return x
 
     def get_model_description(self):
         return {

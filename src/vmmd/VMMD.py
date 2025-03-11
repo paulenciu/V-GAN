@@ -22,7 +22,7 @@ from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmd.MMDLossConstrained import MMDLossConstrained, RBF
+from src.vmmd.MMDLossConstrained import MMDLossConstrained, RBF, RationalQuadratic, MixtureRQLinear
 
 
 class VMMD(ABC):
@@ -182,11 +182,11 @@ class VMMD(ABC):
 
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)
-        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
 
         total_training_time = 0.0
         snapshot_duration = 0.0
-        snapshot_intervals = [int(1 * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.1 * self.epochs) for i in range(1, 11)]
 
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')

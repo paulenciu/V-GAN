@@ -67,6 +67,7 @@ class OutlierDetectionExperiment:
         self.vmmd_wrapper.load_model(path_to_generator)
         self.fit_outlier_detection()
 
+
     def evaluate(self, store_stats=True, weight_ensemble=0.5):
         # CALCULATE OD SCORES
         x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
@@ -88,7 +89,7 @@ class OutlierDetectionExperiment:
         # x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
         # x_test_flattened = self.preprocessing_fn(x_test_flattened)
         # y_test = np.array(y_test)
-
+        #
         x_test_standardized, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
                                          image_size=self.image_size_od,
                                          standardize=True, train=False)
