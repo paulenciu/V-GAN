@@ -31,21 +31,21 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.weight_ensemble = weight_ensemble
         self.weight_distance = 1 - weight_ensemble
     
-    def fit(self, subspaces, x_train_standard, x_train_unstandard):
+    def fit(self, subspaces, x_train):
         fit_start = time.time()
 
         print("Ensemble Outlier Detector Fit")
-        self.ensemble_detector.fit(subspaces, x_train_standard)
+        self.ensemble_detector.fit(subspaces, x_train)
 
         print("Distance Outlier Detector Fit")
-        self.distance_detector.fit(subspaces, x_train_unstandard)
+        self.distance_detector.fit(subspaces, x_train)
 
         self.fit_time = time.time() - fit_start
         return self
 
-    def decision_score_interval(self, x_test_standard, x_test_unstandard, ensemble_weight_start, ensemble_weight_end, step):
-        ensemble_scores = self.ensemble_detector.decision_score(x_test_standard)
-        distance_scores = self.distance_detector.decision_score(x_test_unstandard)
+    def decision_score_interval(self, x_test, ensemble_weight_start, ensemble_weight_end, step):
+        ensemble_scores = self.ensemble_detector.decision_score_agg(x_test)
+        distance_scores = self.distance_detector.decision_score(x_test)
 
         decision_scores_list = []
         description_list = []
@@ -70,12 +70,12 @@ class CombinedOutlierDetector(BaseOutlierDetector):
             return distance_scores
 
         elif self.weight_ensemble == 1:
-            ensemble_scores = self.ensemble_detector.decision_score(x_test)
+            ensemble_scores = self.ensemble_detector.decision_score_agg(x_test)
             ensemble_scores = min_max_scaling(ensemble_scores)
             self.decision_time = time.time() - decision_start
             return ensemble_scores
 
-        ensemble_scores = self.ensemble_detector.decision_score(x_test)
+        ensemble_scores = self.ensemble_detector.decision_score_agg(x_test)
         distance_scores = self.distance_detector.decision_score(x_test)
 
         ensemble_scores = min_max_scaling(ensemble_scores)

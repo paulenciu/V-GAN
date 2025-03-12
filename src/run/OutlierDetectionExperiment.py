@@ -1,11 +1,17 @@
 import datetime
 
 import numpy as np
+import pandas as pd
 import torch
+from matplotlib import pyplot as plt
+
 from src.data.dataset_loader import load_data
+from src.od.CombinedOutlierDetector import CombinedOutlierDetector
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
+from src.utils.Plotter import tensor_to_image
+from src.utils.logger.od.EnsembleDetectionLogger import EnsembleDetectionLogger
 from src.vmmd.VMMDWrapper import VMMDWrapper
-from src.vmmd.logger.od.OutlierDetectionLogger import OutlierDetectionLogger
+from src.utils.logger.od.OutlierDetectionLogger import OutlierDetectionLogger
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from torch.nn.functional import interpolate
 from sklearn.metrics import roc_auc_score as auc
@@ -13,7 +19,7 @@ from sklearn.metrics import average_precision_score, f1_score
 
 class OutlierDetectionExperiment:
 
-    def __init__(self, vmmd, od_model, dataset_type, category, image_size_train, standardize_data=False, image_size_od=None, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
+    def __init__(self, vmmd, od_model: CombinedOutlierDetector, dataset_type, category, image_size_train, standardize_data=False, image_size_od=None, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
         self.vmmd = vmmd
         self.vmmd_od = VMMDOD(vmmd)
         self.vmmd_wrapper = VMMDWrapper(vmmd)
@@ -24,6 +30,7 @@ class OutlierDetectionExperiment:
         self.standardize_data = standardize_data
         self.od_model = od_model
         self.od_logger = OutlierDetectionLogger(od_model, self.vmmd_od)
+        self.ens_logger = EnsembleDetectionLogger(od_model.ensemble_detector, self.vmmd_od)
         self.preprocessing_fn = preprocessing_fn
         self.n_subspace_sample = n_subspaces_sample
 
@@ -41,27 +48,23 @@ class OutlierDetectionExperiment:
         # PREPARE SUBSPACE FOR OD
         subspaces = interpolate(subspaces, size=self.image_size_od[0], mode='nearest')
         subspaces = subspaces.view(subspaces.shape[0], -1)
+
         print("Number of unique subspaces:", len(subspaces), "/", self.n_subspace_sample)
-        subspaces = np.array(subspaces, dtype=int)
+        subspaces = np.array(subspaces, dtype=bool)
+
+        # for subspace in subspaces:
+        #     subspace_image = torch.from_numpy(subspace).view(3, 256, 256).to(torch.float)
+        #     plt.imshow(tensor_to_image(subspace_image))
+        #     plt.show()
 
         # PREPARE DATA FOR OD
-        # x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
-        #                     standardize=self.standardize_data)
-        # x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
-        # x_train_flattened = self.preprocessing_fn(x_train_flattened)
+        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
+                            standardize=self.standardize_data)
+        x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
+        x_train_flattened = self.preprocessing_fn(x_train_flattened)
 
-        x_train_standardized = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
-                            standardize=True)
-        x_train_standardized = extract_and_flatten_images_dataset_3d(x_train_standardized).to("cpu").numpy()
-        x_train_standardized = self.preprocessing_fn(x_train_standardized)
-
-        x_train_unstandardized = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
-                            standardize=False)
-        x_train_unstandardized = extract_and_flatten_images_dataset_3d(x_train_unstandardized).to("cpu").numpy()
-        x_train_unstandardized = self.preprocessing_fn(x_train_unstandardized)
-
-        self.od_model.fit(subspaces, x_train_standardized, x_train_unstandardized)
-        del x_train_standardized, x_train_unstandardized
+        self.od_model.fit(subspaces, x_train_flattened)
+        del x_train_flattened
 
     def fit_pretrained_model(self, path_to_generator: str):
         self.vmmd_wrapper.load_model(path_to_generator)
@@ -84,26 +87,15 @@ class OutlierDetectionExperiment:
 
     def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step):
         # CALCULATE OD SCORES
-        # x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
-        #                            image_size=self.image_size_od, standardize=self.standardize_data, train=False)
-        # x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
-        # x_test_flattened = self.preprocessing_fn(x_test_flattened)
-        # y_test = np.array(y_test)
-        #
-        x_test_standardized, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
-                                         image_size=self.image_size_od,
-                                         standardize=True, train=False)
-        x_test_standardized = extract_and_flatten_images_dataset_3d(x_test_standardized).to("cpu").numpy()
-        x_test_standardized = self.preprocessing_fn(x_test_standardized)
+        x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
+                                   image_size=self.image_size_od, standardize=self.standardize_data, train=False)
+        x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
+        x_test_flattened = self.preprocessing_fn(x_test_flattened)
+        y_test = np.array(y_test)
 
-        x_test_unstandardized, _ = load_data(dataset_type=self.dataset_type, category=self.category,
-                                           image_size=self.image_size_od,
-                                           standardize=False, train=False)
-        x_test_unstandardized = extract_and_flatten_images_dataset_3d(x_test_unstandardized).to("cpu").numpy()
-        x_test_unstandardized = self.preprocessing_fn(x_test_unstandardized)
-
-        self.od_logger.log(x_test_standardized, x_test_unstandardized, y_test)
-        decision_scores, descriptions = self.od_model.decision_score_interval(x_test_standardized, x_test_unstandardized, ensemble_weight_start, ensemble_weight_end, step)
+        self.ens_logger.log(x_test_flattened, y_test)
+        self.od_logger.log(x_test_flattened, y_test)
+        decision_scores, descriptions = self.od_model.decision_score_interval(x_test_flattened, ensemble_weight_start, ensemble_weight_end, step)
 
         for i, ds in enumerate(decision_scores):
             od_stats = self.calculate_od_stats(y_test, ds)

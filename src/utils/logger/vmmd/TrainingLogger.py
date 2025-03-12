@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 from src.vgan.VGAN import VGAN
 from src.vmmd.VMMD import VMMD
-from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
+from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
 
 
 class TrainingLogger(IVMMDLogger):

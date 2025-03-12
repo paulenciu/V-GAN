@@ -9,7 +9,7 @@ from src.data.IDataset import IDataset
 
 
 class MVTecADDataset(IDataset):
-    def __init__(self, file_path: str, inlier_category: List[str], train: bool = True, transform=None, normalize=False):
+    def __init__(self, file_path: str, inlier_category: str, train: bool = True, transform=None, normalize=False):
         """
         Initialize the MVTecADDataset.
 
@@ -47,24 +47,23 @@ class MVTecADDataset(IDataset):
         """
         Load the dataset and populate self.image_files and self.labels.
         """
-        for category in self.category:
-            if self.train:
-                image_dir = os.path.join(self.file_path, category, 'train', 'good')
-                self.image_files.extend([
-                    os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith('.png')
-                ])
-                self.labels.extend([0] * len(os.listdir(image_dir)))  # 0 for normal images
-            else:
+        if self.train:
+            image_dir = os.path.join(self.file_path, self.category, 'train', 'good')
+            self.image_files.extend([
+                os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith('.png')
+            ])
+            self.labels.extend([0] * len(os.listdir(image_dir)))  # 0 for normal images
+        else:
 
-                test_dir = os.path.join(self.file_path, category, 'test')
-                for defect_type in os.listdir(test_dir):
-                    defect_dir = os.path.join(test_dir, defect_type)
-                    if os.path.isdir(defect_dir):
-                        self.image_files.extend([
-                            os.path.join(defect_dir, f) for f in os.listdir(defect_dir) if f.endswith('.png')
-                        ])
+            test_dir = os.path.join(self.file_path, self.category, 'test')
+            for defect_type in os.listdir(test_dir):
+                defect_dir = os.path.join(test_dir, defect_type)
+                if os.path.isdir(defect_dir):
+                    self.image_files.extend([
+                        os.path.join(defect_dir, f) for f in os.listdir(defect_dir) if f.endswith('.png')
+                    ])
 
-                        self.labels.extend([0 if defect_type == 'good' else 1] * len(os.listdir(defect_dir)))
+                    self.labels.extend([0 if defect_type == 'good' else 1] * len(os.listdir(defect_dir)))
 
     def __len__(self):
         """

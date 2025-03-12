@@ -1,4 +1,4 @@
-from src.vmmd.MMDLossConstrained import MMDLossConstrained, RBF
+from src.vmmd.MMDLossConstrained import MMDLossConstrained
 import time
 
 from typing import Union
@@ -18,7 +18,7 @@ import torch_two_sample as tts
 import torch.nn.functional as F
 
 from src.utils.preprocessing import normalize_features
-from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
+from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
 #from src.vmmd.MMDLossConstrained import MMDLossConstrained, MMDLossSquareRootConstrained, RBF

@@ -48,7 +48,13 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
     def fit(self, subspaces, x):
         x = x.astype(np.float32)
 
-        self.ensemble_model = sel_SUOD(base_estimators=self.base_estimators, subspaces=subspaces, n_jobs=self.max_n_jobs, bps_flag=False, approx_flag_global=False)
+        self.ensemble_model = sel_SUOD(
+            base_estimators=self.base_estimators,
+            subspaces=subspaces,
+            n_jobs=self.max_n_jobs,
+            bps_flag=False,
+            approx_flag_global=False
+        )
         fit_time_start = time.time()
         self.ensemble_model.fit(x)
         self.train_time = time.time() - fit_time_start
@@ -60,28 +66,26 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
         )
 
         self.ens_train_min = np.min(train_scores_agg)
-        self.ens_train_max = np.percentile(train_scores_agg, 95)
-        self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
+        self.ens_train_max = np.max(train_scores_agg)
+        self.ens_train_score_std = np.std(train_scores_agg)
+        #self.ens_train_max = np.percentile(train_scores_agg, 95)
+        #self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
         print("Ensemble train score max: ", self.ens_train_max, "Ensemble train score std: ", self.ens_train_score_std)
         self.n_subspaces = subspaces.shape[0]
 
-    def decision_score(self, x, batch_size=512):
-        n_samples = x.shape[0]
-        decision_scores_ens = np.zeros(n_samples)
-
+    def decision_score(self, x):
+        self.decision_time = None
         decision_time_start = time.time()
-        for i in range(0, n_samples, batch_size):
-            end_idx = min(i + batch_size, n_samples)
-            batch = x[i:end_idx]
-            batch_scores = self.ensemble_model.decision_function(batch)
-
-            decision_scores_ens[i:end_idx] = aggregator_funct(
-                    batch_scores,
-                    weights=self.vmmd.proba,
-                    type="avg"
-            )
-
+        decision_scores = self.ensemble_model.decision_function(x)
         self.decision_time = time.time() - decision_time_start
+        return decision_scores
+
+    def decision_score_agg(self, x):
+        decision_scores_ens = aggregator_funct(
+            self.decision_score(x),
+            weights=self.vmmd.proba,
+            type="avg"
+        )
         self.decision_scores_ens = self.scale_scores(decision_scores_ens)
         return self.decision_scores_ens
 

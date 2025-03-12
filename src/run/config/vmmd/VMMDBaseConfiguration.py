@@ -3,7 +3,7 @@ from pyod.models.lunar import LUNAR
 
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
-from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images
+from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 
@@ -20,7 +20,7 @@ class VMMDBaseConfiguration:
                 standardize_data = False,
                 seed = 333,
                 n_channels = 3,
-                preprocessing_fn = normalize_images,
+                preprocessing_fn = no_preprocessing,
                 image_size_generator = (32, 32),
                 image_size_train=(32, 32),
                 image_size_od = (32, 32),
@@ -60,14 +60,12 @@ class VMMDBaseConfiguration:
     def create_filename(self, add_to_title: str = ""):
         return (f"{self.dataset_type.name}"
                 f"[{self.dateset_category}]"
-                f"_{self.preprocessing_fn.__name__}"
-                f"gen{self.image_size_generator[0]}"
+                f"_{self.preprocessing_fn.__name__ if self.preprocessing_fn else ''}"
+                f"_{ 'standardised' if self.standardize_data else ''}"
+                f"_gen{self.image_size_generator[0]}"
                 f"_od{self.image_size_od[0]}"
-                f"train{self.image_size_train[0]}"
+                f"_train{self.image_size_train[0]}"
                 f"_lr={self.lr}"
                 f"_bs={self.batch_size}"
                 f"_ep={self.epochs}"
                 f"_{add_to_title}")
-
-
-

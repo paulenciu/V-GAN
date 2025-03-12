@@ -8,9 +8,9 @@ import torch
 
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.vmmd import VMMD
-from src.vmmd.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributionPlotter
-from src.vmmd.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
-from src.vmmd.logger.vmmd.TrainingLogger import TrainingLogger
+from src.utils.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributionPlotter
+from src.utils.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
+from src.utils.logger.vmmd.TrainingLogger import TrainingLogger
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 
 
@@ -25,8 +25,6 @@ class VMMDWrapper:
 
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
-        filename = path_to_generator_params.split('/')[-3]
-        self.vmmd.filename = filename
         return self.vmmd.load_model(generator, autoencoder)
 
     def get_path_to_directory(self, path_to_generator_params):

@@ -18,11 +18,11 @@ from pathlib import Path
 import os
 import torch_two_sample as tts
 
-from src.vmmd.logger.vmmd.IVMMDLogger import IVMMDLogger
+from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmd.MMDLossConstrained import MMDLossConstrained, RBF, RationalQuadratic, MixtureRQLinear
+from src.vmmd.MMDLossConstrained import MMDLossConstrained, MixtureRQLinear
 
 
 class VMMD(ABC):
@@ -100,8 +100,7 @@ class VMMD(ABC):
         n_channels, height, width = x_data.image_shape
 
         x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        x_flattened_normalized = torch.from_numpy(normalize(x_data, axis=1)).to(torch.float32)
-        x_sample = torch.Tensor(pd.DataFrame(x_flattened_normalized).sample(count).to_numpy()).to(self.device)
+        x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.device)
         x_sample = x_sample.view(-1, n_channels, height, width)
 
         u_mappings = self.sample_count_subspaces(count).to(torch.float32)
@@ -186,7 +185,7 @@ class VMMD(ABC):
 
         total_training_time = 0.0
         snapshot_duration = 0.0
-        snapshot_intervals = [int(0.1 * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.5 * i * self.epochs) for i in range(1, 11)]
 
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')

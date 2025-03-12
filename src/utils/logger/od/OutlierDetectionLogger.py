@@ -12,14 +12,14 @@ class OutlierDetectionLogger:
         self.od_model = od_model
         self.vmmd_od = vmmd_od
 
-    def log(self, x_standard, x_unstandard, y):
-        ensemble_score = self.od_model.ensemble_detector.decision_score(x_standard)
-        distance_score = self.od_model.distance_detector.decision_score(x_unstandard)
+    def log(self, x, y):
+        ensemble_score = self.od_model.ensemble_detector.decision_score_agg(x)
+        distance_score = self.od_model.distance_detector.decision_score(x)
 
         fig, ax = plt.subplots(figsize=(10, 6))
         fig.suptitle('Outlier Detection Scores', fontsize=14, y=0.95)
 
-        max_example = min(len(x_standard), 100)
+        max_example = min(len(x), 100)
         basis = np.arange(max_example)
 
         ax.grid(True, linestyle='--', alpha=0.7)

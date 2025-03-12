@@ -12,10 +12,8 @@ from torchvision import transforms
 import torch_two_sample as tts
 import torch.nn.functional as F
 
-from src.models.generator.convolution.GeneratorConvLinearMappingBigSigm import GeneratorConvLinearMappingBigSigm
 from src.utils.BigUBuilder import calculate_average_u
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
-from src.utils.VMMDLoader import load_vmmd
 
 
 def tensor_to_image_before(tensor):

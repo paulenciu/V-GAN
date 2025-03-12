@@ -31,7 +31,10 @@ class DistanceOutlierDetector(BaseOutlierDetector):
                 min_distance = min(min_distance, sub_dist)
             subspace_min_distance.append(min_distance)
 
-        self.decision_scores = torch.Tensor(subspace_min_distance) / max_dist
+        if max_dist == float("inf"):
+            self.decision_scores = torch.Tensor(subspace_min_distance)
+        else:
+            self.decision_scores = torch.Tensor(subspace_min_distance) / max_dist
         self.decision_scores = self.scale_scores(self.decision_scores).cpu().numpy()
         #self.decision_scores = self.decision_scores.cpu().numpy()
         self.decision_time = time.time() - decision_time_start
@@ -56,5 +59,5 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         elif self.preprocessing_fn == normalize_images:
             dimensions = x_test.shape[1]
         else:
-            raise NotImplementedError
+            return float("inf")
         return dimensions ** 0.5

@@ -140,13 +140,79 @@ def configure_environment():
 
 if __name__ == '__main__':
     configure_environment()
-    config = [
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.MVTEC_AD,
-            dateset_category=["bottle"],
-            n_subspace_sample=1,
-            image_size_od=(256, 256),
-            standardize_data=False
-        )
+
+    mvtecad_classes = [
+        "bottle",
+        "cable",
+        "capsule",
+        "carpet",
+        "grid",
+        "hazelnut",
+        "leather",
+        "metal_nut",
+        "pill",
+        "screw",
+        "tile",
+        "toothbrush",
+        "transistor",
+        "wood",
+        "zipper"
     ]
-    pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/06-03/MVTEC_AD_normalize_imagesgen64_od256train256_lr=0.001_bs=1024_ep=2000_None/models/generator_1.pt")
+
+    config = [
+
+    ]
+    for mvtecad_class in mvtecad_classes:
+        config.append(
+            VMMDBaseConfiguration(
+                dataset_type=DatasetType.MVTEC_AD,
+                dateset_category=mvtecad_class,
+                n_subspace_sample=500,
+                image_size_generator=(64, 64),
+                image_size_train=(256, 256),
+                image_size_od=(256, 256),
+                standardize_data=False,
+                preprocessing_fn=normalize_images
+            )
+        )
+
+        # VMMDBaseConfiguration(
+        #     dataset_type=DatasetType.OCCCIFAR10,
+        #     dateset_category="cat",
+        #     n_subspace_sample=100,
+        #     image_size_generator=(32, 32),
+        #     image_size_train=(32, 32),
+        #     image_size_od=(32, 32),
+        #     standardize_data=False,
+        # ),
+        # VMMDBaseConfiguration(
+        #     dataset_type=DatasetType.OCCFMNIST,
+        #     dateset_category="Trouser",
+        #     n_subspace_sample=100,
+        #     image_size_generator=(28, 28),
+        #     image_size_train=(28, 28),
+        #     image_size_od=(28, 28),
+        #     standardize_data=False,
+        # ),
+        # VMMDBaseConfiguration(
+        #     dataset_type=DatasetType.MVTEC_AD,
+        #     dateset_category=["bottle"],
+        #     n_subspace_sample=100,
+        #     image_size_train=(64, 64),
+        #     image_size_generator=(512, 512),
+        #     image_size_od=(512, 512),
+        #     standardize_data=False,
+        # ),
+        # VMMDBaseConfiguration(
+        #     dataset_type=DatasetType.MVTEC_AD,
+        #     dateset_category=["bottle"],
+        #     n_subspace_sample=100,
+        #     image_size_train=(64, 64),
+        #     image_size_generator=(1024, 1024),
+        #     image_size_od=(1024, 1024),
+        #     standardize_data=False,
+        # )
+    #pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/07-03/OCCCIFAR10_normalize_images_train32_od32_lr=0.001_bs=1024_ep=2001_None/models/generator_9.pt")
+    #pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/08-03/OCCFMNIST_normalize_features_train28_od28_lr=0.001_bs=1024_ep=2001_None/models/generator_9.pt")
+    #pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/06-03/MVTEC_AD_normalize_imagesgen64_od256train256_lr=0.001_bs=1024_ep=2000_None/models/generator_1.pt")
+    launch_vmmd_experiment(config)

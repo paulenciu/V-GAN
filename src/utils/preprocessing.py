@@ -6,6 +6,9 @@ from sklearn.preprocessing import normalize
 def normalize_features(images):
     return normalize(images, axis=0)
 
+def no_preprocessing(images):
+    return images
+
 def normalize_images(images):
     return normalize(images, axis=1)
 
