@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 
 from src.models.encoder.IdentityEncoder import IdentityEncoder
+from src.utils.logger.vmmd.GradiantPlotter import GradiantPlotter
 from src.vmmd import VMMD
 from src.utils.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributionPlotter
 from src.utils.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
@@ -20,6 +21,7 @@ class VMMDWrapper:
         self.vmmd = vmmd
         base_dir = self.__init_directory_paths()
         self.vmmd.add_logger_subscriber(TrainingLogger(vmmd, base_dir=base_dir))
+        #self.vmmd.add_logger_subscriber(GradiantPlotter(vmmd))
         self.vmmd.add_logger_subscriber(SubspaceDistributionPlotter(vmmd, base_dir=base_dir))
         self.vmmd.add_logger_subscriber(SubspaceProjectionPlotter(vmmd, base_dir=base_dir))
 

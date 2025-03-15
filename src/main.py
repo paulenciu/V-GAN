@@ -6,8 +6,8 @@ from pyod.models.knn import KNN
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 from src.data.dataset.occ.OCCCifar10 import OCCCifar10
+from src.models.autoencoder.ResNet18AutoEncoderFineTuneV2 import ResNet18AutoEncoderFineTuneV2
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
-from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.run.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
@@ -21,7 +21,7 @@ from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
 from src.data.dataset_type import DatasetType
 
-def launch_vgan_experiment(configs, od_model):
+def launch_vgan_experiment(configs):
     for i, config in enumerate(configs):
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
 
@@ -35,7 +35,7 @@ def launch_vgan_experiment(configs, od_model):
         experiement = OutlierDetectionExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[od_model],
+                base_estimators=[config.ens_base_estimator],
                 vmmd=vmmd, max_n_jobs=-1,
                 preprocessing_fn=config.preprocessing_fn
             ),
@@ -67,7 +67,7 @@ def launch_vmmd_experiment(configs):
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
                 base_estimators=[config.ens_base_estimator],
-                vmmd=vmmd, max_n_jobs=-1,
+                vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
             dataset_type=config.dataset_type,
@@ -97,7 +97,7 @@ def pretrained_vmmd_experiment(configs, path_to_pretrained_model):
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
                 base_estimators=[config.ens_base_estimator],
-                vmmd=vmmd, max_n_jobs=-1,
+                vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
             dataset_type=config.dataset_type,
@@ -141,78 +141,63 @@ def configure_environment():
 if __name__ == '__main__':
     configure_environment()
 
-    mvtecad_classes = [
-        "bottle",
-        "cable",
-        "capsule",
-        "carpet",
-        "grid",
-        "hazelnut",
-        "leather",
-        "metal_nut",
-        "pill",
-        "screw",
-        "tile",
-        "toothbrush",
-        "transistor",
-        "wood",
-        "zipper"
+    vmmd_config = [
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(28, 28),
+            lr=0.0005,
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCFMNIST,
+            dateset_category="Trouser",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(28, 28),
+            lr=0.0005,
+            preprocessing_fn=normalize_images
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCFMNIST,
+            dateset_category="Trouser",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(28, 28),
+            lr=0.0005,
+        )
     ]
+
+    launch_vmmd_experiment(vmmd_config)
 
     config = [
-
-    ]
-    for mvtecad_class in mvtecad_classes:
-        config.append(
-            VMMDBaseConfiguration(
-                dataset_type=DatasetType.MVTEC_AD,
-                dateset_category=mvtecad_class,
-                n_subspace_sample=500,
-                image_size_generator=(64, 64),
-                image_size_train=(256, 256),
-                image_size_od=(256, 256),
-                standardize_data=False,
-                preprocessing_fn=normalize_images
-            )
+        VGANBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
+            epochs=10000,
+            iternum_g=2000,
+            iternum_d=1000,
+            lr_g=0.00002,
+            lr_d=0.00002,
+            detector=ResNet18AutoEncoderFineTuneV2(),
+        ),
+        VGANBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            epochs=10000,
+            iternum_g=2000,
+            iternum_d=1000,
+            lr_g=0.00002,
+            lr_d=0.00002,
+            detector=ResNet18AutoEncoderFineTuneV2(),
         )
+    ]
 
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCCIFAR10,
-        #     dateset_category="cat",
-        #     n_subspace_sample=100,
-        #     image_size_generator=(32, 32),
-        #     image_size_train=(32, 32),
-        #     image_size_od=(32, 32),
-        #     standardize_data=False,
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCFMNIST,
-        #     dateset_category="Trouser",
-        #     n_subspace_sample=100,
-        #     image_size_generator=(28, 28),
-        #     image_size_train=(28, 28),
-        #     image_size_od=(28, 28),
-        #     standardize_data=False,
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     n_subspace_sample=100,
-        #     image_size_train=(64, 64),
-        #     image_size_generator=(512, 512),
-        #     image_size_od=(512, 512),
-        #     standardize_data=False,
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category=["bottle"],
-        #     n_subspace_sample=100,
-        #     image_size_train=(64, 64),
-        #     image_size_generator=(1024, 1024),
-        #     image_size_od=(1024, 1024),
-        #     standardize_data=False,
-        # )
-    #pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/07-03/OCCCIFAR10_normalize_images_train32_od32_lr=0.001_bs=1024_ep=2001_None/models/generator_9.pt")
-    #pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/08-03/OCCFMNIST_normalize_features_train28_od28_lr=0.001_bs=1024_ep=2001_None/models/generator_9.pt")
-    #pretrained_vmmd_experiment(config, path_to_pretrained_model="../experiments/remote/06-03/MVTEC_AD_normalize_imagesgen64_od256train256_lr=0.001_bs=1024_ep=2000_None/models/generator_1.pt")
-    launch_vmmd_experiment(config)
+    launch_vgan_experiment(config)

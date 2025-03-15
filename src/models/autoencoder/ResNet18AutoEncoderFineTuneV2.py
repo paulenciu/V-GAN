@@ -8,10 +8,10 @@ class ResNet18AutoEncoderFineTuneV2(nn.Module):
 
         # Load pretrained autoencoder and freeze it
         self.resnet18 = ResNet18AutoEncoder()
-        self.resnet18.eval()
+        #self.resnet18.eval()
 
         # Get encoder and decoder
-        self.pretrained_encoder = self.resnet18.get_encoder()
+        self.pretrained_encoder = self.resnet18.get_encoder_and_freeze()
         self.pretrained_decoder = self.resnet18.get_decoder()
 
         # Freeze pretrained parameters
@@ -65,6 +65,11 @@ class ResNet18AutoEncoderFineTuneV2(nn.Module):
         """Unfreeze the last layer of the decoder"""
         for param in self.decoder_last_layer.parameters():
             param.requires_grad_(True)
+
+    def unfreeze_detector(self):
+        """Unfreeze both encoder and decoder last layers"""
+        self.unfreeze_encoder()
+        self.unfreeze_decoder()
 
     def freeze_detector(self):
         """Freeze both encoder and decoder last layers"""

@@ -13,7 +13,7 @@ class ResNet18AutoEncoderFineTuning(nn.Module):
         self.resnet18.eval()
 
         # Get encoder and decoder
-        self.pretrained_encoder = self.resnet18.get_encoder()
+        self.pretrained_encoder = self.resnet18.get_encoder_and_freeze()
         self.pretrained_decoder = self.resnet18.get_decoder()
 
         # Freeze pretrained parameters
@@ -68,6 +68,14 @@ class ResNet18AutoEncoderFineTuning(nn.Module):
     def unfreeze_decoder(self):
         for p in self.decoder_last_layer.parameters():
             p.requires_grad = True
+
+    def unfreeze_encoder(self):
+        for p in self.encoder_last_layer.parameters():
+            p.requires_grad = True
+
+    def unfreeze_detector(self):
+        self.unfreeze_decoder()
+        self.unfreeze_encoder()
 
     def freeze_detector(self):
         self.freeze_decoder()
