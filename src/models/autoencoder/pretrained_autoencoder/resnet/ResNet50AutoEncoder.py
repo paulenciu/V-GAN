@@ -37,7 +37,11 @@ class ResNet50AutoEncoder(nn.Module):
         x = self.model(x)
         return x
 
-    def get_encoder(self):
+    def get_encoder_and_freeze(self):
+
+        for param in self.model.encoder.parameters():
+            param.requires_grad = False
+
         return self.model.encoder
 
     def get_decoder(self):

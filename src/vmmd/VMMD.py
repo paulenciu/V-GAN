@@ -22,7 +22,7 @@ from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
-from src.vmmd.MMDLossConstrained import MMDLossConstrained, MixtureRQLinear
+from src.vmmd.MMDLossConstrained import MMDLossConstrained, MixtureRQLinear, RBF
 
 
 class VMMD(ABC):
@@ -181,7 +181,7 @@ class VMMD(ABC):
 
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)
-        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
 
         total_training_time = 0.0
         snapshot_duration = 0.0

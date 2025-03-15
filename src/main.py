@@ -8,6 +8,7 @@ from pyod.models.lunar import LUNAR
 from src.data.dataset.occ.OCCCifar10 import OCCCifar10
 from src.models.autoencoder.ResNet18AutoEncoderFineTuneV2 import ResNet18AutoEncoderFineTuneV2
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
 from src.run.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
@@ -143,6 +144,27 @@ if __name__ == '__main__':
 
     vmmd_config = [
         VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18",
+            image_size_generator=(56, 56),
+            image_size_od=(256, 256),
+            image_size_train=(256, 256),
+            lr=0.001,
+            preprocessing_fn=normalize_images
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18",
+            image_size_generator=(56, 56),
+            image_size_od=(256, 256),
+            image_size_train=(256, 256),
+            lr=0.0001,
+        ),
+        VMMDBaseConfiguration(
             dataset_type=DatasetType.OCCCIFAR10,
             dateset_category="cat",
             encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
@@ -150,7 +172,18 @@ if __name__ == '__main__':
             image_size_generator=(28, 28),
             image_size_od=(28, 28),
             image_size_train=(28, 28),
-            lr=0.0005,
+            lr=0.0001,
+            preprocessing_fn=normalize_images
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(28, 28),
+            lr=0.0001,
         ),
         VMMDBaseConfiguration(
             dataset_type=DatasetType.OCCFMNIST,
@@ -160,7 +193,7 @@ if __name__ == '__main__':
             image_size_generator=(28, 28),
             image_size_od=(28, 28),
             image_size_train=(28, 28),
-            lr=0.0005,
+            lr=0.0001,
             preprocessing_fn=normalize_images
         ),
         VMMDBaseConfiguration(
@@ -171,33 +204,33 @@ if __name__ == '__main__':
             image_size_generator=(28, 28),
             image_size_od=(28, 28),
             image_size_train=(28, 28),
-            lr=0.0005,
+            lr=0.0001,
         )
     ]
 
     launch_vmmd_experiment(vmmd_config)
 
-    config = [
-        VGANBaseConfiguration(
-            dataset_type=DatasetType.MVTEC_AD,
-            dateset_category="bottle",
-            epochs=10000,
-            iternum_g=2000,
-            iternum_d=1000,
-            lr_g=0.00002,
-            lr_d=0.00002,
-            detector=ResNet18AutoEncoderFineTuneV2(),
-        ),
-        VGANBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
-            epochs=10000,
-            iternum_g=2000,
-            iternum_d=1000,
-            lr_g=0.00002,
-            lr_d=0.00002,
-            detector=ResNet18AutoEncoderFineTuneV2(),
-        )
-    ]
-
-    launch_vgan_experiment(config)
+    # config = [
+    #     VGANBaseConfiguration(
+    #         dataset_type=DatasetType.MVTEC_AD,
+    #         dateset_category="bottle",
+    #         epochs=10000,
+    #         iternum_g=2000,
+    #         iternum_d=1000,
+    #         lr_g=0.00002,
+    #         lr_d=0.00002,
+    #         detector=ResNet18AutoEncoderFineTuneV2(),
+    #     ),
+    #     VGANBaseConfiguration(
+    #         dataset_type=DatasetType.OCCCIFAR10,
+    #         dateset_category="cat",
+    #         epochs=10000,
+    #         iternum_g=2000,
+    #         iternum_d=1000,
+    #         lr_g=0.00002,
+    #         lr_d=0.00002,
+    #         detector=ResNet18AutoEncoderFineTuneV2(),
+    #     )
+    # ]
+    #
+    # launch_vgan_experiment(config)
