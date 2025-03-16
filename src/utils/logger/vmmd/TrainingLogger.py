@@ -118,7 +118,7 @@ class TrainingLogger(IVMMDLogger):
             params.update(params_new)
             params.to_csv(self.base_dir / 'params.csv')
 
-    def __plot_loss(self, run_number, data, sample_count=500):
+    def __plot_loss(self, run_number, data, sample_count=100):
         myopic_test_df = self.vmmd.check_if_myopic(data, count=sample_count)
         pval_of_recommended_bw = myopic_test_df.iat[0, 1]
         n_unique_subspaces = self.__count_unique_subspaces(count=sample_count)

@@ -44,6 +44,9 @@ class ResNet50AutoEncoder(nn.Module):
 
         return self.model.encoder
 
+    def get_encoder(self):
+        return self.model.encoder
+
     def get_decoder(self):
         self.model.decoder.latent_size = 2048
         return self.model.decoder

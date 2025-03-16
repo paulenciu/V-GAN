@@ -169,7 +169,7 @@ class VMMD(ABC):
             pin_memory=torch.cuda.is_available(),
         )
 
-    def fit(self, dataset: IDataset, preprocess_fn=normalize_features):
+    def fit(self, dataset: IDataset, preprocess_fn=normalize_features, set_decoder_eval=False):
 
         n_channels, width, height = dataset.image_shape
         assert width == height, "Error, need square input images."
@@ -177,7 +177,9 @@ class VMMD(ABC):
         self.setup_device_and_seed()
         self.generator = self.generator.to(self.device)
         self.encoder = self.encoder.to(self.device)
-        self.encoder.eval()
+
+        if set_decoder_eval:
+            self.encoder.eval()
 
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)

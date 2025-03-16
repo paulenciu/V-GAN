@@ -26,7 +26,7 @@ class SubspaceProjectionPlotter(IVMMDLogger):
         device = self.vmmd.device
 
         # Use LaTeX in the titles
-        plt.rcParams['text.usetex'] = True
+        plt.rcParams['text.usetex'] = False
         fontsize = 80
 
         sample_indices = np.arange(n_samples)

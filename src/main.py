@@ -9,6 +9,7 @@ from src.data.dataset.occ.OCCCifar10 import OCCCifar10
 from src.models.autoencoder.ResNet18AutoEncoderFineTuneV2 import ResNet18AutoEncoderFineTuneV2
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
 from src.run.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
@@ -49,7 +50,7 @@ def launch_vgan_experiment(configs):
             n_subspaces_sample=config.n_subspace_sample
         )
 
-        experiement.fit()
+        experiement.fit(set_decoder_eval=config.set_decoder_eval)
         experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
 
 
@@ -80,7 +81,7 @@ def launch_vmmd_experiment(configs):
             n_subspaces_sample=config.n_subspace_sample
         )
 
-        experiement.fit()
+        experiement.fit(set_decoder_eval=config.set_decoder_eval)
         experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
 
 def pretrained_vmmd_experiment(configs, path_to_pretrained_model):
@@ -143,68 +144,146 @@ if __name__ == '__main__':
     configure_environment()
 
     vmmd_config = [
+        #VMMDTestConfiguration(),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            encoder=ResNet18AutoEncoder().get_encoder(),
+            add_to_title="resnet18_eval",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(224, 224),
+            batch_size=512,
+            lr=0.001,
+            n_subspace_sample=2,
+            preprocessing_fn=normalize_images,
+            set_decoder_eval=True
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18_train",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(224, 224),
+            batch_size=900,
+            lr=0.001,
+            n_subspace_sample=2,
+            preprocessing_fn=normalize_images
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            encoder=ResNet50AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet50_train",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(224, 224),
+            batch_size=250,
+            lr=0.001,
+            n_subspace_sample=2,
+            preprocessing_fn=normalize_images
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            encoder=ResNet50AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet50_train",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(224, 224),
+            batch_size=250,
+            lr=0.001,
+            n_subspace_sample=2,
+            preprocessing_fn=normalize_images
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18_train",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(224, 224),
+            n_subspace_sample=2,
+            batch_size=900,
+            lr=0.001,
+        ),
         VMMDBaseConfiguration(
             dataset_type=DatasetType.MVTEC_AD,
             dateset_category="bottle",
             encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
-            add_to_title="resnet18",
+            add_to_title="resnet18_train",
             image_size_generator=(56, 56),
-            image_size_od=(256, 256),
-            image_size_train=(256, 256),
+            image_size_od=(224, 224),
+            image_size_train=(224, 224),
+            lr=0.001,
+            n_subspace_sample=2,
+            preprocessing_fn=normalize_images,
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18_train",
+            image_size_generator=(56, 56),
+            image_size_od=(224, 224),
+            image_size_train=(224, 224),
+            n_subspace_sample=2,
+            lr=0.001,
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
+            encoder=ResNet50AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet50_train",
+            image_size_generator=(56, 56),
+            image_size_od=(224, 224),
+            image_size_train=(224, 224),
+            lr=0.001,
+            n_subspace_sample=2,
+            batch_size=100,
+            preprocessing_fn=normalize_images
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
+            encoder=ResNet50AutoEncoder().get_encoder(),
+            add_to_title="resnet50_eval",
+            image_size_generator=(56, 56),
+            image_size_od=(224, 224),
+            image_size_train=(224, 224),
+            lr=0.001,
+            n_subspace_sample=2,
+            batch_size=100,
+            preprocessing_fn=normalize_images,
+            set_decoder_eval=True
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCFMNIST,
+            dateset_category="Trouser",
+            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
+            add_to_title="resnet18_train",
+            image_size_generator=(28, 28),
+            image_size_od=(28, 28),
+            image_size_train=(224, 224),
+            n_subspace_sample=2,
+            batch_size=900,
             lr=0.001,
             preprocessing_fn=normalize_images
         ),
         VMMDBaseConfiguration(
-            dataset_type=DatasetType.MVTEC_AD,
-            dateset_category="bottle",
-            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
-            add_to_title="resnet18",
-            image_size_generator=(56, 56),
-            image_size_od=(256, 256),
-            image_size_train=(256, 256),
-            lr=0.0001,
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
-            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
-            add_to_title="resnet18",
-            image_size_generator=(28, 28),
-            image_size_od=(28, 28),
-            image_size_train=(28, 28),
-            lr=0.0001,
-            preprocessing_fn=normalize_images
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
-            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
-            add_to_title="resnet18",
-            image_size_generator=(28, 28),
-            image_size_od=(28, 28),
-            image_size_train=(28, 28),
-            lr=0.0001,
-        ),
-        VMMDBaseConfiguration(
             dataset_type=DatasetType.OCCFMNIST,
             dateset_category="Trouser",
             encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
-            add_to_title="resnet18",
+            add_to_title="resnet18_train",
             image_size_generator=(28, 28),
             image_size_od=(28, 28),
-            image_size_train=(28, 28),
-            lr=0.0001,
-            preprocessing_fn=normalize_images
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category="Trouser",
-            encoder=ResNet18AutoEncoder().get_encoder_and_freeze(),
-            add_to_title="resnet18",
-            image_size_generator=(28, 28),
-            image_size_od=(28, 28),
-            image_size_train=(28, 28),
-            lr=0.0001,
+            image_size_train=(224, 224),
+            n_subspace_sample=2,
+            batch_size=900,
+            lr=0.001,
         )
     ]
 
