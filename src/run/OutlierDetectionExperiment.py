@@ -36,9 +36,9 @@ class OutlierDetectionExperiment:
         self.preprocessing_fn = preprocessing_fn
         self.n_subspace_sample = n_subspaces_sample
 
-    def fit(self):
+    def fit(self, set_decoder_eval):
         x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_train, standardize=self.standardize_data)
-        self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
+        self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn, set_decoder_eval=set_decoder_eval)
         del x_train
 
         self.fit_outlier_detection()

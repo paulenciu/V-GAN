@@ -27,6 +27,8 @@ class ResNet18AutoEncoder(AbstractEncoder):
         x_reconstructed = self.model.decoder(x_encoded)
         return x_encoded, x_reconstructed
 
+    def get_encoder(self):
+        return self.model.encoder
 
     def get_encoder_and_freeze(self):
 

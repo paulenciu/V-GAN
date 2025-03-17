@@ -32,7 +32,8 @@ class VMMDBaseConfiguration:
                 dataset_type=None,
                 dateset_category=None,
                 add_to_title: str=None,
-                ens_base_estimator=LUNAR()):
+                ens_base_estimator=LUNAR(),
+                set_decoder_eval=False):
 
         self.generator = generator or GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
         self.encoder = encoder
@@ -56,6 +57,7 @@ class VMMDBaseConfiguration:
         self.image_size_train = image_size_train
         self.filename = filename or self.create_filename(add_to_title)
         self.ens_base_estimator = ens_base_estimator
+        self.set_decoder_eval = set_decoder_eval
 
     def create_filename(self, add_to_title: str = ""):
         return (f"{self.dataset_type.name}"
