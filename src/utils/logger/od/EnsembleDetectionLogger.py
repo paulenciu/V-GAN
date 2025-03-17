@@ -1,6 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_auc_score as auc
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 
 class EnsembleDetectionLogger:
 
@@ -14,24 +16,38 @@ class EnsembleDetectionLogger:
         for i in range(len(ensemble_score)):
             roc_auc_scores[i] = auc(y, ensemble_score[i])
 
-        plt.figure(figsize=(10, 6))
-        bars = plt.bar(np.arange(len(ensemble_score)), roc_auc_scores, color='skyblue', edgecolor='black')
+        detector_weights = self.vmmd_od.vmmd.proba
 
-        # Adding titles and labels
-        plt.title('ROC AUC Scores for Ensemble Detector', fontsize=16)
-        plt.xlabel('Detector Index', fontsize=14)
-        plt.ylabel('ROC AUC Score', fontsize=14)
+        fig, ax = plt.subplots(figsize=(25, 6))
 
-        plt.grid(True, linestyle='--', alpha=0.7)
+        norm = Normalize(vmin=min(detector_weights), vmax=max(detector_weights))
+        colormap = plt.cm.magma
 
-        plt.xticks(np.arange(len(ensemble_score)), rotation=45)
+        # Create bars with colors corresponding to weights
+        bars = ax.bar(np.arange(len(ensemble_score)), roc_auc_scores,
+                      color=colormap(norm(detector_weights)), edgecolor='black')
 
-        for bar in bars:
+        ax.set_title('ROC AUC Scores for Ensemble Detector', fontsize=16)
+        ax.set_xlabel('Detector Index', fontsize=14)
+        ax.set_ylabel('ROC AUC Score', fontsize=14)
+
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        ax.set_xticks(np.arange(len(ensemble_score)))
+        ax.set_xticklabels(np.arange(len(ensemble_score)))
+
+        for bar, prob, auc_score in zip(bars, detector_weights, roc_auc_scores):
             height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2., height,
-                     f'{height:.2f}',
-                     ha='center', va='bottom', fontsize=10)
+            ax.text(bar.get_x() + bar.get_width() / 2., height,
+                    f'{auc_score:.2f}',
+                    ha='center', va='bottom', fontsize=10)
 
-        plt.style.use('seaborn')
+        # Add a colorbar to show the mapping of weights to colors
+        sm = ScalarMappable(cmap=colormap, norm=norm)
+        sm.set_array([])
+        plt.colorbar(sm, ax=ax, label='Detector Weight')
 
+        plt.style.use('seaborn-v0_8')
+        plt.tight_layout()
         plt.show()
+        self.vmmd_od.store_ensemble_score(fig)

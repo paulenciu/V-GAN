@@ -68,8 +68,8 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
         self.ens_train_min = np.min(train_scores_agg)
         self.ens_train_max = np.max(train_scores_agg)
         self.ens_train_score_std = np.std(train_scores_agg)
-        #self.ens_train_max = np.percentile(train_scores_agg, 95)
-        #self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
+        self.ens_train_max = np.percentile(train_scores_agg, 95)
+        self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
         print("Ensemble train score max: ", self.ens_train_max, "Ensemble train score std: ", self.ens_train_score_std)
         self.n_subspaces = subspaces.shape[0]
 
@@ -95,7 +95,7 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
 
     def get_model_description(self):
         return {
-            "Model:": self.__class__.__name__,
+            "Model": self.__class__.__name__,
             "Number Subspaces": str(self.n_subspaces),
-            "Ensemble Model:": self.base_estimators[0].__class__.__name__,
+            "Ensemble Model": self.base_estimators[0].__class__.__name__,
         }

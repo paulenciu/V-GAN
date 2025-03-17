@@ -27,6 +27,8 @@ class VMMDWrapper:
 
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)
+        len_model_dir = len("/models/generator_x.pt")
+        self.vmmd.path_to_directory = path_to_generator_params[:-len_model_dir]
         return self.vmmd.load_model(generator, autoencoder)
 
     def get_path_to_directory(self, path_to_generator_params):

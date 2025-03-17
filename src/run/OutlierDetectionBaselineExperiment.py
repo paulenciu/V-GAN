@@ -45,7 +45,7 @@ class OutlierDetectionBaselineExperiment:
 
         od_stats = pd.DataFrame([self.calculate_od_stats(y_test, decision_scores)])
         print("Stats: ", od_stats)
-        path_to_dir = Path(self.root_dir) / str(self.dataset_type.name)
+        path_to_dir = Path(self.root_dir) / str(self.dataset_type.name) / str(self.category)
         filename = self.od_model.__class__.__name__ + str(self.image_size_od[0]) + ".csv"
         os.makedirs(path_to_dir, exist_ok=True)
         od_stats.to_csv(path_to_dir / filename, index=False)

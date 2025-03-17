@@ -177,7 +177,7 @@ class VMMD(ABC):
         self.setup_device_and_seed()
         self.generator = self.generator.to(self.device)
         self.encoder = self.encoder.to(self.device)
-        self.encoder.eval()
+        #self.encoder.eval()
 
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, n_channels, height, width, preprocess_fn=preprocess_fn)
@@ -236,7 +236,6 @@ class VMMD(ABC):
             return DataLoader(x_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=False, shuffle=True)
         else:  # Uses CUDA if available, otherwise MPS or nothing
             return DataLoader(x_unflattened, batch_size=self.batch_size, drop_last=True, pin_memory=mps, shuffle=True)
-
 
     def _generate_subspaces(self, count):
 

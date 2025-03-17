@@ -13,8 +13,11 @@ class OutlierDetectionLogger:
         self.vmmd_od = vmmd_od
 
     def log(self, x, y):
-        ensemble_score = self.od_model.ensemble_detector.decision_score_agg(x)
-        distance_score = self.od_model.distance_detector.decision_score(x)
+        #ensemble_score = self.od_model.ensemble_detector.decision_score_agg(x)
+        #distance_score = self.od_model.distance_detector.decision_score(x)
+
+        ensemble_score = self.od_model.get_ensemble_score(x)
+        distance_score = self.od_model.get_distance_score(x)
 
         fig, ax = plt.subplots(figsize=(10, 6))
         fig.suptitle('Outlier Detection Scores', fontsize=14, y=0.95)

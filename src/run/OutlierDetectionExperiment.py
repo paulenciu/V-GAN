@@ -10,6 +10,7 @@ from src.od.CombinedOutlierDetector import CombinedOutlierDetector
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d
 from src.utils.Plotter import tensor_to_image
 from src.utils.logger.od.EnsembleDetectionLogger import EnsembleDetectionLogger
+from src.utils.logger.od.OutlierDetectionBenchmarkLogger import OutlierDetectionBenchmarkLogger
 from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.utils.logger.od.OutlierDetectionLogger import OutlierDetectionLogger
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
@@ -30,6 +31,7 @@ class OutlierDetectionExperiment:
         self.standardize_data = standardize_data
         self.od_model = od_model
         self.od_logger = OutlierDetectionLogger(od_model, self.vmmd_od)
+        self.od_bm_logger = OutlierDetectionBenchmarkLogger(od_model, self.vmmd_od, dataset_type=self.dataset_type, category=self.category)
         self.ens_logger = EnsembleDetectionLogger(od_model.ensemble_detector, self.vmmd_od)
         self.preprocessing_fn = preprocessing_fn
         self.n_subspace_sample = n_subspaces_sample
@@ -45,6 +47,8 @@ class OutlierDetectionExperiment:
         self.vmmd.approx_subspace_dist(subspace_count=self.n_subspace_sample)
         subspaces = self.vmmd.subspaces
 
+        print("Subspaces distribution:", self.vmmd.proba)
+
         # PREPARE SUBSPACE FOR OD
         subspaces = interpolate(subspaces, size=self.image_size_od[0], mode='nearest')
         subspaces = subspaces.view(subspaces.shape[0], -1)
@@ -53,7 +57,7 @@ class OutlierDetectionExperiment:
         subspaces = np.array(subspaces, dtype=bool)
 
         # for subspace in subspaces:
-        #     subspace_image = torch.from_numpy(subspace).view(3, 256, 256).to(torch.float)
+        #     subspace_image = torch.from_numpy(subspace).view(3, 28, 28).to(torch.float)
         #     plt.imshow(tensor_to_image(subspace_image))
         #     plt.show()
 
@@ -69,7 +73,6 @@ class OutlierDetectionExperiment:
     def fit_pretrained_model(self, path_to_generator: str):
         self.vmmd_wrapper.load_model(path_to_generator)
         self.fit_outlier_detection()
-
 
     def evaluate(self, store_stats=True, weight_ensemble=0.5):
         # CALCULATE OD SCORES
@@ -97,10 +100,15 @@ class OutlierDetectionExperiment:
         self.od_logger.log(x_test_flattened, y_test)
         decision_scores, descriptions = self.od_model.decision_score_interval(x_test_flattened, ensemble_weight_start, ensemble_weight_end, step)
 
+        od_stats_list = []
+
         for i, ds in enumerate(decision_scores):
             od_stats = self.calculate_od_stats(y_test, ds)
             od_stats["OD Method"] = descriptions[i]
             self.vmmd_od.store_od_stats(od_stats, run_number=-1)
+            od_stats_list.append(od_stats)
+
+        self.od_bm_logger.log(od_stats_list)
 
     def calculate_od_stats(self, y_test, decision_scores):
         return {"Dataset": self.dataset_type,

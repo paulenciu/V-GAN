@@ -4,8 +4,11 @@ from pathlib import Path
 import torchvision
 
 from src.data.dataset.Cifar10Dataset import Cifar10Dataset
+from src.data.dataset.DominantColorDataset import DominantColorDataset
 from src.data.dataset.FashionMNISTDataset import FashionMNISTDataset
 from src.data.dataset.MVTecADDataset import MVTecADDataset
+from src.data.dataset.MovingSquaresDataset import MovingSquaresDataset
+from src.data.dataset.OrientedLinesDataset import OrientedLinesDataset
 from src.data.dataset.occ.OCCCifar10 import OCCCifar10
 from src.data.dataset.occ.OCCCifar100 import OCCCifar100
 from src.data.dataset.occ.OCCDataset import OCCDataset
@@ -30,6 +33,9 @@ class DatasetType(Enum):
     FASHION_MNIST = FashionMNISTDataset, "../datasets/fashion_mnist"
     MVTEC_AD = MVTecADDataset, "../datasets/mvtec_ad"
     SYNTHETIC = SyntheticImageDataset, ""
+    ORIENTEDLINES = OrientedLinesDataset, ""
+    MOVINGSQR = MovingSquaresDataset, ""
+    DOMCOLOR = DominantColorDataset, ""
 
     def load(self, category, train=True, transform=torchvision.transforms.ToTensor(), normalize=False):
         """
