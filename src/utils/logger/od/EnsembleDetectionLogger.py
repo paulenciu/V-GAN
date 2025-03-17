@@ -32,6 +32,6 @@ class EnsembleDetectionLogger:
                      f'{height:.2f}',
                      ha='center', va='bottom', fontsize=10)
 
-        plt.style.use('seaborn-v0_8')
-
+        #plt.style.use('seaborn-v0_8')
+        plt.style.use('seaborn')
         plt.show()
