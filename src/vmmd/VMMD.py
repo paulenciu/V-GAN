@@ -122,13 +122,13 @@ class VMMD(ABC):
         bandwidth.append("recommended bandwidth")
         return pd.DataFrame([results], columns=bandwidth, index=["p-val"])
 
-    def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
+    def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor):
         u_subspaces = u_subspaces.to(torch.float32)
 
-        if x_sample_unflattened.shape[2] != u_subspaces.shape[2]:
-            u_subspaces = interpolate(u_subspaces, size=x_sample_unflattened.shape[2], mode="nearest")
+        if x_sample.shape[2] != u_subspaces.shape[2]:
+            u_subspaces = interpolate(u_subspaces, size=x_sample.shape[2], mode="nearest")
 
-        return u_subspaces * x_sample_unflattened
+        return u_subspaces * x_sample
 
     def encode(self, x):
         return self.encoder(x).view(x.shape[0], -1)

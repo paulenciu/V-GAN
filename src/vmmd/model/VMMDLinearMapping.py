@@ -17,12 +17,12 @@ class VMMDLinearMappingRef(VMMD):
         return self._generate_subspaces(count=count, discretize_condition=True)
 
 
-    def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
+    def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor):
 
-        x_sample_unflattened = x_sample_unflattened.to(torch.float32)
+        x_sample = x_sample.to(torch.float32)
         u_subspaces = u_subspaces.to(torch.float32)
 
-        matmul_result = torch.matmul(u_subspaces, x_sample_unflattened)
+        matmul_result = torch.matmul(u_subspaces, x_sample)
         matmul_result = matmul_result - matmul_result.min()  # Shift minimum to 0
         matmul_result = matmul_result / matmul_result.max()  # Scale to [0, 1]
 

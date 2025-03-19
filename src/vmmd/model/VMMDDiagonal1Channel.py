@@ -14,7 +14,3 @@ class VMMDDiagonal1Channel(VMMD):
 
     def sample_count_subspaces(self, count):
         return self._generate_subspaces(count)
-
-    def _create_mask_frequency_plot(self, u):
-        u_agg = u.sum(dim=0)
-        return u_agg / u.shape[0]

@@ -14,24 +14,24 @@ class VMMDDiagonal3Channel(VMMD):
              path_to_directory=Path(os.getcwd()).parent / "experiments" / "local", penalty=MMDLossNoPenalty()):
         super().__init__(filename, batch_size, epochs, lr, momentum, seed, weight_decay, path_to_directory, False, penalty)
 
-    def apply_subspaces_operator(self, x_sample_unflattened: torch.Tensor, u_subspaces: torch.Tensor):
+    def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor):
 
-        if len(x_sample_unflattened.shape) == 2:
-            x_sample_flattened =  x_sample_unflattened.view(-1).to(self.device)
+        if len(x_sample.shape) == 2:
+            x_sample_flattened =  x_sample.view(-1).to(self.device)
             u_subspaces_flattened = u_subspaces.view(-1).to(self.device)
         else:
-            x_sample_flattened = x_sample_unflattened.view(x_sample_unflattened.shape[0], -1).to(self.device)
+            x_sample_flattened = x_sample.view(x_sample.shape[0], -1).to(self.device)
             u_subspaces_flattened = u_subspaces.view(u_subspaces.shape[0], -1).to(self.device)
 
         flattened_projection = u_subspaces_flattened * x_sample_flattened
 
-        if len(x_sample_unflattened.shape) == 4:
-            return flattened_projection.view(x_sample_unflattened.shape[0], x_sample_unflattened.shape[1] , x_sample_unflattened.shape[2], x_sample_unflattened.shape[3])
+        if len(x_sample.shape) == 4:
+            return flattened_projection.view(x_sample.shape[0], x_sample.shape[1], x_sample.shape[2], x_sample.shape[3])
 
-        if len(x_sample_unflattened.shape) == 2:
-            return flattened_projection.unsqueeze(dim=0).view(1, x_sample_unflattened.shape[0], x_sample_unflattened.shape[1]).to(self.device)
+        if len(x_sample.shape) == 2:
+            return flattened_projection.unsqueeze(dim=0).view(1, x_sample.shape[0], x_sample.shape[1]).to(self.device)
 
-        return flattened_projection.view(x_sample_unflattened.shape[0], x_sample_unflattened.shape[1] , x_sample_unflattened.shape[2])
+        return flattened_projection.view(x_sample.shape[0], x_sample.shape[1], x_sample.shape[2])
 
     def _calculate_d(self, u):
         u = u.view(u.shape[0], -1)
