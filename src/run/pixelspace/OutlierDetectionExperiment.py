@@ -108,7 +108,7 @@ class OutlierDetectionExperiment:
             self.vmmd_od.store_od_stats(od_stats, run_number=-1)
             od_stats_list.append(od_stats)
 
-        #self.od_bm_logger.log(od_stats_list)
+        self.od_bm_logger.log(od_stats_list)
 
     def calculate_od_stats(self, y_test, decision_scores):
         return {"Dataset": self.dataset_type,

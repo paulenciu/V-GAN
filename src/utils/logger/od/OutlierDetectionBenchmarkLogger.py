@@ -21,8 +21,10 @@ class OutlierDetectionBenchmarkLogger:
         dis_scores = scores[0]
         ens_scores = scores[-1]
         baseline_scores = self.get_baseline_score()
-        all_scores = [dis_scores, ens_scores] + baseline_scores
-        model_names = ["VMMD + ERROR", "VMMD + " + ens_scores["OD Method"]["Ensemble Description"]["Ensemble Model"]] + [score["OD Method"] for score in baseline_scores]
+        best_comb_scores = self.find_best_combinational_score(scores[1:-2])
+
+        all_scores = [dis_scores, best_comb_scores,ens_scores] + baseline_scores
+        model_names = ["VMMD + ERROR"] + ["VMMD + " +  ens_scores["OD Method"]["Ensemble Description"]["Ensemble Model"]  + " + ERROR"] +  ["VMMD + " + ens_scores["OD Method"]["Ensemble Description"]["Ensemble Model"]] + [score["OD Method"] for score in baseline_scores]
         metrics = ["AUC", "PRAUC", "F1"]
 
         n_models = len(all_scores)
@@ -30,7 +32,7 @@ class OutlierDetectionBenchmarkLogger:
         x = np.arange(n_metrics)
 
         fig, ax = plt.subplots(figsize=(12, 6))
-        bar_width = 0.2
+        bar_width = 0.1
 
         for i, model_name in enumerate(model_names):
             metric_values = [all_scores[i][metric] for metric in metrics]
@@ -56,7 +58,7 @@ class OutlierDetectionBenchmarkLogger:
                     ha="center",
                     va="top",
                     fontsize=9,
-                    rotation=45,
+                    rotation=90,
                 )
 
         ax.set_title('Model Performance Comparison')
@@ -88,3 +90,6 @@ class OutlierDetectionBenchmarkLogger:
 
     def initiate_baseline_experiment(self):
         raise NotImplementedError
+
+    def find_best_combinational_score(self, comb_scores: list[dict]):
+        return max(comb_scores, key=lambda entry: (entry["AUC"], entry["PRAUC"], entry["F1"]))
