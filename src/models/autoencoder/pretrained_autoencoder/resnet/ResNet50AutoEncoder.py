@@ -44,9 +44,14 @@ class ResNet50AutoEncoder(nn.Module):
 
         return self.model.encoder
 
+    def get_encoder_input_shape(self):
+        return torch.Size([3, 224, 224])
+
+    def get_decoder_input_shape(self):
+        return torch.Size([2048, 7, 7])
+
     def get_encoder(self):
         return self.model.encoder
 
     def get_decoder(self):
-        self.model.decoder.latent_size = 2048
         return self.model.decoder

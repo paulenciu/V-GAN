@@ -3,7 +3,10 @@ import os
 
 from pathlib import Path
 from src.data.dataset_type import DatasetType
-from src.run.pipeline.VMMDPipeline import pretrained_vmmd_experiment, launch_vmmd_experiment
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
+from src.run.embeddingspace.config.EmbeddingVMMDBaseConfiguration import EmbeddingVMMDBaseConfiguration
+from src.run.pipeline.VMMDPipeline import pretrained_vmmd_experiment, launch_vmmd_experiment, \
+    launch_vmmd_embedding_config
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
 from src.utils.preprocessing import normalize_features
@@ -24,14 +27,15 @@ if __name__ == '__main__':
     configure_environment()
 
     config = [
-        VMMDBaseConfiguration(
+        EmbeddingVMMDBaseConfiguration(
             dataset_type=DatasetType.MVTEC_AD,
             dateset_category="bottle",
-            epochs=3000,
-            lr=0.001,
-            preprocessing_fn=normalize_features,
-            add_to_title="no_scheduler",
-        )
+            n_subspace_sample=100,
+            batch_size=1024,
+            add_to_title="res18",
+            epochs=2,
+            autoencoder=ResNet50AutoEncoder(),
+        ),
     ]
     #
     # for mvtec_category in mvtec_categories:
@@ -74,5 +78,5 @@ if __name__ == '__main__':
     #             n_subspace_sample=2
     #         )
     #     )
-    launch_vmmd_experiment(config)
+    launch_vmmd_embedding_config(config)
     #pretrained_vmmd_experiment(config, "../experiments/remote/OCCFMNIST_normalize_features_train28_od28_lr=0.001_bs=1024_ep=2001_None/models/generator_9.pt")

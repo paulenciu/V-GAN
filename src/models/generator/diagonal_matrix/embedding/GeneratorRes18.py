@@ -9,7 +9,7 @@ from src.models.generator.modules.GaussianNoise import GaussianNoise
 from torch import nn
 
 
-class GeneratorRes50(AbstractGenerator):
+class GeneratorRes18(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape):
         super().__init__()
@@ -25,7 +25,7 @@ class GeneratorRes50(AbstractGenerator):
         rel_size = int(img_size / latent_size)
         self.latent_size = latent_size
         self.img_size = img_size
-        amount_layers = 5
+        amount_layers = 6
         self.increase = log(rel_size, amount_layers).real
 
         layers = [self.get_layer(layer) for layer in range(1, amount_layers)]
