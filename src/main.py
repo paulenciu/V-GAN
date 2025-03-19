@@ -11,15 +11,17 @@ from src.data.dataset.occ.OCCCifar10 import OCCCifar10
 from src.models.autoencoder.ResNet18AutoEncoderFineTuneV2 import ResNet18AutoEncoderFineTuneV2
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
-from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes50
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes18
 from src.od.CombinedOutlierDetectionV2 import CombinedOutlierDetectorV2
-from src.run.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
-from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
+from src.run.embeddingspace.config.EmbeddingVMMDBaseConfiguration import EmbeddingVMMDBaseConfiguration
+from src.run.pixelspace.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
+from src.run.pixelspace.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
-from src.run.config.vgan.VGANBaseConfiguration import VGANBaseConfiguration
-from src.run.config.vgan.VGANTestConfiguration import VGANTestConfiguration
-from src.run.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
-from src.run.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
+from src.run.pixelspace.config.vgan.VGANBaseConfiguration import VGANBaseConfiguration
+from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
+from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
+
+from src.run.embeddingspace.EmbeddingOutlierDetectionExperiments import EmbeddingOutlierDetectionExperiments
 from src.utils.preprocessing import normalize_features, normalize_images_col_softmax, normalize_images
 from src.vgan.VGAN import VGAN
 from src.vmmd.VMMDEmbedding import VMMDEmbedding
@@ -239,10 +241,10 @@ def launch_vmmd_embedding_config(configs):
             epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
             lr=config.lr, penalty=config.penalty, filename=config.filename,
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-            autoencoder=ResNet18AutoEncoder(), generator=config.generator
+            autoencoder=config.autoencoder, generator=config.generator
         )
 
-        experiement = OutlierDetectionExperiment(
+        experiement = EmbeddingOutlierDetectionExperiments(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
                 base_estimators=[config.ens_base_estimator],
@@ -251,8 +253,6 @@ def launch_vmmd_embedding_config(configs):
             ),
             dataset_type=config.dataset_type,
             category=config.dateset_category,
-            image_size_train=config.image_size_train,
-            image_size_od=config.image_size_od,
             standardize_data=config.standardize_data,
             preprocessing_fn=config.preprocessing_fn,
             n_subspaces_sample=config.n_subspace_sample
@@ -322,20 +322,21 @@ if __name__ == '__main__':
     #     )
 
     configs = [
-        VMMDBaseConfiguration(
+        EmbeddingVMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            n_subspace_sample=2,
+            batch_size=200,
+            add_to_title="res18",
+            epochs=2000
+        ),
+        EmbeddingVMMDBaseConfiguration(
             dataset_type=DatasetType.MVTEC_AD,
             dateset_category="bottle",
-            image_size_generator=(28, 28),
-            image_size_train=(224, 224),
-            image_size_od=(224, 224),
-            preprocessing_fn=normalize_images,
-            n_subspace_sample=500,
-            encoder=None,
-            set_decoder_eval=True,
-            batch_size=500,
-            epochs=10,
-            add_to_title="embedding_res18",
-            generator=GeneratorRes50(latent_size=128, image_shape=512*7*7)
+            n_subspace_sample=100,
+            batch_size=1024,
+            add_to_title="res18",
+            epochs=3000
         ),
     ]
 

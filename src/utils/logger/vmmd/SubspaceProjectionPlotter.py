@@ -48,14 +48,18 @@ class SubspaceProjectionPlotter(IVMMDLogger):
         for i in range(n_masks):
 
             if isinstance(self.vmmd, VMMDEmbedding):
-                u = u.view(-1, 1, 112, 224)
+                u_height = u.shape[1] / 112
+                u_width = u.shape[1] / 224
+                u = u.view(-1, 1, u_width, u_height)
 
             axis[0, i + 1].imshow(tensor_to_image(u[i].detach()))
             axis[0, i + 1].axis("off")
             axis[0, i + 1].set_title(f"$U_{i + 1}$", fontsize=fontsize)
 
         if isinstance(self.vmmd, VMMDEmbedding):
-            average_u = average_u.view(-1, 1, 112, 224)
+            u_height = u.shape[1] / 112
+            u_width = u.shape[1] / 224
+            average_u = average_u.view(1, u_width, u_height)
 
         axis[0, n_masks + 1].imshow(tensor_to_image(average_u))
         axis[0, n_masks + 1].axis("off")
@@ -81,7 +85,7 @@ class SubspaceProjectionPlotter(IVMMDLogger):
                 axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
                 axis[i, j + 1].axis("off")
 
-            big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u.unsqueeze(0), x_sample_unflattened=image[0]).squeeze(0)
+            big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u.unsqueeze(0), x_sample=image[0]).squeeze(0)
             big_u_image = big_u_image.to(torch.float32).to(device)
 
             axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))

@@ -9,7 +9,7 @@ from src.models.generator.modules.GaussianNoise import GaussianNoise
 from torch import nn
 
 
-class GeneratorRes50(AbstractGenerator):
+class GeneratorRes18(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape):
         super().__init__()

@@ -5,6 +5,7 @@ import torch
 from collections import defaultdict
 from src.data.IDataset import IDataset
 from sklearn.preprocessing import normalize
+from src.data.dataset.PreEmbeddedDataset import PreEmbeddedDataset
 from src.utils.preprocessing import normalize_features
 from src.vmmd.VMMD import VMMD
 from torch.nn.functional import interpolate
@@ -34,6 +35,8 @@ class VMMDEmbedding(VMMD):
                  penalty=MMDLossNoPenalty()):
         super().__init__(filename, autoencoder.get_encoder(), generator, batch_size, epochs, lr, momentum, seed, weight_decay, path_to_directory, penalty)
         self.decoder = autoencoder.get_decoder()
+        self.encoder_input_shape = autoencoder.get_encoder_input_shape()
+        self.decoder_input_shape = autoencoder.get_decoder_input_shape()
 
     def sample_count_subspaces(self, count):
         return self._generate_subspaces(count)
@@ -57,7 +60,7 @@ class VMMDEmbedding(VMMD):
             u_mappings = self.generator.sample_subspace_masks(noise)
 
             processed_embeddings = embeddings * u_mappings
-            processed_images = processed_embeddings.view(x_sample.size(0), 512, 7, 7)
+            processed_images = processed_embeddings.view(x_sample.size(0), *self.decoder_input_shape)
             reconstructed_images = self.decoder(processed_images)
 
         if isinstance(bandwidth, float):
@@ -91,7 +94,7 @@ class VMMDEmbedding(VMMD):
         x_flattened_preprocessed = torch.from_numpy(
             preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).float()
         unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
-        pre_embedded_dataset = PreEmbeddedDataset(unflattened_images, self.encoder, self.device)
+        pre_embedded_dataset = PreEmbeddedDataset(unflattened_images, self.encoder, "cpu")
         return DataLoader(
             pre_embedded_dataset,
             batch_size=self.batch_size,
@@ -113,7 +116,7 @@ class VMMDEmbedding(VMMD):
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
 
         total_training_time = 0.0
-        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.5 * i * self.epochs) for i in range(1, 11)]
 
         for epoch in range(self.epochs):
             epoch_start = time.time()
@@ -128,8 +131,8 @@ class VMMDEmbedding(VMMD):
                 noise = torch.randn(images.size(0), *self.generator.noise_dim, device=self.device)
                 u_mappings = self.generator.sample_subspace_masks(noise)
 
-                processed_embeddings = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
-                processed_images = processed_embeddings.view(images.size(0), 512, 7, 7)
+                processed_images = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
+                processed_images = processed_images.view(images.size(0), *self.decoder_input_shape)
                 reconstructed = self.decoder(processed_images)
 
                 images = images.view(images.size(0), -1)
@@ -155,37 +158,17 @@ class VMMDEmbedding(VMMD):
 
         self.notify_logging_subscriber(dataset, self.epochs)
 
-    def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor, is_embedding=False):
+    def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor, is_embedding=False, output_image_size=64):
+        """:param is_embedding: If False, the input is encoded-decoded"""
         u_subspaces = u_subspaces.to(torch.float32)
 
         if not is_embedding:
+
+            #Encoder expects 4D input
+            if len(x_sample.shape) != 4:
+                x_sample = x_sample.unsqueeze(0)
+
             x_sample = self.encode(x_sample)
 
-        return x_sample * u_subspaces
-
-
-class PreEmbeddedDataset(Dataset):
-    def __init__(self, dataset: IDataset, encoder, device):
-        self.dataset = dataset
-        self.device = device
-        self.encoder = encoder.to(device)
-        self.encoder.eval()
-
-        with torch.no_grad():
-            self.embeddings = torch.cat([
-                self.encoder(batch.to(device)).view(batch.size(0), -1)
-                for batch in DataLoader(dataset, batch_size=500)
-            ], dim=0).cpu()
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx):
-        return self.dataset[idx], self.embeddings[idx]
-
-    def get_embedding(self, img):
-        idx = self.dataset.dataset.index(img)
-        return self.embeddings[idx]
-
-    def is_embedding(self, element):
-        return True if element in self.embeddings else False
+        projection = x_sample * u_subspaces.view(*x_sample.shape)
+        return projection if is_embedding else interpolate(self.decoder(projection.view(projection.size(0), *self.decoder_input_shape)), size=output_image_size, mode="bilinear")

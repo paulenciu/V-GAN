@@ -77,6 +77,7 @@ class VMMDWrapper:
         current_date = datetime.now().strftime("%d-%m")
 
         path_to_directory = path_to_directory / current_date / self.vmmd.filename
+        self.vmmd.path_to_directory = path_to_directory
 
         if not path_to_directory.exists():
             os.makedirs(path_to_directory, exist_ok=True)
