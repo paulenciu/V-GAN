@@ -20,7 +20,7 @@ class SubspaceDistributionPlotter(IVMMDLogger):
     def log(self, data, epoch=0):
         run_number = int(len(os.listdir(self.path_to_distribution_plots)))
 
-        plot = self._create_mask_frequency_plot().to("cpu")
+        plot = self.vmmd._create_mask_frequency_plot(self.sample_count).to("cpu")
 
         plt.imshow(tensor_to_image(plot.detach()), cmap='hot', interpolation='nearest')
         plt.colorbar(label='Frequency of Masking')
@@ -33,8 +33,8 @@ class SubspaceDistributionPlotter(IVMMDLogger):
         path_to_distribution_plots = self.base_dir / "distribution"
         path_to_distribution_plots.mkdir(parents=True, exist_ok=True)
         return path_to_distribution_plots
-
-    def _create_mask_frequency_plot(self):
-        u = self.vmmd.sample_count_subspaces(self.sample_count)
-        u_agg = u.sum(dim=0)
-        return u_agg / u.shape[0]
+    #
+    # def _create_mask_frequency_plot(self):
+    #     u = self.vmmd.sample_count_subspaces(self.sample_count)
+    #     u_agg = u.sum(dim=0)
+    #     return u_agg / u.shape[0]

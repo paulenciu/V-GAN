@@ -11,6 +11,7 @@ from src.data.dataset.occ.OCCCifar10 import OCCCifar10
 from src.models.autoencoder.ResNet18AutoEncoderFineTuneV2 import ResNet18AutoEncoderFineTuneV2
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes50
 from src.od.CombinedOutlierDetectionV2 import CombinedOutlierDetectorV2
 from src.run.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
 from src.run.OutlierDetectionExperiment import OutlierDetectionExperiment
@@ -21,6 +22,7 @@ from src.run.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
 from src.utils.preprocessing import normalize_features, normalize_images_col_softmax, normalize_images
 from src.vgan.VGAN import VGAN
+from src.vmmd.VMMDEmbedding import VMMDEmbedding
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
 from src.data.dataset_type import DatasetType
@@ -39,16 +41,16 @@ fashionmnist_categories = [
 ]
 
 mvtec_categories = [
-    # "bottle",
-    # "cable",
-    # "capsule",
-    # "carpet",
-    # "grid",
-    # "hazelnut",
-    # "leather",
-    # "metal_nut",
-    # "pill",
-    # "screw",
+    "bottle",
+    "cable",
+    "capsule",
+    "carpet",
+    "grid",
+    "hazelnut",
+    "leather",
+    "metal_nut",
+    "pill",
+    "screw",
     "tile",
     "toothbrush",
     "transistor",
@@ -113,7 +115,7 @@ def launch_vmmd_experiment(configs):
 
         experiement = OutlierDetectionExperiment(
             vmmd=vmmd,
-            od_model=CombinedOutlierDetectorV2(
+            od_model=CombinedOutlierDetector(
                 base_estimators=[config.ens_base_estimator],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
@@ -214,11 +216,11 @@ def rerun_od_experiments():
                 pretrained_vmmd_experiment(config, path_to_generator)
 
     for cifar_category in cifar10_classes:
-        prefix = str(DatasetType.CIFAR10.name) + "[" + str(cifar_category) + "]"
+        prefix = str(DatasetType.OCCCIFAR10.name) + "[" + str(cifar_category) + "]"
         for dir in root_dir.iterdir():
             if dir.stem.startswith(prefix):
                 config = [VMMDBaseConfiguration(
-                    dataset_type=DatasetType.CIFAR10,
+                    dataset_type=DatasetType.OCCCIFAR10,
                     dateset_category=cifar_category,
                     image_size_od=(32,32),
                     preprocessing_fn=normalize_images,
@@ -228,6 +230,36 @@ def rerun_od_experiments():
 
                 path_to_generator = str(dir / "models" / "generator_1.pt")
                 pretrained_vmmd_experiment(config, path_to_generator)
+
+def launch_vmmd_embedding_config(configs):
+    for i, config in enumerate(configs):
+        print("RUNNING EXPERIMENT", i, " FROM", len(configs))
+
+        vmmd = VMMDEmbedding(
+            epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
+            lr=config.lr, penalty=config.penalty, filename=config.filename,
+            batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
+            autoencoder=ResNet18AutoEncoder(), generator=config.generator
+        )
+
+        experiement = OutlierDetectionExperiment(
+            vmmd=vmmd,
+            od_model=CombinedOutlierDetector(
+                base_estimators=[config.ens_base_estimator],
+                vmmd=vmmd, max_n_jobs=1,
+                preprocessing_fn=config.preprocessing_fn
+            ),
+            dataset_type=config.dataset_type,
+            category=config.dateset_category,
+            image_size_train=config.image_size_train,
+            image_size_od=config.image_size_od,
+            standardize_data=config.standardize_data,
+            preprocessing_fn=config.preprocessing_fn,
+            n_subspaces_sample=config.n_subspace_sample
+        )
+
+        experiement.fit()
+        experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
 
 
 def configure_environment():
@@ -243,17 +275,70 @@ def configure_environment():
 
 if __name__ == '__main__':
     configure_environment()
-    rerun_od_experiments()
-    # configs = [
-    #     VMMDBaseConfiguration(
-    #         dataset_type=DatasetType.OCCFMNIST,
-    #         dateset_category="Trouser",
-    #         image_size_train=(28, 28),
-    #         image_size_generator=(28, 28),
-    #         image_size_od=(28, 28),
-    #         preprocessing_fn=normalize_images,
-    #         n_subspace_sample=500
-    #     ),
-    # ]
-    #launch_vmmd_experiment(configs)
+
+    config = [
+        #VMMDTestConfiguration()
+    ]
+    #
+    # for mvtec_category in mvtec_categories:
+    #     config.append(
+    #         VMMDBaseConfiguration(
+    #         dataset_type=DatasetType.MVTEC_AD,
+    #         dateset_category=mvtec_category,
+    #         image_size_od=(256,256),
+    #         image_size_generator=(64, 64),
+    #         image_size_train=(256,256),
+    #         preprocessing_fn=normalize_features,
+    #         standardize_data=False,
+    #         n_subspace_sample=2,
+    #     ))
+    #
+    # for fashionmnist_category in fashionmnist_categories:
+    #     config.append(
+    #         VMMDBaseConfiguration(
+    #             dataset_type=DatasetType.OCCFMNIST,
+    #             dateset_category=fashionmnist_category,
+    #             image_size_od=(28,28),
+    #             image_size_generator=(28,28),
+    #             image_size_train=(28,28),
+    #             preprocessing_fn=normalize_features,
+    #             standardize_data=False,
+    #             n_subspace_sample=2
+    #         )
+    #     )
+
+    # for cifar10_category in cifar10_classes:
+    #     config.append(
+    #         VMMDBaseConfiguration(
+    #             dataset_type=DatasetType.OCCCIFAR10,
+    #             dateset_category=cifar10_category,
+    #             image_size_od=(32,32),
+    #             image_size_generator=(32,32),
+    #             image_size_train=(32,32),
+    #             preprocessing_fn=normalize_features,
+    #             standardize_data=False,
+    #             n_subspace_sample=2
+    #         )
+    #     )
+
+    configs = [
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
+            image_size_generator=(28, 28),
+            image_size_train=(224, 224),
+            image_size_od=(224, 224),
+            preprocessing_fn=normalize_images,
+            n_subspace_sample=500,
+            encoder=None,
+            set_decoder_eval=True,
+            batch_size=500,
+            epochs=10,
+            add_to_title="embedding_res18",
+            generator=GeneratorRes50(latent_size=128, image_shape=512*7*7)
+        ),
+    ]
+
+
+    launch_vmmd_embedding_config(configs)
     #pretrained_vmmd_experiment(configs, "../experiments/remote/OCCFMNIST_normalize_features_train28_od28_lr=0.001_bs=1024_ep=2001_None/models/generator_9.pt")

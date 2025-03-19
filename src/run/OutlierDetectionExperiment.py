@@ -36,9 +36,9 @@ class OutlierDetectionExperiment:
         self.preprocessing_fn = preprocessing_fn
         self.n_subspace_sample = n_subspaces_sample
 
-    def fit(self, set_decoder_eval):
+    def fit(self):
         x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_train, standardize=self.standardize_data)
-        self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn, set_decoder_eval=set_decoder_eval)
+        self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
         del x_train
 
         self.fit_outlier_detection()
@@ -108,7 +108,7 @@ class OutlierDetectionExperiment:
             self.vmmd_od.store_od_stats(od_stats, run_number=-1)
             od_stats_list.append(od_stats)
 
-        self.od_bm_logger.log(od_stats_list)
+        #self.od_bm_logger.log(od_stats_list)
 
     def calculate_od_stats(self, y_test, decision_scores):
         return {"Dataset": self.dataset_type,
