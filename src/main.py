@@ -322,21 +322,22 @@ if __name__ == '__main__':
     #     )
 
     configs = [
-        EmbeddingVMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
-            n_subspace_sample=2,
-            batch_size=200,
-            add_to_title="res18",
-            epochs=2000
-        ),
+        # EmbeddingVMMDBaseConfiguration(
+        #     dataset_type=DatasetType.OCCCIFAR10,
+        #     dateset_category="cat",
+        #     n_subspace_sample=2,
+        #     batch_size=200,
+        #     add_to_title="res18",
+        #     epochs=2000
+        # ),
         EmbeddingVMMDBaseConfiguration(
             dataset_type=DatasetType.MVTEC_AD,
             dateset_category="bottle",
             n_subspace_sample=100,
             batch_size=1024,
             add_to_title="res18",
-            epochs=3000
+            epochs=3000,
+            autoencoder=ResNet50AutoEncoder()
         ),
     ]
 

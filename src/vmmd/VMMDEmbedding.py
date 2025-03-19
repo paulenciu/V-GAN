@@ -94,7 +94,7 @@ class VMMDEmbedding(VMMD):
         x_flattened_preprocessed = torch.from_numpy(
             preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).float()
         unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
-        pre_embedded_dataset = PreEmbeddedDataset(unflattened_images, self.encoder, "cpu")
+        pre_embedded_dataset = PreEmbeddedDataset(unflattened_images, self.encoder, self.device)
         return DataLoader(
             pre_embedded_dataset,
             batch_size=self.batch_size,
