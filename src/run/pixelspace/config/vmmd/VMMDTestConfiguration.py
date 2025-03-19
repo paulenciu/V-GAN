@@ -1,4 +1,4 @@
-from src.run.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
+from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.data.dataset_type import DatasetType
 
 
