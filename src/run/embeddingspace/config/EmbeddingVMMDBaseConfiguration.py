@@ -1,3 +1,5 @@
+import math
+
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
@@ -35,7 +37,7 @@ class EmbeddingVMMDBaseConfiguration:
                 ens_base_estimator=LUNAR(),
                 set_decoder_eval=True):
 
-        self.generator = generator or GeneratorRes18(latent_size=latent_size, image_shape=512*7*7)
+        self.generator = generator or GeneratorRes18(latent_size=latent_size, image_shape=math.prod(autoencoder.get_encoder_input_shape()))
         self.autoencoder = autoencoder
         self.lr = lr
         self.epochs = epochs
