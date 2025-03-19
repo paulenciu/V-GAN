@@ -128,7 +128,7 @@ class VMMDEmbedding(VMMD):
                 noise = torch.randn(images.size(0), *self.generator.noise_dim, device=self.device)
                 u_mappings = self.generator.sample_subspace_masks(noise)
 
-                processed_embeddings = embeddings * u_mappings
+                processed_embeddings = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
                 processed_images = processed_embeddings.view(images.size(0), 512, 7, 7)
                 reconstructed = self.decoder(processed_images)
 
@@ -155,9 +155,17 @@ class VMMDEmbedding(VMMD):
 
         self.notify_logging_subscriber(dataset, self.epochs)
 
+    def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor, is_embedding=False):
+        u_subspaces = u_subspaces.to(torch.float32)
+
+        if not is_embedding:
+            x_sample = self.encode(x_sample)
+
+        return x_sample * u_subspaces
+
 
 class PreEmbeddedDataset(Dataset):
-    def __init__(self, dataset: Dataset, encoder, device):
+    def __init__(self, dataset: IDataset, encoder, device):
         self.dataset = dataset
         self.device = device
         self.encoder = encoder.to(device)
@@ -174,3 +182,10 @@ class PreEmbeddedDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.dataset[idx], self.embeddings[idx]
+
+    def get_embedding(self, img):
+        idx = self.dataset.dataset.index(img)
+        return self.embeddings[idx]
+
+    def is_embedding(self, element):
+        return True if element in self.embeddings else False

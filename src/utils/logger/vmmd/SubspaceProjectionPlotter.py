@@ -79,7 +79,6 @@ class SubspaceProjectionPlotter(IVMMDLogger):
 
             for j in range(n_masks):
                 axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
-                #axis[i, j + 1].set_title(f"$Projection {j + 1}$", fontsize=fontsize)
                 axis[i, j + 1].axis("off")
 
             big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u.unsqueeze(0), x_sample_unflattened=image[0]).squeeze(0)
@@ -87,7 +86,6 @@ class SubspaceProjectionPlotter(IVMMDLogger):
 
             axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
             axis[i, n_masks + 1].axis("off")
-            #axis[i, n_masks + 1].set_title(f"Average Projection", fontsize=fontsize)
 
         plt.tight_layout()
         fig.subplots_adjust(wspace=0.05, hspace=0.05)

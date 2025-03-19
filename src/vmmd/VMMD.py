@@ -55,13 +55,6 @@ class VMMD(ABC):
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
         self.logger_subscriber: list[IVMMDLogger] = []
 
-    def add_logger_subscriber(self, subscriber):
-        self.logger_subscriber.append(subscriber)
-
-    def notify_logging_subscriber(self, data: IDataset, epoch):
-        for logger in self.logger_subscriber:
-            logger.log(data, epoch)
-
     @abstractmethod
     def sample_count_subspaces(self, count):
         """
@@ -257,3 +250,15 @@ class VMMD(ABC):
 
         shape = (batch_size, *generator_input_shape)
         return torch.empty(shape, dtype=torch.float32, device=self.device)
+
+    def _create_mask_frequency_plot(self, count):
+        u = self.sample_count_subspaces(count)
+        u_agg = u.sum(dim=0)
+        return u_agg / u.shape[0]
+
+    def add_logger_subscriber(self, subscriber):
+        self.logger_subscriber.append(subscriber)
+
+    def notify_logging_subscriber(self, data: IDataset, epoch):
+        for logger in self.logger_subscriber:
+            logger.log(data, epoch)
