@@ -21,11 +21,11 @@ class GeneratorRes50(AbstractGenerator):
         self._img_shape = (image_shape, 1)
 
 
-        img_size = image_shape
+        img_size = int(image_shape / 4)
         rel_size = int(img_size / latent_size)
         self.latent_size = latent_size
         self.img_size = img_size
-        amount_layers = 5
+        amount_layers = 4
         self.increase = log(rel_size, amount_layers).real
 
         layers = [self.get_layer(layer) for layer in range(1, amount_layers)]
@@ -48,7 +48,7 @@ class GeneratorRes50(AbstractGenerator):
         )
 
         last_layer = nn.Sequential(
-            nn.Linear(input_size, self.img_size),
+            nn.Linear(input_size, self.img_size * 4),
         )
 
         return last_layer if last else layer

@@ -46,3 +46,8 @@ class ResNet18AutoEncoder(AbstractEncoder):
     def get_decoder(self):
         return self.model.decoder
 
+    def get_decoder_and_freeze(self):
+        for param in self.model.decoder.parameters():
+            param.requires_grad = False
+        return self.model.decoder
+

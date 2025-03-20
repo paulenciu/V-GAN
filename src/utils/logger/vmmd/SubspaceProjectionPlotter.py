@@ -48,6 +48,11 @@ class SubspaceProjectionPlotter(IVMMDLogger):
         if isinstance(self.vmmd, VMMDEmbedding):
             u_height = int(u.shape[1] / 112)
             u_width = int(u.shape[1] / 224)
+
+            if u.shape[1] == 100352:
+                u_height = int(u_height / 2)
+                u_width = int(u_width / 2)
+
             u = u.view(-1, 1, u_width, u_height)
 
         for i in range(n_masks):

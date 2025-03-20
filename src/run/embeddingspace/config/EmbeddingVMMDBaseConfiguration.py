@@ -8,6 +8,7 @@ from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes50
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import GeneratorRes50Conv
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
@@ -40,7 +41,7 @@ class EmbeddingVMMDBaseConfiguration:
                 ens_base_estimator=LUNAR(),
                 set_decoder_eval=True):
 
-        self.generator = generator or GeneratorRes50(latent_size=latent_size, image_shape=math.prod(autoencoder.get_decoder_input_shape()))
+        self.generator = generator or GeneratorRes50Conv(latent_size=latent_size)
         self.autoencoder = autoencoder
         self.lr = lr
         self.epochs = epochs
