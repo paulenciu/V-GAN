@@ -37,7 +37,7 @@ class VMMDEmbedding(VMMD):
                  batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=None,
                  weight_decay=0.04, path_to_directory=Path(os.getcwd()).parent / "experiments" / "local",
                  penalty=MMDLossNoPenalty()):
-        super().__init__(filename, autoencoder.get_encoder(), generator, batch_size, epochs, lr, momentum, seed,
+        super().__init__(filename, autoencoder, generator, batch_size, epochs, lr, momentum, seed,
                          weight_decay, path_to_directory, penalty)
         self.decoder = autoencoder.get_decoder()
         self.encoder_input_shape = autoencoder.get_encoder_input_shape()
@@ -93,6 +93,15 @@ class VMMDEmbedding(VMMD):
 
     def encode(self, x):
         return self.encoder(x).view(x.shape[0], -1)
+
+    def load_model(self, generator: AbstractGenerator, autoencoder):
+        if autoencoder is not None:
+            self.encoder = autoencoder.get_encoder_and_freeze().to(self.device)
+            self.decoder = autoencoder.get_decoder_and_freeze().to(self.device)
+
+        self.generator = generator.to(self.device)
+        self.generator.eval()
+
 
     def setup_data_loader(self, dataset, preprocess_fn=normalize_features, **preprocess_kwargs):
         n_channels, height, width = dataset.image_shape

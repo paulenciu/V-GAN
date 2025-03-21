@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from src.vgan.VGAN import VGAN
 from src.vmmd.VMMD import VMMD
 from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
+from src.vmmd.VMMDEmbedding import VMMDEmbedding
 
 
 class TrainingLogger(IVMMDLogger):
@@ -79,7 +80,6 @@ class TrainingLogger(IVMMDLogger):
 
     def get_params(self) -> dict:
         vmmd = self.vmmd
-
         if isinstance(vmmd, VMMD):
             return {'batch size': vmmd.batch_size, 'epochs': vmmd.epochs, 'lr_g': vmmd.lr,
                     'momentum': vmmd.momentum, 'weight decay': vmmd.weight_decay,
@@ -88,7 +88,7 @@ class TrainingLogger(IVMMDLogger):
                     'generator name': vmmd.generator.__class__.__name__,
                     'image shape': vmmd.generator.img_shape,
                     'noise dim': vmmd.generator.noise_dim,
-                    'pretrained_autoencoder': vmmd.encoder.__class__.__name__,
+                    'pretrained_autoencoder': vmmd.autoencoder.__class__.__name__,
                     'mmd_penalty': vmmd.penalty.__class__.__name__,
                     'mmd_penalty_stats': vmmd.penalty.get_stats()}
         elif isinstance(vmmd, VGAN):

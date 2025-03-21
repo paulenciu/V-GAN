@@ -33,9 +33,9 @@ class VMMD(ABC):
        kernel learning is performed. The default values for the kernel are
     """
 
-    def __init__(self, filename, encoder, generator: AbstractGenerator, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=None, weight_decay=0.04,
+    def __init__(self, filename, autoencoder, generator: AbstractGenerator, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=None, weight_decay=0.04,
                  path_to_directory= Path(os.getcwd()).parent / "experiments" / "local", penalty=MMDLossNoPenalty()):
-        self.encoder = None
+        self.autoencoder = autoencoder
         self.generator = None
         self.penalty = penalty
         self.storage = locals()
@@ -48,7 +48,7 @@ class VMMD(ABC):
         self.weight_decay = weight_decay
         self.path_to_directory = path_to_directory
         self.generator_optimizer = None
-        self.encoder = encoder
+        self.encoder = autoencoder.get_encoder_and_freeze()
         self.generator = generator
         self.filename = filename
         self.device = torch.device('cuda:0' if torch.cuda.is_available(

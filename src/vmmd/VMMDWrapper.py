@@ -13,6 +13,9 @@ from src.utils.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributi
 from src.utils.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
 from src.utils.logger.vmmd.TrainingLogger import TrainingLogger
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes50
+from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 
 
 class VMMDWrapper:

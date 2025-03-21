@@ -84,6 +84,10 @@ class EmbeddingOutlierDetectionExperiments:
             self.vmmd_od.store_od_stats(od_stats, run_number=-1)
             od_stats_list.append(od_stats)
 
+    def fit_pretrained_model(self, path_to_generator: str):
+        self.vmmd_wrapper.load_model(path_to_generator)
+        self.fit_outlier_detection()
+
     def calculate_od_stats(self, y_test, decision_scores):
         return {"Dataset": self.dataset_type,
                 "AUC": auc(y_test, decision_scores),

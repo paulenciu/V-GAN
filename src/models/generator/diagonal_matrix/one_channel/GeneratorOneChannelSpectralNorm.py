@@ -10,9 +10,9 @@ from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.models.generator.modules.BatchDiscrimination import BatchDiscrimination
 
 
-class GeneratorOneChannelV4DBN(AbstractGenerator):
+class GeneratorOneChannelSpectralNorm(AbstractGenerator):
 
-    def __init__(self, latent_size, image_shape, initial_temperature=1.0, min_temperature=0.1, anneal_rate=0.01):
+    def __init__(self, latent_size, image_shape):
         super().__init__()
 
         if isinstance(latent_size, torch.Tensor):
@@ -21,13 +21,8 @@ class GeneratorOneChannelV4DBN(AbstractGenerator):
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = image_shape
 
-        # Temperature for slope annealing trick
-        self.temperature = initial_temperature
-        self.min_temperature = min_temperature
-        self.anneal_rate = anneal_rate  # Controls how ast the Temperature decreases
-
         img_size = image_shape[2] * image_shape[2]
-        rel_size = int(img_size/latent_size)
+        rel_size = int(img_size / latent_size)
         self.latent_size = latent_size
         self.img_size = img_size
         amount_layers = 6
@@ -36,6 +31,8 @@ class GeneratorOneChannelV4DBN(AbstractGenerator):
         layers = [self.get_layer(layer) for layer in range(1, amount_layers)]
         layers += [self.get_layer(amount_layers, last=True)]
         self.layers = nn.Sequential(*layers)
+        self.upper_softmax = UpperSoftmax1D()
+        self.softmax = nn.Softmax(dim=1)
 
     def get_layer(self, layer: int, last=False):
         input_size = round(pow(self.increase, layer - 1) * self.latent_size)
@@ -45,51 +42,32 @@ class GeneratorOneChannelV4DBN(AbstractGenerator):
             nn.utils.spectral_norm(
                 nn.Linear(input_size, output_size)
             ),
-            GaussianNoise(stddev=0.1),
+            nn.Linear(input_size, output_size),
             nn.BatchNorm1d(output_size),
-            nn.LeakyReLU(0.5),
+            nn.LeakyReLU(0.8),
         )
 
         last_layer = nn.Sequential(
             BatchDiscrimination(input_size, input_size),
             nn.Linear(input_size + 1, self.img_size),
-            #nn.Linear(input_size, self.img_size),
-            nn.Sigmoid(),
         )
 
         return last_layer if last else layer
 
-    def binarize_ste(self, x):
-        """
-        Binarization using the Straight-Through Estimator (STE) with slope annealing.
-        """
-        if self.training:
-            T = max(self.min_temperature, self.temperature)
-            probs = torch.sigmoid(x / T)
-            return probs
-        else:
-            print("-----------Sample----------")
-            print(x[:3])
-            discrete = (x > 0.5).float()
-            print("-----------Sample Discrete----------")
-            print(discrete[:3])
-            return discrete
-
     def forward(self, input, mode="train"):
         x = self.layers(input)
-        x = self.binarize_ste(x)
         return x
 
     def sample_subspace_masks(self, noise, mode="train"):
+
         if mode == "train":
             self.train()
+            x = self.forward(noise, mode)
+            x = self.softmax(x)
+            return x.repeat(1, self._img_shape[0]).view(-1, *self._img_shape)
         else:
             self.eval()
-        return self.forward(noise, mode).repeat(1, self._img_shape[0]).view(-1, *self._img_shape)
-
-    def anneal_temperature(self):
-        """
-        Gradually decreases the temperature for the slope annealing trick.
-        """
-        self.temperature = max(self.min_temperature, self.temperature - self.anneal_rate)
-        print("New temperature: {}".format(self.temperature))
+            x = self.forward(noise, mode)
+            x = self.upper_softmax(x)
+            x = torch.greater(x, 1 / x.shape[1])
+            return x.repeat(1, self._img_shape[0]).view(-1, *self._img_shape)

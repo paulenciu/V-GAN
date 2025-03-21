@@ -1,26 +1,28 @@
 from cmath import log
 
 import torch
+import numpy as np
+from src.models.generator.modules.GaussianNoise import GaussianNoise
 from torch import nn
 
 from src.models.Generator import UpperSoftmax1D
 from src.models.generator.AbstractGenerator import AbstractGenerator
+from src.models.generator.modules.BatchDiscrimination import BatchDiscrimination
 
 
-class GeneratorOneChannelV4(AbstractGenerator):
+class GeneratorOneChannelSNBD(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape):
+        super().__init__()
 
         if isinstance(latent_size, torch.Tensor):
             latent_size = latent_size.item()
-
-        super(GeneratorOneChannelV4, self).__init__()
 
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = image_shape
 
         img_size = image_shape[2] * image_shape[2]
-        rel_size = int(img_size/latent_size)
+        rel_size = int(img_size / latent_size)
         self.latent_size = latent_size
         self.img_size = img_size
         amount_layers = 6
@@ -29,19 +31,22 @@ class GeneratorOneChannelV4(AbstractGenerator):
         layers = [self.get_layer(layer) for layer in range(1, amount_layers)]
         layers += [self.get_layer(amount_layers, last=True)]
         self.layers = nn.Sequential(*layers)
-
         self.upper_softmax = UpperSoftmax1D()
-        self.softmax = nn.Softmax(dim=-1)
+        self.softmax = nn.Softmax(dim=1)
 
     def get_layer(self, layer: int, last=False):
         input_size = round(pow(self.increase, layer - 1) * self.latent_size)
         output_size = round(pow(self.increase, layer) * self.latent_size)
 
         layer = nn.Sequential(
+            nn.utils.spectral_norm(
+                nn.Linear(input_size, output_size)
+            ),
             nn.Linear(input_size, output_size),
             nn.BatchNorm1d(output_size),
-            nn.LeakyReLU(0.8),
+            nn.LeakyReLU(0.2),
         )
+
         last_layer = nn.Sequential(
             nn.Linear(input_size, self.img_size),
         )
@@ -50,15 +55,18 @@ class GeneratorOneChannelV4(AbstractGenerator):
 
     def forward(self, input, mode="train"):
         x = self.layers(input)
-        if mode == "train":
-            return self.softmax(x)
-
-        return self.upper_softmax(x)
+        return x
 
     def sample_subspace_masks(self, noise, mode="train"):
-        activation = self.forward(noise, mode)
-        activation_upscaled = activation.repeat(1, self._img_shape[0])
-        if mode == "test":
-            binary_activation = torch.greater_equal(activation_upscaled, 1 / activation.shape[1])
-            activation_upscaled = binary_activation
-        return activation_upscaled.view(-1, self._img_shape[0], self._img_shape[1], self._img_shape[2])
+
+        if mode == "train":
+            self.train()
+            x = self.forward(noise, mode)
+            x = self.softmax(x)
+            return x.repeat(1, self._img_shape[0]).view(-1, *self._img_shape)
+        else:
+            self.eval()
+            x = self.forward(noise, mode)
+            x = self.upper_softmax(x)
+            x = torch.greater(x, 1 / x.shape[1])
+            return x.repeat(1, self._img_shape[0]).view(-1, *self._img_shape)
