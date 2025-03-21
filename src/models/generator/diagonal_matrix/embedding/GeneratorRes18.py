@@ -18,10 +18,10 @@ class GeneratorRes18(AbstractGenerator):
             latent_size = latent_size.item()
 
         self._noise_dim = torch.tensor([latent_size])
-        self._img_shape = (image_shape, 1)
+        self._img_shape = (512*7*7, 1)
 
 
-        img_size = image_shape
+        img_size = 512*7*7
         rel_size = int(img_size / latent_size)
         self.latent_size = latent_size
         self.img_size = img_size
