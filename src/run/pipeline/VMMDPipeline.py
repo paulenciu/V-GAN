@@ -9,7 +9,8 @@ from src.od.CombinedOutlierDetector import CombinedOutlierDetector
 from src.run.embeddingspace.EmbeddingOutlierDetectionExperiments import EmbeddingOutlierDetectionExperiments
 from src.run.pixelspace.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
-from src.utils.preprocessing import normalize_images
+from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
+from src.utils.preprocessing import normalize_images, normalize_features
 from src.vmmd.VMMDEmbedding import VMMDEmbedding
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
@@ -168,6 +169,49 @@ def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
 
         experiement.fit_pretrained_model(path_to_pretrained_model)
         experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+def launch_all_od_experiments():
+    configs = [VMMDTestConfiguration()]
+    launch_vmmd_experiment(configs)
+    for mvtec_category in mvtec_categories:
+            config = [
+                VMMDBaseConfiguration(
+                dataset_type=DatasetType.MVTEC_AD,
+                dateset_category=mvtec_category,
+                image_size_generator=(64, 64),
+                image_size_train=(256,256),
+                image_size_od=(256,256),
+                preprocessing_fn=normalize_features,
+                standardize_data=False,
+                n_subspace_sample=2,
+            )]
+
+            launch_vmmd_experiment(config)
+
+    for fashionmnist_category in fashionmnist_categories:
+        config = [VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCFMNIST,
+            dateset_category=fashionmnist_category,
+            image_size_od=(28,28),
+            image_size_generator=(28,28),
+            image_size_train=(28,28),
+            preprocessing_fn=normalize_features,
+            standardize_data=False,
+            n_subspace_sample=2
+        )]
+        launch_vmmd_experiment(config)
+
+    for cifar_category in cifar10_classes:
+        config = [VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category=cifar_category,
+            image_size_od=(32,32),
+            preprocessing_fn=normalize_features,
+            standardize_data=False,
+            n_subspace_sample=2
+        )]
+
+        launch_vmmd_experiment(config)
+
 
 def pretrained_vmmd_experiment(configs, path_to_pretrained_model):
     for i, config in enumerate(configs):

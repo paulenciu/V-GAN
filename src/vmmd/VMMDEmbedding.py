@@ -37,11 +37,13 @@ class VMMDEmbedding(VMMD):
                  batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=None,
                  weight_decay=0.04, path_to_directory=Path(os.getcwd()).parent / "experiments" / "local",
                  penalty=MMDLossNoPenalty()):
-        super().__init__(filename, autoencoder, generator, batch_size, epochs, lr, momentum, seed,
+        super().__init__(filename, autoencoder.get_encoder_and_freeze(), generator, batch_size, epochs, lr, momentum, seed,
                          weight_decay, path_to_directory, penalty)
-        self.decoder = autoencoder.get_decoder()
+        self.decoder = autoencoder.get_decoder_and_freeze()
         self.encoder_input_shape = autoencoder.get_encoder_input_shape()
         self.decoder_input_shape = autoencoder.get_decoder_input_shape()
+        self.scaler = GradScaler()
+
 
     def sample_count_subspaces(self, count):
         return self._generate_subspaces(count)
@@ -133,7 +135,6 @@ class VMMDEmbedding(VMMD):
         total_training_time = 0.0
         snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
 
-        scaler = GradScaler()
 
         for epoch in range(self.epochs):
             epoch_start = time.time()
@@ -150,17 +151,28 @@ class VMMDEmbedding(VMMD):
                     u_mappings = self.generator.sample_subspace_masks(noise)
 
                     processed_images = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
-                    processed_images = processed_images.view(images.size(0), *self.decoder_input_shape)
-                    reconstructed = self.decoder(processed_images)
+
+                    reconstructed = torch.utils.checkpoint.checkpoint(
+                        self._decode_with_memory, processed_images
+                    )
+                    #
+                    # processed_images = processed_images.view(images.size(0), *self.decoder_input_shape)
+                    # reconstructed = self.decoder(processed_images)
 
                     images = images.view(images.size(0), -1)
                     reconstructed = reconstructed.view(images.size(0), -1)
 
-                    batch_loss, mmd_loss = loss_function(images, reconstructed, u_mappings)
+                    # with torch.no_grad():
+                    flat_images = images.view(images.size(0), -1).half()  # FP16 conversion
+                    flat_recon = reconstructed.view(reconstructed.size(0), -1).half()
+                    batch_loss, mmd_loss = loss_function(flat_images, flat_recon, u_mappings)
+                    #batch_loss, mmd_loss = loss_function(images, reconstructed, u_mappings)
 
-                scaler.scale(batch_loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
+                self.scaler.scale(batch_loss).backward()
+                self.scaler.step(optimizer)
+                self.scaler.update()
+
+                del images, embeddings, noise, u_mappings, reconstructed
 
                 # batch_loss.backward()
                 # optimizer.step()
@@ -180,6 +192,10 @@ class VMMDEmbedding(VMMD):
             print(f"Epoch {epoch + 1}/{self.epochs} | Loss: {generator_loss:.4f}")
 
         self.notify_logging_subscriber(dataset, self.epochs)
+
+    def _decode_with_memory(self, processed):
+        """Helper method for checkpointing"""
+        return self.decoder(processed.view(processed.size(0), *self.decoder_input_shape))
 
     def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor, is_embedding=False,
                                  output_image_size=64):

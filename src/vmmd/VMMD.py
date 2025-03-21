@@ -178,7 +178,7 @@ class VMMD(ABC):
 
         total_training_time = 0.0
         snapshot_duration = 0.0
-        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.5 * i * self.epochs) for i in range(1, 11)]
 
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')
