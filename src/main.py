@@ -111,15 +111,15 @@ if __name__ == '__main__':
 
     config = [
         EmbeddingVMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category="Trouser",
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
             n_subspace_sample=2,
             batch_size=500,
             add_to_title="res18_fast",
             epochs=1000,
             lr=0.001,
-            preprocessing_fn=normalize_images,
+            preprocessing_fn=normalize_features,
         ),
     ]
 
-    pretrained_vmmd_embedding_experiment(configs=config, path_to_pretrained_model="../experiments/remote/20-03/embedding_OCCFMNIST[Trouser]_no_preprocessing__train224_lr=0.001_bs=500_ep=1000_res18_fast/models/generator_9.pt")
+    pretrained_vmmd_embedding_experiment(configs=config, path_to_pretrained_model="../experiments/remote/21-03/embedding_OCCCIFAR10[cat]_no_preprocessing__train224_lr=0.0001_bs=500_ep=1000_res18_fast_gen50/models/generator_1.pt")
