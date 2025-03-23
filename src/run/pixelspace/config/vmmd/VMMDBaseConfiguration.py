@@ -2,6 +2,7 @@ from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 
 from src.models.encoder.IdentityEncoder import IdentityEncoder
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
@@ -35,7 +36,7 @@ class VMMDBaseConfiguration:
                 ens_base_estimator=LUNAR(),
                 set_decoder_eval=False):
 
-        self.generator = generator or GeneratorOneChannelV4Softmax(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
+        self.generator = generator or GeneratorOneChannelSNGN(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
         self.encoder = encoder
         self.lr = lr
         self.epochs = epochs

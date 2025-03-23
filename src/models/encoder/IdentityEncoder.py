@@ -10,3 +10,6 @@ class IdentityEncoder(AbstractEncoder):
 
     def forward(self, x):
         return x
+
+    def get_encoder_and_freeze(self):
+        return self

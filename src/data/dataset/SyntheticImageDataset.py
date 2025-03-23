@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 class SyntheticImageDataset(Dataset):
 
-    def __init__(self, root_dir, inlier_category=None, transform=None, train=True, image_size=(32, 32), normalize=False):
+    def __init__(self, root_dir, inlier_category=None, transform=None, train=True, image_size=(64, 64), normalize=False):
         """
         Initialize the data.
 
@@ -15,7 +15,7 @@ class SyntheticImageDataset(Dataset):
         if inlier_category is None:
             inlier_category = ["1", "2"]
 
-        self.num_samples = 5000
+        self.num_samples = 200
         self.data = []
         self.labels = []
         self.category = inlier_category
@@ -25,11 +25,11 @@ class SyntheticImageDataset(Dataset):
         else:
             self._generate_inlier_data(image_size)
 
-            ## CREATE SYNTHETIC OUTLIER
-            rnd_idx = torch.randint(0, len(self.data), (1000,))
-            for i in rnd_idx:
-                self.data[i] = torch.rand(3, 32, 32)
-                self.labels[i] = 1  # Set label to 1
+            # ## CREATE SYNTHETIC OUTLIER
+            # rnd_idx = torch.randint(0, len(self.data), (1000,))
+            # for i in rnd_idx:
+            #     self.data[i] = torch.rand(3, 64, 64)
+            #     self.labels[i] = 1  # Set label to 1
 
         self.image_shape = self.data[0].shape
 

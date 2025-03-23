@@ -12,6 +12,9 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder im
 from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet50AutoEncoder import ResNet50AutoEncoder
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes50
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import GeneratorRes50Conv
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes50ConvV2 import GeneratorRes50ConvV2
+
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelBatchDiscrimination import \
     GeneratorOneChannelBatchDiscrimination
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNBD import GeneratorOneChannelSNBD
@@ -22,7 +25,8 @@ from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softm
 from src.run.embeddingspace.config.EmbeddingVMMDBaseConfiguration import EmbeddingVMMDBaseConfiguration
 from src.run.pipeline.BaselinePipeline import launch_baseline_experiment
 from src.run.pipeline.VMMDPipeline import pretrained_vmmd_experiment, launch_vmmd_experiment, \
-    launch_vmmd_embedding_config, run_all_vmmd_od_benchmark, pretrained_vmmd_embedding_experiment
+    launch_vmmd_embedding_config, run_all_vmmd_od_benchmark, pretrained_vmmd_embedding_experiment, \
+    launch_all_od_experiments
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
 from src.utils.preprocessing import normalize_features, normalize_images
@@ -43,83 +47,30 @@ def configure_environment():
 if __name__ == '__main__':
     configure_environment()
     #run_all_vmmd_od_benchmark()
-
-    # config = [
-    #     VMMDBaseConfiguration(
-    #         dataset_type=DatasetType.OCCFMNIST,
-    #         dateset_category="Trouser",
-    #         n_subspace_sample=2,
-    #         add_to_title="default",
-    #         epochs=2000,
-    #         lr=0.001,
-    #         preprocessing_fn=normalize_images,
-    #         generator=GeneratorOneChannel(latent_size=128, image_shape=(3, 32, 32)),
-    #     ),
-    #     VMMDBaseConfiguration(
-    #         dataset_type=DatasetType.OCCFMNIST,
-    #         dateset_category="Trouser",
-    #         n_subspace_sample=2,
-    #         add_to_title="bd",
-    #         epochs=2000,
-    #         lr=0.001,
-    #         preprocessing_fn=normalize_images,
-    #         generator=GeneratorOneChannelBatchDiscrimination(latent_size=128, image_shape=(3, 32, 32)),
-    #     ),
-    #     VMMDBaseConfiguration(
-    #         dataset_type=DatasetType.OCCFMNIST,
-    #         dateset_category="Trouser",
-    #         n_subspace_sample=2,
-    #         add_to_title="sn",
-    #         epochs=2000,
-    #         lr=0.001,
-    #         preprocessing_fn=normalize_images,
-    #         generator=GeneratorOneChannelSpectralNorm(latent_size=128, image_shape=(3, 32, 32)),
-    #     ),
-    #     VMMDBaseConfiguration(
-    #         dataset_type=DatasetType.OCCFMNIST,
-    #         dateset_category="Trouser",
-    #         n_subspace_sample=2,
-    #         add_to_title="sngn",
-    #         epochs=2000,
-    #         lr=0.001,
-    #         preprocessing_fn=normalize_images,
-    #         generator=GeneratorOneChannelSNGN(latent_size=128, image_shape=(3, 32, 32)),
-    #     ),
-    #     VMMDBaseConfiguration(
-    #         dataset_type=DatasetType.OCCFMNIST,
-    #         dateset_category="Trouser",
-    #         n_subspace_sample=2,
-    #         add_to_title="snbd",
-    #         epochs=2000,
-    #         lr=0.001,
-    #         preprocessing_fn=normalize_images,
-    #         generator=GeneratorOneChannelSNBD(latent_size=128, image_shape=(3, 32, 32)),
-    #     ),
-    #     VMMDBaseConfiguration(
-    #         dataset_type=DatasetType.OCCFMNIST,
-    #         dateset_category="Trouser",
-    #         n_subspace_sample=2,
-    #         add_to_title="all",
-    #         epochs=2000,
-    #         lr=0.001,
-    #         preprocessing_fn=normalize_images,
-    #         generator=GeneratorOneChannelV4Softmax(latent_size=128, image_shape=(3, 32, 32)),
-    #     ),
-    # ]
-    #
-    # launch_vmmd_experiment(config)
-
+    #launch_all_od_experiments()
     config = [
         EmbeddingVMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category="Trouser",
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
             n_subspace_sample=2,
-            batch_size=500,
-            add_to_title="res18_fast",
-            epochs=1000,
+            batch_size=450,
+            add_to_title="res50_fast",
+            epochs=10000,
             lr=0.001,
-            preprocessing_fn=normalize_images,
+            autoencoder=ResNet50AutoEncoder(),
+            generator=GeneratorRes50ConvV2(512),
+        ),
+        EmbeddingVMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            n_subspace_sample=2,
+            batch_size=450,
+            add_to_title="res50_fast",
+            epochs=2000,
+            lr=0.0005,
+            autoencoder=ResNet50AutoEncoder(),
+            generator=GeneratorRes50ConvV2(512),
         ),
     ]
-
-    pretrained_vmmd_embedding_experiment(configs=config, path_to_pretrained_model="../experiments/remote/20-03/embedding_OCCFMNIST[Trouser]_no_preprocessing__train224_lr=0.001_bs=500_ep=1000_res18_fast/models/generator_9.pt")
+    launch_vmmd_embedding_config(config)
+    # pretrained_vmmd_embedding_experiment(configs=config, path_to_pretrained_model="../experiments/remote/20-03/embedding_OCCFMNIST[Trouser]_no_preprocessing__train224_lr=0.001_bs=500_ep=1000_res18_fast/models/generator_9.pt")

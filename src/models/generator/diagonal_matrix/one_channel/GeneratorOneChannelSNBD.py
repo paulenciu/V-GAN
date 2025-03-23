@@ -42,9 +42,8 @@ class GeneratorOneChannelSNBD(AbstractGenerator):
             nn.utils.spectral_norm(
                 nn.Linear(input_size, output_size)
             ),
-            nn.Linear(input_size, output_size),
             nn.BatchNorm1d(output_size),
-            nn.LeakyReLU(0.2),
+            nn.LeakyReLU(0.8),
         )
 
         last_layer = nn.Sequential(

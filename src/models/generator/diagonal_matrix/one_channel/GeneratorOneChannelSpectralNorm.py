@@ -42,14 +42,12 @@ class GeneratorOneChannelSpectralNorm(AbstractGenerator):
             nn.utils.spectral_norm(
                 nn.Linear(input_size, output_size)
             ),
-            nn.Linear(input_size, output_size),
             nn.BatchNorm1d(output_size),
             nn.LeakyReLU(0.8),
         )
 
         last_layer = nn.Sequential(
-            BatchDiscrimination(input_size, input_size),
-            nn.Linear(input_size + 1, self.img_size),
+            nn.Linear(input_size, self.img_size),
         )
 
         return last_layer if last else layer
