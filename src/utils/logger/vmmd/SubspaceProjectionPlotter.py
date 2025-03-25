@@ -46,14 +46,12 @@ class SubspaceProjectionPlotter(IVMMDLogger):
         axis[0, 0].axis("off")
 
         if isinstance(self.vmmd, VMMDEmbedding):
-            u_height = int(u.shape[1] / 112)
-            u_width = int(u.shape[1] / 224)
+            u_height = int(u.shape[1] / 224)
+            u_width = int(u.shape[1] / u_height)
 
-            if u.shape[1] == 100352:
-                u_height = int(u_height / 2)
-                u_width = int(u_width / 2)
 
             u = u.view(-1, 1, u_width, u_height)
+            u = u.repeat(1, 3, 1, 1) #makes image black / white
 
         for i in range(n_masks):
             axis[0, i + 1].imshow(tensor_to_image(u[i].detach()))
@@ -62,10 +60,6 @@ class SubspaceProjectionPlotter(IVMMDLogger):
 
         if isinstance(self.vmmd, VMMDEmbedding):
             average_u = average_u.view(1, u_width, u_height)
-
-        axis[0, n_masks + 1].imshow(tensor_to_image(average_u))
-        axis[0, n_masks + 1].axis("off")
-        axis[0, n_masks + 1].set_title(f"Average", fontsize=fontsize)
 
         for i in range(1, n_samples + 1):
 
@@ -92,6 +86,10 @@ class SubspaceProjectionPlotter(IVMMDLogger):
 
             axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
             axis[i, n_masks + 1].axis("off")
+
+        axis[0, n_masks + 1].imshow(tensor_to_image(average_u.repeat(3,1,1)))
+        axis[0, n_masks + 1].axis("off")
+        axis[0, n_masks + 1].set_title(f"Average", fontsize=fontsize)
 
         plt.tight_layout()
         fig.subplots_adjust(wspace=0.05, hspace=0.05)

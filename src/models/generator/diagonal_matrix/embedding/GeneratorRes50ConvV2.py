@@ -50,20 +50,15 @@ class GeneratorRes50ConvV2(AbstractGenerator):
         return x
 
     def sample_subspace_masks(self, noise, mode="train"):
-        # Generate logits
         logits = self.forward(noise)
         batch_size = logits.size(0)
 
-        # Flatten spatial and channel dimensions
         flat_logits = logits.view(batch_size, -1)
 
         if mode == "train":
-            # Apply standard softmax during training
             probs = self.softmax(flat_logits)
         else:
-            # Apply temperature-scaled softmax for evaluation
             probs = self.upper_softmax(flat_logits)
-            # Threshold based on element count
             threshold = 1 / self.num_elements
             mask = (probs > threshold).float()
             return mask
@@ -71,7 +66,6 @@ class GeneratorRes50ConvV2(AbstractGenerator):
         return probs
 
 
-# Helper modules
 class Reshape(nn.Module):
     def __init__(self, *shape):
         super().__init__()

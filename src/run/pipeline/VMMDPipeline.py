@@ -68,7 +68,7 @@ def launch_vmmd_embedding_config(configs):
             epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
             lr=config.lr, penalty=config.penalty, filename=config.filename,
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-            autoencoder=config.autoencoder, generator=config.generator
+            autoencoder=config.autoencoder, generator=config.generator, kernel=config.kernel
         )
 
         experiement = EmbeddingOutlierDetectionExperiments(

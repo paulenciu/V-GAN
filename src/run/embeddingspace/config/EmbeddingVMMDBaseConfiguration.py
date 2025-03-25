@@ -12,6 +12,7 @@ from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import Ge
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
+from src.vmmd.MMDLossConstrained import RBF
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 
@@ -39,7 +40,9 @@ class EmbeddingVMMDBaseConfiguration:
                 dateset_category=None,
                 add_to_title: str=None,
                 ens_base_estimator=LUNAR(),
-                set_decoder_eval=True):
+                set_decoder_eval=True,
+                kernel = RBF()
+                ):
 
         self.generator = generator or GeneratorRes50Conv(latent_size=latent_size)
         self.autoencoder = autoencoder
@@ -62,6 +65,7 @@ class EmbeddingVMMDBaseConfiguration:
         self.filename = filename or self.create_filename(add_to_title)
         self.ens_base_estimator = ens_base_estimator
         self.set_decoder_eval = set_decoder_eval
+        self.kernel = kernel
 
     def create_filename(self, add_to_title: str = ""):
         return ("embedding_"
