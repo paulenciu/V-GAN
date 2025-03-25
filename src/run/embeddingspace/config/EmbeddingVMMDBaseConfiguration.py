@@ -1,17 +1,10 @@
-import math
-
-from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
-from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 
-from src.models.encoder.IdentityEncoder import IdentityEncoder
-from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
-from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
-from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes50
+from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet18AutoEncoder import ResNet18AutoEncoder
+
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import GeneratorRes50Conv
 
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
-from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
+from src.utils.preprocessing import no_preprocessing
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 

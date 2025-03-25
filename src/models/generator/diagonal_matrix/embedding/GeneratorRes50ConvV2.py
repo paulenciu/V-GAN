@@ -10,8 +10,11 @@ class GeneratorRes50ConvV2(AbstractGenerator):
     def __init__(self, latent_size, output_shape=(2048, 7, 7)):
         super().__init__()
         self.latent_dim = latent_size
-        self.output_shape = output_shape
-        self.num_elements = output_shape[0] * output_shape[1] * output_shape[2]
+        self.output_shape = (2048, 7, 7)
+        self.output_shape = (512, 7, 7)
+
+        self.num_elements = self.output_shape[0] * self.output_shape[1] * self.output_shape[2]
+
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = (self.num_elements, 1)
 
@@ -38,7 +41,7 @@ class GeneratorRes50ConvV2(AbstractGenerator):
             nn.LeakyReLU(0.8),
 
 
-            nn.Conv2d(128, output_shape[0], 3, padding=1)
+            nn.Conv2d(128, self.output_shape[0], 3, padding=1)
         )
 
         self.upper_softmax = UpperSoftmax1D()

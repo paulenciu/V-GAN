@@ -47,8 +47,8 @@ class EnsembleDetectionLogger:
         sm.set_array([])
         plt.colorbar(sm, ax=ax, label='Detector Weight')
 
-#        plt.style.use('seaborn-v0_8')
-        plt.style.use('seaborn')
+        plt.style.use('seaborn-v0_8')
+#        plt.style.use('seaborn')
         plt.tight_layout()
         plt.show()
         self.vmmd_od.store_ensemble_score(fig)

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet18AutoEncoder import ResNet18AutoEncoder
 
 
 class ResNet18AutoEncoderFineTuning(nn.Module):

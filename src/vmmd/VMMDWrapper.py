@@ -6,16 +6,11 @@ from pathlib import Path
 import pandas as pd
 import torch
 
-from src.models.encoder.IdentityEncoder import IdentityEncoder
-from src.utils.logger.vmmd.GradiantPlotter import GradiantPlotter
+from src.models.encoder.IdentityAutoEncoder import IdentityAutoEncoder
 from src.vmmd import VMMD
 from src.utils.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributionPlotter
 from src.utils.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
 from src.utils.logger.vmmd.TrainingLogger import TrainingLogger
-from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
-from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
-from src.models.generator.diagonal_matrix.embedding.GeneratorRes50 import GeneratorRes50
-from src.models.autoencoder.pretrained_autoencoder.resnet.ResNet18AutoEncoder import ResNet18AutoEncoder
 
 
 class VMMDWrapper:
@@ -62,7 +57,7 @@ class VMMDWrapper:
 
 
         if autoencoder_column == "NoneType":
-            autoencoder = IdentityEncoder()
+            autoencoder = IdentityAutoEncoder()
         else:
             autoencoder_name = autoencoder_column + "()"
             autoencoder = eval(autoencoder_name)
