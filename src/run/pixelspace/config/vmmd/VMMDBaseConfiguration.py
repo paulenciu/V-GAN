@@ -1,7 +1,7 @@
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 
-from src.models.encoder.IdentityEncoder import IdentityEncoder
+from src.models.encoder.IdentityAutoEncoder import IdentityAutoEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
@@ -11,33 +11,33 @@ from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 class VMMDBaseConfiguration:
 
     def __init__(self, lr = 0.001,
-                latent_size = 128,
-                epochs = 2000,
-                batch_size = 1024,
-                store_stats = True,
-                penalty = MMDLossNoPenalty(),
-                momentum = 0.8,
-                weight_decay = 0.1,
-                standardize_data = False,
-                seed = 333,
-                n_channels = 3,
-                preprocessing_fn = no_preprocessing,
-                image_size_generator = (32, 32),
-                image_size_train=(32, 32),
-                image_size_od = (32, 32),
-                path_to_directory = "../experiments/remote",
-                encoder = IdentityEncoder(),
-                generator = None,
-                n_subspace_sample = None,
-                filename=None,
-                dataset_type=None,
-                dateset_category=None,
-                add_to_title: str=None,
-                ens_base_estimator=LUNAR(),
-                set_decoder_eval=False):
+                 latent_size = 128,
+                 epochs = 2000,
+                 batch_size = 1024,
+                 store_stats = True,
+                 penalty = MMDLossNoPenalty(),
+                 momentum = 0.8,
+                 weight_decay = 0.1,
+                 standardize_data = False,
+                 seed = 333,
+                 n_channels = 3,
+                 preprocessing_fn = no_preprocessing,
+                 image_size_generator = (32, 32),
+                 image_size_train=(32, 32),
+                 image_size_od = (32, 32),
+                 path_to_directory = "../experiments/remote",
+                 autoencoder = IdentityAutoEncoder(),
+                 generator = None,
+                 n_subspace_sample = None,
+                 filename=None,
+                 dataset_type=None,
+                 dateset_category=None,
+                 add_to_title: str=None,
+                 ens_base_estimator=LUNAR(),
+                 set_decoder_eval=False):
 
         self.generator = generator or GeneratorOneChannelSNGN(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
-        self.encoder = encoder
+        self.autoencoder = autoencoder
         self.lr = lr
         self.epochs = epochs
         self.batch_size = batch_size
