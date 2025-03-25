@@ -5,6 +5,8 @@ from src.data.dataset_type import DatasetType
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet50AutoEncoder import ResNet50AutoEncoder
 from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet18AutoEncoder import \
     PyTorchResNet18AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet50AutoEncoder import \
+    PyTorchResNet50AutoEncoder
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50ConvV2 import GeneratorRes50ConvV2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 
@@ -30,18 +32,33 @@ if __name__ == '__main__':
     #run_all_vmmd_od_benchmark()
     #launch_all_od_experiments()
     config = [
+        # VMMDBaseConfiguration(
+        #     dataset_type=DatasetType.OCCCIFAR10,
+        #     dateset_category="cat",
+        #     n_subspace_sample=100,
+        #     batch_size=500,
+        #     add_to_title="ptres50",
+        #     epochs=2,
+        #     lr=0.001,
+        #     autoencoder=PyTorchResNet50AutoEncoder(),
+        #     image_size_train=(224, 224),
+        #     image_size_generator=(32,32),
+        #     image_size_od=(224,224),
+        #     preprocessing_fn=normalize_images,
+        #     standardize_data=True,
+        # ),
         VMMDBaseConfiguration(
             dataset_type=DatasetType.OCCCIFAR10,
             dateset_category="cat",
             n_subspace_sample=100,
             batch_size=1024,
             add_to_title="ptres18",
-            epochs=10000,
+            epochs=2000,
             lr=0.001,
             autoencoder=PyTorchResNet18AutoEncoder(),
             image_size_train=(224, 224),
-            image_size_generator=(32,32),
-            image_size_od=(224,224),
+            image_size_generator=(28, 28),
+            image_size_od=(224, 224),
             preprocessing_fn=normalize_images,
             standardize_data=True,
         ),

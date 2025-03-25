@@ -87,7 +87,11 @@ class SubspaceProjectionPlotter(IVMMDLogger):
             axis[i, n_masks + 1].imshow(tensor_to_image(big_u_image))
             axis[i, n_masks + 1].axis("off")
 
-        axis[0, n_masks + 1].imshow(tensor_to_image(average_u.repeat(3,1,1)))
+        if isinstance(self.vmmd, VMMDEmbedding):
+            axis[0, n_masks + 1].imshow(tensor_to_image(average_u.repeat(3, 1, 1)))
+        else:
+            axis[0, n_masks + 1].imshow(tensor_to_image(average_u))
+
         axis[0, n_masks + 1].axis("off")
         axis[0, n_masks + 1].set_title(f"Average", fontsize=fontsize)
 
