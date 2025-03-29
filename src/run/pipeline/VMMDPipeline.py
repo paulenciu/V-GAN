@@ -157,7 +157,7 @@ def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
                 base_estimators=[config.ens_base_estimator],
-                vmmd=vmmd, max_n_jobs=-1,
+                vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
             dataset_type=config.dataset_type,
@@ -359,7 +359,7 @@ def launch_vmmd_experiment(configs):
             )
 
             experiement.fit()
-            experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+            #experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
         else:
             for ens_model in [LUNAR(), LOF(), KNN()]:
                 experiement = OutlierDetectionExperiment(
