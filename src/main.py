@@ -15,7 +15,7 @@ from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN im
 
 from src.run.embeddingspace.config.EmbeddingVMMDBaseConfiguration import EmbeddingVMMDBaseConfiguration
 from src.run.pipeline.VMMDPipeline import pretrained_vmmd_embedding_experiment, launch_vmmd_experiment, \
-    launch_vmmd_embedding_config
+    launch_vmmd_embedding_config, launch_all_od_experiments
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.utils.preprocessing import normalize_images, normalize_features, min_max_scaling
 from src.vmmd.MMDLossConstrained import MixtureRQLinear
@@ -45,92 +45,93 @@ if __name__ == '__main__':
     # trainer.train()
 
     #run_all_vmmd_od_benchmark()
-    #launch_all_od_experiments()
-    config = [
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
-            n_subspace_sample=2,
-            batch_size=250,
-            add_to_title="ptres50_mk",
-            epochs=2000,
-            lr=0.0001,
-            autoencoder=PyTorchResNet50AutoEncoder(),
-            image_size_train=(224, 224),
-            image_size_generator=(28, 28),
-            image_size_od=(224, 224),
-            standardize_data=True,
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category="Trouser",
-            n_subspace_sample=2,
-            batch_size=900,
-            add_to_title="ptres18_mk",
-            epochs=4000,
-            lr=0.0001,
-            autoencoder=PyTorchResNet18AutoEncoder(),
-            image_size_train=(224, 224),
-            image_size_generator=(28, 28),
-            image_size_od=(224, 224),
-            standardize_data=True,
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category="Trouser",
-            n_subspace_sample=2,
-            batch_size=250,
-            add_to_title="ptres50_mk",
-            epochs=4000,
-            lr=0.001,
-            autoencoder=PyTorchResNet50AutoEncoder(),
-            image_size_train=(224, 224),
-            image_size_generator=(28, 28),
-            image_size_od=(224, 224),
-            standardize_data=True,
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
-            n_subspace_sample=2,
-            batch_size=900,
-            add_to_title="ptres18_mk",
-            epochs=4000,
-            lr=0.001,
-            autoencoder=PyTorchResNet18AutoEncoder(),
-            image_size_train=(224, 224),
-            image_size_generator=(28, 28),
-            image_size_od=(224, 224),
-            standardize_data=True,
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.MVTEC_AD,
-            dateset_category="bottle",
-            n_subspace_sample=2,
-            batch_size=1024,
-            add_to_title="ptres50_mk",
-            epochs=4000,
-            lr=0.001,
-            autoencoder=PyTorchResNet50AutoEncoder(),
-            image_size_train=(224, 224),
-            image_size_generator=(56, 56),
-            image_size_od=(224, 224),
-            standardize_data=True,
-        ),
-        VMMDBaseConfiguration(
-            dataset_type=DatasetType.MVTEC_AD,
-            dateset_category="bottle",
-            n_subspace_sample=2,
-            batch_size=1024,
-            add_to_title="ptres50_mk",
-            epochs=4000,
-            lr=0.001,
-            autoencoder=PyTorchResNet50AutoEncoder(),
-            image_size_train=(224, 224),
-            image_size_generator=(56, 56),
-            image_size_od=(224, 224),
-            standardize_data=True,
-        ),
+    launch_all_od_experiments()
+    # lr = 0.000001
+    # config = [
+    #     VMMDBaseConfiguration(
+    #         dataset_type=DatasetType.OCCCIFAR10,
+    #         dateset_category="cat",
+    #         n_subspace_sample=2,
+    #         batch_size=250,
+    #         add_to_title="ptres50_mk",
+    #         epochs=2000,
+    #         lr=lr,
+    #         autoencoder=PyTorchResNet50AutoEncoder(),
+    #         image_size_train=(224, 224),
+    #         image_size_generator=(28, 28),
+    #         image_size_od=(224, 224),
+    #         standardize_data=True,
+    #     ),
+    #     VMMDBaseConfiguration(
+    #         dataset_type=DatasetType.OCCFMNIST,
+    #         dateset_category="Trouser",
+    #         n_subspace_sample=2,
+    #         batch_size=900,
+    #         add_to_title="ptres18_mk",
+    #         epochs=4000,
+    #         lr=lr,
+    #         autoencoder=PyTorchResNet18AutoEncoder(),
+    #         image_size_train=(224, 224),
+    #         image_size_generator=(28, 28),
+    #         image_size_od=(224, 224),
+    #         standardize_data=True,
+    #     ),
+    #     VMMDBaseConfiguration(
+    #         dataset_type=DatasetType.OCCFMNIST,
+    #         dateset_category="Trouser",
+    #         n_subspace_sample=2,
+    #         batch_size=250,
+    #         add_to_title="ptres50_mk",
+    #         epochs=4000,
+    #         lr=lr,
+    #         autoencoder=PyTorchResNet50AutoEncoder(),
+    #         image_size_train=(224, 224),
+    #         image_size_generator=(28, 28),
+    #         image_size_od=(224, 224),
+    #         standardize_data=True,
+    #     ),
+    #     VMMDBaseConfiguration(
+    #         dataset_type=DatasetType.OCCCIFAR10,
+    #         dateset_category="cat",
+    #         n_subspace_sample=2,
+    #         batch_size=900,
+    #         add_to_title="ptres18_mk",
+    #         epochs=4000,
+    #         lr=lr,
+    #         autoencoder=PyTorchResNet18AutoEncoder(),
+    #         image_size_train=(224, 224),
+    #         image_size_generator=(28, 28),
+    #         image_size_od=(224, 224),
+    #         standardize_data=True,
+    #     ),
+    #     VMMDBaseConfiguration(
+    #         dataset_type=DatasetType.MVTEC_AD,
+    #         dateset_category="bottle",
+    #         n_subspace_sample=2,
+    #         batch_size=1024,
+    #         add_to_title="ptres50_mk",
+    #         epochs=4000,
+    #         lr=lr,
+    #         autoencoder=PyTorchResNet50AutoEncoder(),
+    #         image_size_train=(224, 224),
+    #         image_size_generator=(56, 56),
+    #         image_size_od=(224, 224),
+    #         standardize_data=True,
+    #     ),
+    #     VMMDBaseConfiguration(
+    #         dataset_type=DatasetType.MVTEC_AD,
+    #         dateset_category="bottle",
+    #         n_subspace_sample=2,
+    #         batch_size=1024,
+    #         add_to_title="ptres50_mk",
+    #         epochs=4000,
+    #         lr=lr,
+    #         autoencoder=PyTorchResNet50AutoEncoder(),
+    #         image_size_train=(224, 224),
+    #         image_size_generator=(56, 56),
+    #         image_size_od=(224, 224),
+    #         standardize_data=True,
+    #     ),
         # EmbeddingVMMDBaseConfiguration(
         #     dataset_type=DatasetType.OCCCIFAR10,
         #     dateset_category="cat",
@@ -154,9 +155,9 @@ if __name__ == '__main__':
         #     generator=GeneratorRes50ConvV2(512),
         #     kernel=MixtureRQLinear()
         # ),
-    ]
+#    ]
     #pretrained_vmmd_embedding_experiment(config, "../experiments/remote/26-03/embedding_OCCCIFAR10[cat]_no_preprocessing__train224_lr=0.0005_bs=250_ep=2000_res50/models/generator_9.pt")
-    launch_vmmd_experiment(config)
+    #launch_vmmd_experiment(config)
     #launch_vmmd_embedding_config(config)
     #pretrained_vmmd_embedding_experiment(config, "../experiments/remote/24-03/embedding_OCCCIFAR10[cat]_no_preprocessing__train224_lr=0.001_bs=800_ep=10000_res18_mk/models/generator_5.pt")
     # pretrained_vmmd_embedding_experiment(configs=config, path_to_pretrained_model="../experiments/remote/20-03/embedding_OCCFMNIST[Trouser]_no_preprocessing__train224_lr=0.001_bs=500_ep=1000_res18_fast/models/generator_9.pt")

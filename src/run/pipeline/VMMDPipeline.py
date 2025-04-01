@@ -13,6 +13,7 @@ from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfigu
 from src.utils.preprocessing import normalize_images, normalize_features
 from src.vmmd.VMMDEmbedding import VMMDEmbedding
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
+from src.models.generator.diagonal_matrix.one_channel.GeneratorConv import GeneratorOneChannelConv
 
 
 fashionmnist_categories = [
