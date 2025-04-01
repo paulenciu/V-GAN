@@ -13,9 +13,6 @@ def load_data(dataset_type: DatasetType, category, image_size=(128, 128), custom
             transforms.ToTensor(),
         ])
 
-    if train:
-        return dataset_type.load(category=category, transform=transform, train=True, normalize=standardize)
-
-    x_test = dataset_type.load(category=category, transform=transform, train=False, normalize=standardize)
+    x_test = dataset_type.load(category=category, transform=transform, train=train, normalize=standardize)
     y_test = x_test.labels
     return x_test, y_test
