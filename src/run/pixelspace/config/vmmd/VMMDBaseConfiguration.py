@@ -1,7 +1,7 @@
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 
-from src.models.encoder.IdentityAutoEncoder import IdentityAutoEncoder
+from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
@@ -26,7 +26,7 @@ class VMMDBaseConfiguration:
                  image_size_train=(32, 32),
                  image_size_od = (32, 32),
                  path_to_directory = "../experiments/remote",
-                 autoencoder = IdentityAutoEncoder(),
+                 autoencoder = IdentityEncoder(),
                  generator = None,
                  n_subspace_sample = None,
                  filename=None,

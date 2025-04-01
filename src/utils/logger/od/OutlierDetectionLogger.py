@@ -16,7 +16,7 @@ class OutlierDetectionLogger:
         #ensemble_score = self.od_model.ensemble_detector.decision_score_agg(x)
         #distance_score = self.od_model.distance_detector.decision_score(x)
 
-        ensemble_score = self.od_model.get_ensemble_score(x)
+        ensemble_scores = self.od_model.get_ensemble_scores(x)
         distance_score = self.od_model.get_distance_score(x)
 
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -32,7 +32,12 @@ class OutlierDetectionLogger:
         ax.plot(basis, y[:max_example], color='#2c7bb6', linewidth=1.5, label='Ground Truth')
         plt.fill_between(basis, y[:max_example], color='#2c7bb6', alpha=0.3)
         ax.plot(basis, distance_score[:max_example], color='#d7191c', linewidth=1.5, label='Distance Scores', linestyle='dashed')
-        ax.plot(basis, ensemble_score[:max_example], color='#008000', linewidth=1.5, label=f'Ensemble Scores ({self.od_model.ensemble_detector.base_estimators[0].__class__.__name__})', linestyle='dashed')
+        colors = ['#008000', '#0000FF', '#FF0000', '#800080', '#FFA500']
+
+        for idx, ensemble_score in enumerate(ensemble_scores):
+            ax.plot(basis, ensemble_score[:max_example], color=colors[idx % len(colors)], linewidth=1.5,
+                    label=f'Ensemble Scores ({self.od_model.ensemble_detector.base_estimators[idx].__class__.__name__})',
+                    linestyle='dashed')
 
         ax.legend(loc='upper right', frameon=True)
 

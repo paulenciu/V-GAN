@@ -30,7 +30,7 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.weight_ensemble = weight_ensemble
         self.weight_distance = 1 - weight_ensemble
 
-    def get_ensemble_score(self, x):
+    def get_ensemble_scores(self, x):
         return self.ensemble_detector.decision_score_agg(x)
 
     def get_distance_score(self, x):
@@ -54,14 +54,14 @@ class CombinedOutlierDetector(BaseOutlierDetector):
 
         decision_scores_list = []
         description_list = []
+        for i, ensemble_score in enumerate(ensemble_scores):
+            for ensemble_weight in np.arange(ensemble_weight_start, ensemble_weight_end + step, step):
+                self.update_tradeoff(ensemble_weight)
+                decision_scores = self.weight_ensemble * ensemble_score + self.weight_distance * distance_scores
+                description = self.get_model_description(i)
 
-        for ensemble_weight in np.arange(ensemble_weight_start, ensemble_weight_end + step, step):
-            self.update_tradeoff(ensemble_weight)
-            decision_scores = self.weight_ensemble * ensemble_scores + self.weight_distance * distance_scores
-            description = self.get_model_description()
-
-            decision_scores_list.append(decision_scores)
-            description_list.append(description)
+                decision_scores_list.append(decision_scores)
+                description_list.append(description)
 
         return decision_scores_list, description_list
 
@@ -91,8 +91,8 @@ class CombinedOutlierDetector(BaseOutlierDetector):
         self.decision_time = time.time() - decision_start
         return self.decision_scores
 
-    def get_model_description(self):
-        ensemble_description = self.ensemble_detector.get_model_description()
+    def get_model_description(self, idx=0):
+        ensemble_description = self.ensemble_detector.get_model_description(idx=idx)
         distance_description = self.distance_detector.get_model_description()
 
         ensemble_description["ensemble weight"] = self.weight_ensemble

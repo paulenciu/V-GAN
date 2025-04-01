@@ -5,6 +5,9 @@ from typing import Union
 
 import torch
 from collections import defaultdict
+
+from torch.profiler import profile
+
 from src.data.IDataset import IDataset
 
 from sklearn.preprocessing import normalize
@@ -223,8 +226,6 @@ class VMMD(ABC):
                 u_mappings = self.generator.sample_subspace_masks(noise)
 
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
-
-                #embedded_batch = self.encode(batch)
                 embedded_processed_batch = self.encode(processed_batch)
 
                 batch_loss, mmd_loss = loss_function(embeddings, embedded_processed_batch, u_mappings)

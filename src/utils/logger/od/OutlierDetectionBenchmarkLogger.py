@@ -17,14 +17,20 @@ class OutlierDetectionBenchmarkLogger:
         self.dataset_type = dataset_type
         self.category = category
 
-    def log(self, scores: list[dict]) -> None:
-        dis_scores = scores[0]
-        ens_scores = scores[-1]
-        baseline_scores = self.get_baseline_score()
-        best_comb_scores = self.find_best_combinational_score(scores[1:-2])
+    def log(self, scores: list[dict], interval_length=11) -> None:
 
-        all_scores = [dis_scores, best_comb_scores,ens_scores] + baseline_scores
-        model_names = ["VMMD + ERROR"] + ["VMMD + " +  ens_scores["OD Method"]["Ensemble Description"]["Ensemble Model"]  + " + ERROR"] +  ["VMMD + " + ens_scores["OD Method"]["Ensemble Description"]["Ensemble Model"]] + [score["OD Method"] for score in baseline_scores]
+        ens_model_idxs = np.arange(interval_length - 1, len(scores), interval_length, dtype=int)
+        dis_model_idxs = np.arange(0, len(scores), interval_length - 1, dtype=int)
+        ens_model_scores = [scores[i] for i in ens_model_idxs.tolist()]
+        dis_scores = scores[0]
+        baseline_scores = self.get_baseline_score()
+
+        comb_score_idx = np.setdiff1d(np.arange(len(scores)), np.concatenate([ens_model_idxs, dis_model_idxs]))
+        comb_scores = [scores[i] for i in comb_score_idx.tolist()]
+        best_comb_scores = self.find_best_combinational_score(comb_scores)
+
+        all_scores = [dis_scores, best_comb_scores] + ens_model_scores  + baseline_scores
+        model_names = ["VGAN + ERROR"] + ["VGAN + " +  best_comb_scores["OD Method"]["Ensemble Description"]["Ensemble Model"]  + " + ERROR"] +  ["VGAN + " + ens_scores["OD Method"]["Ensemble Description"]["Ensemble Model"] for ens_scores in ens_model_scores] + [score["OD Method"] for score in baseline_scores]
         metrics = ["AUC", "PRAUC", "F1"]
 
         n_models = len(all_scores)

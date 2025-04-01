@@ -3,10 +3,10 @@ from torch import nn
 from src.models.encoder.AbstractEncoder import AbstractEncoder
 
 
-class IdentityAutoEncoder(AbstractEncoder):
+class IdentityEncoder(AbstractEncoder):
 
     def __init__(self):
-        super(IdentityAutoEncoder, self).__init__()
+        super(IdentityEncoder, self).__init__()
 
     def forward(self, x):
         return x
