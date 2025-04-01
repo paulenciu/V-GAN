@@ -52,3 +52,12 @@ class VMMDOD:
         file_path = path_to_directory / f"od_benchmarks_{run_number}.pdf"
 
         fig.savefig(file_path, format="pdf", bbox_inches="tight")
+
+    def store_subspaces(self, subspaces):
+        path_to_directory = Path(self.vmmd.path_to_directory) / "subspaces"
+        path_to_directory.mkdir(parents=True, exist_ok=True)
+        run_number = int(len(os.listdir(path_to_directory)))
+        file_path = path_to_directory / f"subspaces_{run_number}.csv"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        subspaces_df = pd.DataFrame(subspaces.tolist())
+        subspaces_df.to_csv(file_path, index=False)

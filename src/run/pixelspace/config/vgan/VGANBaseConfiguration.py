@@ -1,6 +1,6 @@
 from pyod.models.lunar import LUNAR
 from src.models.autoencoder.ResNet18AutoEncoderFineTuning import ResNet18AutoEncoderFineTuning
-from src.models.encoder.IdentityAutoEncoder import IdentityAutoEncoder
+from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_features
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty

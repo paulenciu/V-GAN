@@ -55,11 +55,7 @@ class OutlierDetectionExperiment:
 
         print("Number of unique subspaces:", len(subspaces), "/", self.n_subspace_sample)
         subspaces = np.array(subspaces, dtype=bool)
-
-        # for subspace in subspaces:
-        #     subspace_image = torch.from_numpy(subspace).view(3, 28, 28).to(torch.float)
-        #     plt.imshow(tensor_to_image(subspace_image))
-        #     plt.show()
+        self.vmmd_od.store_subspaces(subspaces)
 
         # PREPARE DATA FOR OD
         x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
@@ -96,7 +92,7 @@ class OutlierDetectionExperiment:
         x_test_flattened = self.preprocessing_fn(x_test_flattened)
         y_test = np.array(y_test)
 
-        self.ens_logger.log(x_test_flattened, y_test)
+        #self.ens_logger.log(x_test_flattened, y_test)
         self.od_logger.log(x_test_flattened, y_test)
         decision_scores, descriptions = self.od_model.decision_score_interval(x_test_flattened, ensemble_weight_start, ensemble_weight_end, step)
 
@@ -107,8 +103,8 @@ class OutlierDetectionExperiment:
             od_stats["OD Method"] = descriptions[i]
             self.vmmd_od.store_od_stats(od_stats, run_number=-1)
             od_stats_list.append(od_stats)
-
-        #self.od_bm_logger.log(od_stats_list)
+        interval_length = (ensemble_weight_end - ensemble_weight_start)  * (1 / step) + 1
+        self.od_bm_logger.log(od_stats_list, interval_length=interval_length)
 
     def calculate_od_stats(self, y_test, decision_scores):
         return {"Dataset": self.dataset_type,

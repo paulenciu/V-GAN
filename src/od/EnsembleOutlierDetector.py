@@ -33,7 +33,7 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
     def __init__(self, vmmd, base_estimators=None, max_n_jobs=4, k = 1, temperature = 1):
         self.base_estimators = base_estimators or []
         self.max_n_jobs = max_n_jobs
-        self.ensemble_model = None
+        self.ensemble_models = []
         self.train_time = 0.0
         self.decision_time = 0.0
         self.decision_scores_ens = None
@@ -44,58 +44,69 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
         self.ens_train_score_std = None
         self.k = k
         self.temperature = temperature
+        self.train_times = []
+        self.decision_times = []
+        self.model_description = []
 
     def fit(self, subspaces, x):
         x = x.astype(np.float32)
+        for base_estimator in self.base_estimators:
+            self.ensemble_models.append(
+                sel_SUOD(
+                    base_estimators=[base_estimator],
+                    subspaces=subspaces,
+                    n_jobs=self.max_n_jobs,
+                    bps_flag=False,
+                    approx_flag_global=False
+                )
+            )
 
-        self.ensemble_model = sel_SUOD(
-            base_estimators=self.base_estimators,
-            subspaces=subspaces,
-            n_jobs=self.max_n_jobs,
-            bps_flag=False,
-            approx_flag_global=False
-        )
-        fit_time_start = time.time()
-        self.ensemble_model.fit(x)
-        self.train_time = time.time() - fit_time_start
+        for ensemble_model in self.ensemble_models:
+            fit_time_start = time.time()
+            ensemble_model.fit(x)
+            self.train_times.append(time.time() - fit_time_start)
 
         #NORMALIZE SCORES USING TRAINING DATA STATISTICS
-        train_scores = self.ensemble_model.decision_function(x)
-        train_scores_agg = aggregator_funct(
-            train_scores, weights=self.vmmd.proba, type="avg"
-        )
-
-        self.ens_train_min = np.min(train_scores_agg)
-        self.ens_train_max = np.max(train_scores_agg)
-        self.ens_train_score_std = np.std(train_scores_agg)
-        self.ens_train_max = np.percentile(train_scores_agg, 95)
-        self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
-        print("Ensemble train score max: ", self.ens_train_max, "Ensemble train score std: ", self.ens_train_score_std)
+        # train_scores = self.ensemble_model.decision_function(x)
+        # train_scores_agg = aggregator_funct(
+        #     train_scores, weights=self.vmmd.proba, type="avg"
+        # )
+        #
+        # self.ens_train_min = np.min(train_scores_agg)
+        # self.ens_train_max = np.max(train_scores_agg)
+        # self.ens_train_score_std = np.std(train_scores_agg)
+        # self.ens_train_max = np.percentile(train_scores_agg, 95)
+        # self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
+        # print("Ensemble train score max: ", self.ens_train_max, "Ensemble train score std: ", self.ens_train_score_std)
         self.n_subspaces = subspaces.shape[0]
 
     def decision_score(self, x):
-        self.decision_time = None
-        decision_time_start = time.time()
-        decision_scores = self.ensemble_model.decision_function(x)
-        self.decision_time = time.time() - decision_time_start
+        decision_scores = []
+        for ensemble_model in self.ensemble_models:
+            decision_time_start = time.time()
+            decision_scores.append(ensemble_model.decision_function(x))
+            self.decision_times.append(time.time() - decision_time_start)
         return decision_scores
 
     def decision_score_agg(self, x):
-        decision_scores_ens = aggregator_funct(
-            self.decision_score(x),
-            weights=self.vmmd.proba,
-            type="avg"
-        )
-        self.decision_scores_ens = self.scale_scores(decision_scores_ens)
+        decision_score_ens = []
+        for decision_score in self.decision_score(x):
+            decision_score_ens.append(
+                aggregator_funct(
+                    decision_score,
+                    weights=self.vmmd.proba,
+                    type="avg"
+                )
+            )
+        self.decision_scores_ens = [self.scale_scores(dc_ens) for dc_ens in decision_score_ens]
         return self.decision_scores_ens
 
     def scale_scores(self, x):
-        #return 1 / (1 + np.exp(-(x - self.ens_train_max) / self.ens_train_score_std))
         return x
 
-    def get_model_description(self):
+    def get_model_description(self, idx=0):
         return {
             "Model": self.__class__.__name__,
             "Number Subspaces": str(self.n_subspaces),
-            "Ensemble Model": self.base_estimators[0].__class__.__name__,
+            "Ensemble Model": self.base_estimators[idx].__class__.__name__,
         }

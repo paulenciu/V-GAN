@@ -14,7 +14,7 @@ class PreEmbeddedDataset(Dataset):
             self.embeddings = torch.cat([
                 self.encoder(batch.to(device)).view(batch.size(0), -1)
                 for batch in DataLoader(dataset, batch_size=500)
-            ], dim=0).cpu()
+            ], dim=0).to(torch.float32).cpu()
 
     def __len__(self):
         return len(self.dataset)
