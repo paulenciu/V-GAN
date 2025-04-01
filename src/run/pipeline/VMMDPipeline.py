@@ -16,46 +16,46 @@ from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
 
 fashionmnist_categories = [
-    "T-shirt/top",
-    "Trouser",
-    "Pullover",
-    "Dress",
-    "Coat",
-    "Sandal",
-    "Shirt",
-    "Sneaker",
-    "Bag",
+   # "T-shirt/top",
+   # "Trouser",
+   # "Pullover",
+   # "Dress",
+   #  "Coat",
+   #  "Sandal",
+   #  "Shirt",
+   #  "Sneaker",
+   #  "Bag",
     "Ankle boot"
 ]
 
 mvtec_categories = [
-    "bottle",
-    "cable",
-    "capsule",
-    "carpet",
-    "grid",
-    "hazelnut",
-    "leather",
-    "metal_nut",
-    "pill",
-    "screw",
-    "tile",
-    "toothbrush",
-    "transistor",
-    "wood",
-    "zipper"
+#    "bottle",
+#    "cable",
+#    "capsule",
+#     "carpet",
+#     "grid",
+#     "hazelnut",
+#     "leather",
+#     "metal_nut",
+#     "pill",
+#     "screw",
+#     "tile",
+#     "toothbrush",
+#     "transistor",
+#     "wood",
+#     "zipper"
 ]
 
 cifar10_classes = [
-    "airplane",
-    "automobile",
-    "bird",
-    "cat",
-    "deer",
-    "dog",
-    "frog",
-    "horse",
-    "ship",
+#    "airplane",
+#    "automobile",
+#    "bird",
+#    "cat",
+#    "deer",
+#    "dog",
+#    "frog",
+#    "horse",
+#    "ship",
     "truck"
 ]
 
@@ -244,20 +244,21 @@ def pretrained_vmmd_experiment(configs, path_to_pretrained_model):
         experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
 
 def run_all_vmmd_od_benchmark():
-    root_dir = Path("../experiments/remote/17-03/")
+    root_dir = Path("../experiments/remote/21-03/")
     for mvtec_category in mvtec_categories:
         prefix = str(DatasetType.MVTEC_AD.name) + "[" + str(mvtec_category) + "]"
 
         for dir in root_dir.iterdir():
             if dir.stem.startswith(prefix):
 
-                config = [VMMDBaseConfiguration(
+                config = [
+                    VMMDBaseConfiguration(
                     dataset_type=DatasetType.MVTEC_AD,
                     dateset_category=mvtec_category,
                     image_size_od=(256,256),
                     preprocessing_fn=normalize_images,
                     standardize_data=False,
-                    n_subspace_sample=100
+                    n_subspace_sample=50
                 )]
 
                 path_to_generator =  str(dir / "models" / "generator_1.pt")
@@ -307,28 +308,27 @@ def run_vmmd_od_benchmark(configs, path_to_pretrained_model):
             epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
             lr=config.lr, penalty=config.penalty, filename=config.filename,
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-            encoder=config.encoder, generator=config.generator
+            autoencoder=config.autoencoder, generator=config.generator
         )
 
-        for ens_model in [LUNAR(), LOF(), KNN()]:
-            experiement = OutlierDetectionExperiment(
-                vmmd=vmmd,
-                od_model=CombinedOutlierDetector(
-                    base_estimators=[ens_model],
-                    vmmd=vmmd, max_n_jobs=-1,
-                    preprocessing_fn=config.preprocessing_fn
-                ),
-                dataset_type=config.dataset_type,
-                category=config.dateset_category,
-                image_size_train=config.image_size_train,
-                image_size_od=config.image_size_od,
-                standardize_data=config.standardize_data,
-                preprocessing_fn=config.preprocessing_fn,
-                n_subspaces_sample=config.n_subspace_sample
-            )
+        experiement = OutlierDetectionExperiment(
+            vmmd=vmmd,
+            od_model=CombinedOutlierDetector(
+                base_estimators=[LUNAR(), LOF(), KNN()],
+                vmmd=vmmd, max_n_jobs=-1,
+                preprocessing_fn=config.preprocessing_fn
+            ),
+            dataset_type=config.dataset_type,
+            category=config.dateset_category,
+            image_size_train=config.image_size_train,
+            image_size_od=config.image_size_od,
+            standardize_data=config.standardize_data,
+            preprocessing_fn=config.preprocessing_fn,
+            n_subspaces_sample=config.n_subspace_sample
+        )
 
-            experiement.fit_pretrained_model(path_to_pretrained_model)
-            experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+        experiement.fit_pretrained_model(path_to_pretrained_model)
+        experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
 
 def launch_vmmd_experiment(configs):
     for i, config in enumerate(configs):
