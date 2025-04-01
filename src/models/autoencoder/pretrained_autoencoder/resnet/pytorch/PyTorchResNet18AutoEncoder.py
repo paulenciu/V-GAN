@@ -1,5 +1,5 @@
 import torch
-
+from torch import nn
 from src.utils.preprocessing import normalize_images
 
 
@@ -11,6 +11,7 @@ class PyTorchResNet18AutoEncoder:
      """
     def __init__(self):
         self.encoder = torch.hub.load('pytorch/vision', 'resnet18', pretrained=True)
+        self.encoder = nn.Sequential(*list(self.encoder.children())[:-2])
         self.encoder.eval()
 
     def get_encoder_and_freeze(self):

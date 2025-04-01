@@ -18,7 +18,6 @@ class ResNet18AutoEncoder(AbstractEncoder):
             name = k[7:] if k.startswith("module.") else k  # remove "module." prefix
             new_state_dict[name] = v
 
-        # Load the modified state_dict
         self.model.load_state_dict(new_state_dict)
 
     def forward(self, x):

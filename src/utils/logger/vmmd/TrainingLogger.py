@@ -10,6 +10,7 @@ from src.vgan.VGAN import VGAN
 from src.vmmd.VMMD import VMMD
 from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
 from src.vmmd.VMMDEmbedding import VMMDEmbedding
+import matplotlib
 
 
 class TrainingLogger(IVMMDLogger):
@@ -23,7 +24,6 @@ class TrainingLogger(IVMMDLogger):
 
     def log(self, data, epochs=0):
         run_number = int(len(os.listdir(self.path_to_model_params)))
-
         self.__update_model_parms(run_number)
         self.__update_generator_loss(run_number)
         self.__update_params(run_number)

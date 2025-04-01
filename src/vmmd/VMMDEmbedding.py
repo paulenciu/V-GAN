@@ -158,37 +158,18 @@ class VMMDEmbedding(VMMD):
                 reconstructed = torch.utils.checkpoint.checkpoint(
                     self._decode_with_memory, processed_images
                 )
-                #
-                # processed_images = processed_images.view(images.size(0), *self.decoder_input_shape)
-                # reconstructed = self.decoder(processed_images)
 
                 images = images.view(images.size(0), -1)
                 reconstructed = reconstructed.view(images.size(0), -1)
 
-                # with torch.no_grad():
                 flat_images = images.view(images.size(0), -1)
                 flat_recon = reconstructed.view(reconstructed.size(0), -1)
                 batch_loss, mmd_loss = loss_function(flat_images, flat_recon, u_mappings)
-                #batch_loss, mmd_loss = loss_function(images, reconstructed, u_mappings)
-
-                total_norm = 0.0
-                for p in self.generator.parameters():
-                    if p.grad is not None:
-                        param_norm = p.grad.data.norm(2)
-                        total_norm += param_norm.item() ** 2
-                total_norm = total_norm ** 0.5
 
                 batch_loss.backward()
                 optimizer.step()
 
-                # self.scaler.scale(batch_loss).backward()
-                # self.scaler.step(optimizer)
-                # self.scaler.update()
-
                 del images, embeddings, noise, u_mappings, reconstructed
-
-                # batch_loss.backward()
-                # optimizer.step()
 
                 generator_loss += batch_loss.item() / len(data_loader)
                 mmd_loss_avg += mmd_loss.item() / len(data_loader)

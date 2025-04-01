@@ -10,8 +10,8 @@ class GeneratorRes50ConvV2(AbstractGenerator):
     def __init__(self, latent_size, output_shape=(2048, 7, 7)):
         super().__init__()
         self.latent_dim = latent_size
+        self.output_shape = output_shape
         self.output_shape = (2048, 7, 7)
-        self.output_shape = (512, 7, 7)
 
         self.num_elements = self.output_shape[0] * self.output_shape[1] * self.output_shape[2]
 

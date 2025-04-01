@@ -41,7 +41,7 @@ class OutlierDetectionExperiment:
         self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
         del x_train
 
-        self.fit_outlier_detection()
+        #self.fit_outlier_detection()
 
     def fit_outlier_detection(self):
         self.vmmd.approx_subspace_dist(subspace_count=self.n_subspace_sample)

@@ -205,7 +205,7 @@ class VMMD(ABC):
 
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
-        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=RBF())
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
 
         total_training_time = 0.0
         snapshot_duration = 0.0
