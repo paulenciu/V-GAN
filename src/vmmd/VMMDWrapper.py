@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import torch
 
-from src.models.encoder.IdentityAutoEncoder import IdentityAutoEncoder
+from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.vmmd import VMMD
 from src.utils.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributionPlotter
 from src.utils.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
@@ -58,7 +58,7 @@ class VMMDWrapper:
 
 
         if autoencoder_column == "NoneType":
-            autoencoder = IdentityAutoEncoder()
+            autoencoder = IdentityEncoder()
         else:
             autoencoder_name = autoencoder_column + "()"
             autoencoder = eval(autoencoder_name)
