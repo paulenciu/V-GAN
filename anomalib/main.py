@@ -138,7 +138,6 @@ def run_stfpm():
     trainer.fit(model, train_loader)
     return model
 
-# Run and evaluate all models
 models = {
     "PADIM": run_padim(),
     "PatchCore": run_patchcore(),

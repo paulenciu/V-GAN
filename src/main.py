@@ -8,6 +8,7 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet1
     PyTorchResNet18AutoEncoder
 from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet50AutoEncoder import \
     PyTorchResNet50AutoEncoder
+from src.models.encoder.ViTransformer import ViTransformer
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50ConvV2 import GeneratorRes50ConvV2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 
@@ -35,14 +36,15 @@ if __name__ == '__main__':
     #launch_all_od_experiments()
     config = [
         VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCCIFAR10,
-            dateset_category="cat",
+            dataset_type=DatasetType.MVTEC_AD,
+            dateset_category="bottle",
             n_subspace_sample=100,
             batch_size=1024,
-            add_to_title="cae",
+            add_to_title="vit",
             epochs=2000,
             lr=0.001,
-            autoencoder=Cifar10AutoEncoder(),
+            autoencoder=ViTransformer(),
+            image_size_train=(384, 384)
         ),
         # VMMDBaseConfiguration(
         #     dataset_type=DatasetType.OCCCIFAR10,
