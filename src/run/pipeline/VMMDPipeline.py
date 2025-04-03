@@ -359,7 +359,7 @@ def launch_vmmd_experiment(configs):
             )
 
             experiement.fit()
-            #experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+            experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
         else:
             for ens_model in [LUNAR(), LOF(), KNN()]:
                 experiement = OutlierDetectionExperiment(
