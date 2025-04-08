@@ -3,6 +3,7 @@ from pyod.models.lof import LOF
 from sympy.strategies.branch import canon
 
 from src.data.dataset_type import DatasetType
+from src.run.embeddingspace.EmbeddingSpaceOutlierDetectionExperiment import EmbeddingSpaceOutlierDetectionExperiment
 from src.run.pixelspace.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
 from src.utils.preprocessing import normalize_images
 

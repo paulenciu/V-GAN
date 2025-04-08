@@ -6,20 +6,9 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNetConfig 
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.RestNetAutoEncoder import ResNetAutoEncoder
 
 
-class ResNet50Encoder(AbstractEncoder):
-    def __init__(self):
-        super(ResNet50Encoder, self).__init__()
-        autoencoder = ResNet50AutoEncoder()
-        self.encoder = autoencoder.model.encoder
-
-    def forward(self, x):
-        x = self.encoder(x)
-        return x
-
-
 class ResNet50AutoEncoder(nn.Module):
     def __init__(self):
-        super(ResNet50AutoEncoder, self).__init__()
+        super(ResNet50AutoEncoder, self).__init__(has_decoder=True)
         autoencoder_model_pth = torch.load('../models/caltech256-resnet50.pth', map_location=torch.device('cpu'))
         config, bottleneck = get_configs('resnet50')
         self.model = ResNetAutoEncoder(config, bottleneck)

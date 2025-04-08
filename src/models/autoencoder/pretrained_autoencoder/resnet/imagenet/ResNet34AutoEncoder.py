@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 
+from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNetConfig import get_configs
+from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.RestNetAutoEncoder import ResNetAutoEncoder
 from src.models.encoder.AbstractEncoder import AbstractEncoder
-from src.models.encoder.autoencoder.resnet.ResNetConfig import get_configs
-from src.models.encoder.autoencoder.resnet.RestNetAutoEncoder import ResNetAutoEncoder
+
 
 
 class ResNet34AutoEncoder(AbstractEncoder):
@@ -21,6 +22,7 @@ class ResNet34AutoEncoder(AbstractEncoder):
 
         # Load the modified state_dict
         self.model.load_state_dict(new_state_dict)
+        super().__init__(has_decoder=True)
 
     def forward(self, x):
         x = self.model(x)

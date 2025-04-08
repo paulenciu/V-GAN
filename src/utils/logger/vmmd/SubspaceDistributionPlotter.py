@@ -14,8 +14,13 @@ class SubspaceDistributionPlotter(IVMMDLogger):
         self.vmmd = vmmd
         self.base_dir = base_dir
         self.sample_count = sample_count
-        self.path_to_distribution_plots = self.__init_base_dir()
 
+        if base_dir is not None:
+            self.path_to_distribution_plots = self.__init_base_dir()
+
+    def set_base_dir(self, base_dir: Path):
+        self.base_dir = base_dir
+        self.path_to_distribution_plots = self.__init_base_dir()
 
     def log(self, data, epoch=0):
         run_number = int(len(os.listdir(self.path_to_distribution_plots)))

@@ -22,13 +22,11 @@ class Cifar10AutoEncoder(nn.Module):
         return torch.Size([3, 32, 32])
 
     def get_decoder_input_shape(self):
-        return torch.Size([512, 7, 7])
+        return torch.Size([64, 56, 56])
 
     def get_encoder_and_freeze(self):
-
         for param in self.model.encoder.parameters():
             param.requires_grad = False
-
         return self.model.encoder
 
     def get_decoder(self):

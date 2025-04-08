@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 from av.codec import codec_descriptor
+from jsonargparse_tests.conftest import columns
 
 from src.data import dataset_type
 from src.data.dataset_type import DatasetType
@@ -152,21 +153,25 @@ def generate_latex_tables(metric="auc"):
         (DatasetType.OCCCIFAR10, "Cifar10", cifar10_classes),
         (DatasetType.OCCFMNIST, "FashionMNIST", fashionmnist_categories)
     ]
-
+    cols = [("", "")]
     for dataset_type, dataset_name, categories in config:
-        columns = pd.MultiIndex.from_tuples([
-            (dataset_name, ""),
-            ("Full Space", "LUNAR"),
-            ("Full Space", "LOF"),
-            ("Full Space", "KNN"),
-            ("Full Space", "PADIM"),
-            ("Full Space", "DFM"),
-            ("Full Space", "STFPM"),
-            ("FeatureBagging", "LUNAR"),
-            ("VGAN", "LUNAR"),
-            ("VGAN", "LOF"),
-            ("VGAN", "KNN"),
-        ])
+        for category in categories:
+            cols.append((dataset_name, category))
+
+        columns = pd.MultiIndex.from_tuples(cols)
+        # columns = pd.MultiIndex.from_tuples([
+        #     (dataset_name, ""),
+        #     ("Full Space", "LUNAR"),
+        #     ("Full Space", "LOF"),
+        #     ("Full Space", "KNN"),
+        #     ("Full Space", "PADIM"),
+        #     ("Full Space", "DFM"),
+        #     ("Full Space", "STFPM"),
+        #     ("FeatureBagging", "LUNAR"),
+        #     ("VGAN", "LUNAR"),
+        #     ("VGAN", "LOF"),
+        #     ("VGAN", "KNN"),
+        # ])
 
         data = []
         for category in categories:
@@ -182,8 +187,9 @@ def generate_latex_tables(metric="auc"):
             data.append(row)
 
 
-        df = pd.DataFrame(data, columns=columns)
-        print_latex_code(df, dataset_name, metric)
+    df = pd.DataFrame(data, columns=columns)
+    print_latex_code(df, dataset_name, metric)
+
 
 
 

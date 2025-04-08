@@ -18,6 +18,14 @@ class TrainingLogger(IVMMDLogger):
     def __init__(self, vmmd: VMMD, base_dir: Path):
         self.vmmd = vmmd
         self.base_dir = base_dir
+
+        if base_dir is not None:
+            (self.path_to_train_history_csv,
+             self.path_to_train_history_plot,
+             self.path_to_model_params) = self.__init_base_dir(base_dir)
+
+    def set_base_dir(self, base_dir: Path):
+        self.base_dir = base_dir
         (self.path_to_train_history_csv,
          self.path_to_train_history_plot,
          self.path_to_model_params) = self.__init_base_dir(base_dir)

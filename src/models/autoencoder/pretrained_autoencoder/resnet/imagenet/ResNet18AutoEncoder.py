@@ -7,7 +7,7 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.RestNetAutoEn
 
 class ResNet18AutoEncoder(AbstractEncoder):
     def __init__(self):
-        super(ResNet18AutoEncoder, self).__init__()
+        super(ResNet18AutoEncoder, self).__init__(has_decoder=True)
         autoencoder_model_pth = torch.load('../models/caltech256-resnet18.pth', map_location=torch.device('cpu'))
         config, bottleneck = get_configs('resnet18')
         self.model = ResNetAutoEncoder(config, bottleneck)
@@ -19,6 +19,7 @@ class ResNet18AutoEncoder(AbstractEncoder):
             new_state_dict[name] = v
 
         self.model.load_state_dict(new_state_dict)
+
 
     def forward(self, x):
         x_encoded = self.model.encoder(x)

@@ -14,17 +14,21 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet1
 from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet50AutoEncoder import \
     PyTorchResNet50AutoEncoder
 from src.models.encoder.ViTransformer import ViTransformer
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import GeneratorRes50Conv
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50ConvV2 import GeneratorRes50ConvV2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 
 from src.run.embeddingspace.config.EmbeddingVMMDBaseConfiguration import EmbeddingVMMDBaseConfiguration
-from src.run.pipeline.BaselinePipeline import launch_baseline_experiment, launch_all_baseline_experiments_fs
+from src.run.pipeline.BaselinePipeline import launch_baseline_experiment, launch_all_baseline_experiments_fs, \
+    mvtec_categories
 from src.run.pipeline.VMMDPipeline import pretrained_vmmd_embedding_experiment, launch_vmmd_experiment, \
-    run_all_vmmd_od_benchmark, run_vmmd_od_benchmark, launch_vmmd_embedding_config, pretrained_vmmd_experiment
+    run_all_vmmd_od_benchmark, run_vmmd_od_benchmark, launch_vmmd_embedding_config, pretrained_vmmd_experiment, \
+    launch_vmmd_embedding_space_config
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
 from src.utils.preprocessing import normalize_images
+from src.vmmd.MMDLossConstrained import MixtureRQLinear
 
 
 def configure_environment():
@@ -41,8 +45,8 @@ def configure_environment():
 if __name__ == '__main__':
     configure_environment()
 
-    generate_latex_tables(metric="auc")
-    generate_latex_tables(metric="prauc")
+    #generate_latex_tables(metric="auc")
+    #generate_latex_tables(metric="prauc")
     #launch_all_baseline_experiments_fs(KNN())
     #launch_baseline_experiment()
     #run_all_vmmd_od_benchmark()
@@ -58,81 +62,43 @@ if __name__ == '__main__':
     #     n_subspace_sample=100,
     #     ens_base_estimator=KNN()
     # )]
-    #config = [
 
-        # VMMDTestConfiguration(),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCCIFAR10,
-        #     dateset_category="cat",
-        #     n_subspace_sample=100,
-        #     batch_size=1024,
-        #     add_to_title="l2loss",
-        #     epochs=2000,
-        #     lr=0.001,
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCFMNIST,
-        #     dateset_category="Trouser",
-        #     n_subspace_sample=10,
-        #     batch_size=1024,
-        #     add_to_title="l2loss",
-        #     epochs=2000,
-        #     lr=0.001,
-        #     image_size_train=(28, 28),
-        #     image_size_od=(28, 28),
-        #     image_size_generator=(28, 28),
-        # ),
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.MVTEC_AD,
-        #     dateset_category="bottle",
-        #     n_subspace_sample=100,
-        #     batch_size=1024,
-        #     add_to_title="l2loss",
-        #     epochs=2000,
-        #     lr=0.001,
-        #     image_size_train=(256, 256),
-        #     image_size_od=(256, 256),
-        #     image_size_generator=(64, 64),
-        # ),
+    import random
 
-        # VMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCCIFAR10,
-        #     dateset_category="cat",
-        #     n_subspace_sample=100,
-        #     batch_size=900,
-        #     add_to_title="ptres50",
-        #     epochs=2000,
-        #     lr=0.001,
-        #     autoencoder=PyTorchResNet50AutoEncoder(),
-        #     image_size_train=(224, 224),
-        #     image_size_generator=(28, 28),
-        #     image_size_od=(224, 224),
-        #     preprocessing_fn=normalize_images,
-        #     standardize_data=True,
-        # ),
-        # EmbeddingVMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCCIFAR10,
-        #     dateset_category="cat",
-        #     n_subspace_sample=100   ,
-        #     batch_size=750,
-        #     add_to_title="res18_l2",
-        #     epochs=2000,
-        #     lr=0.001,
-        #     autoencoder=ResNet18AutoEncoder(),
-        #     generator=GeneratorRes50Conv(128, (512,7,7)),
-        # ),
-        # EmbeddingVMMDBaseConfiguration(
-        #     dataset_type=DatasetType.OCCCIFAR10,
-        #     dateset_category="cat",
-        #     n_subspace_sample=2,
-        #     batch_size=450,
-        #     add_to_title="res50_fast",
-        #     epochs=2000,
-        #     lr=0.0005,
-        #     autoencoder=ResNet50AutoEncoder(),
-        #     generator=GeneratorRes50ConvV2(512),
-        # ),
-    #]
+    random_seed = random.randint(0, 2 ** 32 - 1)
+
+    for mv_class in mvtec_categories:
+        config_1 = [
+            EmbeddingVMMDBaseConfiguration(
+                dataset_type=DatasetType.MVTEC_AD,
+                dateset_category=mv_class,
+                n_subspace_sample=100,
+                batch_size=750,
+                add_to_title="vit_emb",
+                epochs=3000,
+                lr=0.00001,
+                seed=random_seed,
+                autoencoder=ViTransformer(),
+                generator=GeneratorRes18(64, 768),
+                kernel=MixtureRQLinear(),
+            ),
+            EmbeddingVMMDBaseConfiguration(
+                dataset_type=DatasetType.MVTEC_AD,
+                dateset_category=mv_class,
+                n_subspace_sample=100,
+                batch_size=750,
+                add_to_title="vit_emb",
+                epochs=3000,
+                lr=0.00001,
+                seed=random_seed,
+                autoencoder=ViTransformer(),
+                generator=GeneratorRes18(64, 768),
+                kernel=MixtureRQLinear(),
+                weight_decay=0,
+            ),
+        ]
+        launch_vmmd_embedding_space_config(configs=config_1)
+        break
     #pretrained_vmmd_experiment(config, "../experiments/remote/21-03/OCCFMNIST[T-shirt-top]/models/generator_1.pt")
     #launch_vmmd_experiment(config)
     #launch_vmmd_embedding_config(config)

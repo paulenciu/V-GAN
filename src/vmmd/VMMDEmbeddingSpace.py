@@ -28,7 +28,7 @@ from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3
 from src.vmmd.MMDLossConstrained import MMDLossConstrained, MixtureRQLinear, RBF
 
 
-class VMMDEmbedding(VMMD):
+class VMMDEmbeddingSpace(VMMD):
     """
     V-MMD with embedding-space subspace operations and pixel-space MMD.
     """
@@ -39,10 +39,12 @@ class VMMDEmbedding(VMMD):
                  penalty=MMDLossNoPenalty(), kernel=RBF()):
         super().__init__(filename, autoencoder, generator, batch_size, epochs, lr, momentum, seed,
                          weight_decay, path_to_directory, penalty)
-        self.decoder = autoencoder.get_decoder_and_freeze()
-        self.encoder_input_shape = autoencoder.get_encoder_input_shape()
-        self.decoder_input_shape = autoencoder.get_decoder_input_shape()
-        self.scaler = GradScaler()
+        self.decoder_available = autoencoder.has_decoder
+
+        if self.decoder_available:
+            self.decoder = autoencoder.get_decoder_and_freeze()
+            self.decoder_input_shape = autoencoder.get_decoder_input_shape()
+
         self.kernel = kernel
 
 
@@ -74,23 +76,18 @@ class VMMDEmbedding(VMMD):
             u_mappings = self.generator.sample_subspace_masks(noise)
 
             processed_embeddings = embeddings * u_mappings
-            processed_images = processed_embeddings.view(x_sample.size(0), *self.decoder_input_shape)
-            reconstructed_images = self.decoder(processed_images)
 
         if isinstance(bandwidth, float):
             bandwidth = [bandwidth]
 
         mmd_loss = MMDLossConstrained(kernel=self.kernel)
-        x_sample = x_sample.view(x_sample.size(0), -1)
-        reconstructed_images = reconstructed_images.view(reconstructed_images.size(0), -1)
-        mmd_loss.forward(x_sample, reconstructed_images, u_mappings * 1)
+        mmd_loss.forward(embeddings, processed_embeddings, u_mappings * 1)
         self.bandwidth = mmd_loss.bandwidth
         bw = self.bandwidth.item()
         print("Bw: ", bw)
         mmd = tts.MMDStatistic(count, count)
 
-        _, distances = mmd(x_sample.view(x_sample.size(0), -1),
-                           reconstructed_images.view(reconstructed_images.size(0), -1), alphas=[bw], ret_matrix=True)
+        _, distances = mmd(embeddings, processed_embeddings, alphas=[bw], ret_matrix=True)
         pval = mmd.pval(distances)
         results.append(pval)
         print("Count: ", count, "PVal: ", pval)
@@ -106,7 +103,10 @@ class VMMDEmbedding(VMMD):
     def load_model(self, generator: AbstractGenerator, autoencoder):
         if autoencoder is not None:
             self.encoder = autoencoder.get_encoder_and_freeze().to(self.device)
-            self.decoder = autoencoder.get_decoder_and_freeze().to(self.device)
+
+            if autoencoder.has_decoder:
+                self.decoder_available = True
+                self.decoder = autoencoder.get_decoder_and_freeze().to(self.device)
 
         self.generator = generator.to(self.device)
         self.generator.eval()
@@ -129,7 +129,10 @@ class VMMDEmbedding(VMMD):
     def fit(self, dataset: IDataset, preprocess_fn=normalize_features, set_encoder_eval=True):
         self.setup_device_and_seed()
         self.encoder = self.encoder.to(self.device)
-        self.decoder = self.decoder.to(self.device)
+
+        if self.decoder_available:
+            self.decoder = self.decoder.to(self.device)
+
         self.generator = self.generator.to(self.device)
 
         if set_encoder_eval:
@@ -139,7 +142,7 @@ class VMMDEmbedding(VMMD):
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=self.kernel)
         total_training_time = 0.0
-        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.25 * i * self.epochs) for i in range(1, 11)]
 
 
         for epoch in range(self.epochs):
@@ -153,25 +156,16 @@ class VMMDEmbedding(VMMD):
                 optimizer.zero_grad()
 
                 noise = torch.randn(images.size(0), *self.generator.noise_dim, device=self.device)
-                u_mappings = self.generator.sample_subspace_masks(noise)
+                u_mappings = self.generator.sample_subspace_masks(noise).view(images.size(0), -1)
 
-                processed_images = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
+                processed_embedding = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
 
-                reconstructed = torch.utils.checkpoint.checkpoint(
-                    self._decode_with_memory, processed_images
-                )
-
-                images = images.view(images.size(0), -1)
-                reconstructed = reconstructed.view(images.size(0), -1)
-
-                flat_images = images.view(images.size(0), -1)
-                flat_recon = reconstructed.view(reconstructed.size(0), -1)
-                batch_loss, mmd_loss = loss_function(flat_images, flat_recon, u_mappings)
+                batch_loss, mmd_loss = loss_function(embeddings, processed_embedding, u_mappings)
 
                 batch_loss.backward()
                 optimizer.step()
 
-                del images, embeddings, noise, u_mappings, reconstructed
+                del images, embeddings, noise, u_mappings
 
                 generator_loss += batch_loss.item() / len(data_loader)
                 mmd_loss_avg += mmd_loss.item() / len(data_loader)
@@ -189,10 +183,6 @@ class VMMDEmbedding(VMMD):
 
         self.notify_logging_subscriber(dataset, self.epochs)
 
-    def _decode_with_memory(self, processed):
-        """Helper method for checkpointing"""
-        return self.decoder(processed.view(processed.size(0), *self.decoder_input_shape))
-
     def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor, is_embedding=False,
                                  output_image_size=64):
         """:param is_embedding: If False, the input is encoded-decoded"""
@@ -207,6 +197,7 @@ class VMMDEmbedding(VMMD):
             x_sample = self.encode(x_sample)
 
         projection = x_sample * u_subspaces.view(*x_sample.shape)
+
         return projection if is_embedding else interpolate(
             self.decoder(projection.view(projection.size(0), *self.decoder_input_shape)), size=output_image_size,
             mode="bilinear")
