@@ -28,7 +28,7 @@ from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3
 from src.vmmd.MMDLossConstrained import MMDLossConstrained, MixtureRQLinear, RBF
 
 
-class VMMDEmbedding(VMMD):
+class VMMDEmbeddingSpace(VMMD):
     """
     V-MMD with embedding-space subspace operations and pixel-space MMD.
     """
@@ -39,9 +39,7 @@ class VMMDEmbedding(VMMD):
                  penalty=MMDLossNoPenalty(), kernel=RBF()):
         super().__init__(filename, autoencoder, generator, batch_size, epochs, lr, momentum, seed,
                          weight_decay, path_to_directory, penalty)
-        self.decoder = autoencoder.get_decoder_and_freeze()
         self.encoder_input_shape = autoencoder.get_encoder_input_shape()
-        self.decoder_input_shape = autoencoder.get_decoder_input_shape()
         self.scaler = GradScaler()
         self.kernel = kernel
 
@@ -62,8 +60,6 @@ class VMMDEmbedding(VMMD):
     def check_if_myopic(self, x_data: IDataset, bandwidth: Union[float, np.array] = 0.01, count=500) -> pd.DataFrame:
         count = min(count, len(x_data))
         results = []
-        print(x_data.shape)
-        n_channels, height, width = x_data.shape[1:]
 
         with torch.no_grad():
             x_sample = next(iter(DataLoader(x_data, batch_size=count))).to(self.device)
@@ -74,23 +70,18 @@ class VMMDEmbedding(VMMD):
             u_mappings = self.generator.sample_subspace_masks(noise)
 
             processed_embeddings = embeddings * u_mappings
-            processed_images = processed_embeddings.view(x_sample.size(0), *self.decoder_input_shape)
-            reconstructed_images = self.decoder(processed_images)
 
         if isinstance(bandwidth, float):
             bandwidth = [bandwidth]
 
         mmd_loss = MMDLossConstrained(kernel=self.kernel)
-        x_sample = x_sample.view(x_sample.size(0), -1)
-        reconstructed_images = reconstructed_images.view(reconstructed_images.size(0), -1)
-        mmd_loss.forward(x_sample, reconstructed_images, u_mappings * 1)
+        mmd_loss.forward(embeddings, processed_embeddings, u_mappings * 1)
         self.bandwidth = mmd_loss.bandwidth
         bw = self.bandwidth.item()
         print("Bw: ", bw)
         mmd = tts.MMDStatistic(count, count)
 
-        _, distances = mmd(x_sample.view(x_sample.size(0), -1),
-                           reconstructed_images.view(reconstructed_images.size(0), -1), alphas=[bw], ret_matrix=True)
+        _, distances = mmd(embeddings, processed_embeddings, alphas=[bw], ret_matrix=True)
         pval = mmd.pval(distances)
         results.append(pval)
         print("Count: ", count, "PVal: ", pval)
@@ -129,7 +120,6 @@ class VMMDEmbedding(VMMD):
     def fit(self, dataset: IDataset, preprocess_fn=normalize_features, set_encoder_eval=True):
         self.setup_device_and_seed()
         self.encoder = self.encoder.to(self.device)
-        self.decoder = self.decoder.to(self.device)
         self.generator = self.generator.to(self.device)
 
         if set_encoder_eval:
@@ -155,23 +145,14 @@ class VMMDEmbedding(VMMD):
                 noise = torch.randn(images.size(0), *self.generator.noise_dim, device=self.device)
                 u_mappings = self.generator.sample_subspace_masks(noise)
 
-                processed_images = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
+                processed_embeddings = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
 
-                reconstructed = torch.utils.checkpoint.checkpoint(
-                    self._decode_with_memory, processed_images
-                )
-
-                images = images.view(images.size(0), -1)
-                reconstructed = reconstructed.view(images.size(0), -1)
-
-                flat_images = images.view(images.size(0), -1)
-                flat_recon = reconstructed.view(reconstructed.size(0), -1)
-                batch_loss, mmd_loss = loss_function(flat_images, flat_recon, u_mappings)
+                batch_loss, mmd_loss = loss_function(embeddings, processed_embeddings, u_mappings)
 
                 batch_loss.backward()
                 optimizer.step()
 
-                del images, embeddings, noise, u_mappings, reconstructed
+                del images, embeddings, noise, u_mappings
 
                 generator_loss += batch_loss.item() / len(data_loader)
                 mmd_loss_avg += mmd_loss.item() / len(data_loader)
@@ -189,10 +170,6 @@ class VMMDEmbedding(VMMD):
 
         self.notify_logging_subscriber(dataset, self.epochs)
 
-    def _decode_with_memory(self, processed):
-        """Helper method for checkpointing"""
-        return self.decoder(processed.view(processed.size(0), *self.decoder_input_shape))
-
     def apply_subspaces_operator(self, x_sample: torch.Tensor, u_subspaces: torch.Tensor, is_embedding=False,
                                  output_image_size=64):
         """:param is_embedding: If False, the input is encoded-decoded"""
@@ -207,6 +184,4 @@ class VMMDEmbedding(VMMD):
             x_sample = self.encode(x_sample)
 
         projection = x_sample * u_subspaces.view(*x_sample.shape)
-        return projection if is_embedding else interpolate(
-            self.decoder(projection.view(projection.size(0), *self.decoder_input_shape)), size=output_image_size,
-            mode="bilinear")
+        return projection

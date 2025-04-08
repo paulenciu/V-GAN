@@ -11,18 +11,26 @@ from src.vmmd import VMMD
 from src.utils.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributionPlotter
 from src.utils.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
 from src.utils.logger.vmmd.TrainingLogger import TrainingLogger
-from src.models.generator.diagonal_matrix.embedding.GeneratorRes50ConvV2 import GeneratorRes50ConvV2
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet50AutoEncoder import ResNet50AutoEncoder
+from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet18AutoEncoder import ResNet18AutoEncoder
+
 
 class VMMDWrapper:
 
-    def __init__(self, vmmd: VMMD):
+    def __init__(self, vmmd: VMMD, logger: list = []):
         self.vmmd = vmmd
         base_dir = self.__init_directory_paths()
-        self.vmmd.add_logger_subscriber(TrainingLogger(vmmd, base_dir=base_dir))
-        #self.vmmd.add_logger_subscriber(GradiantPlotter(vmmd))
-        self.vmmd.add_logger_subscriber(SubspaceDistributionPlotter(vmmd, base_dir=base_dir))
-        self.vmmd.add_logger_subscriber(SubspaceProjectionPlotter(vmmd, base_dir=base_dir))
+
+        if len(logger) == 0:
+            self.vmmd.add_logger_subscriber(TrainingLogger(vmmd, base_dir=base_dir))
+            #self.vmmd.add_logger_subscriber(GradiantPlotter(vmmd))
+            self.vmmd.add_logger_subscriber(SubspaceDistributionPlotter(vmmd, base_dir=base_dir))
+            self.vmmd.add_logger_subscriber(SubspaceProjectionPlotter(vmmd, base_dir=base_dir))
+        else:
+            for logger in logger:
+                logger.base_dir = base_dir
+                self.vmmd.add_logger_subscriber(logger)
 
     def load_model(self, path_to_generator_params: str):
         generator, autoencoder = self.__extract_models_from_file(path_to_generator_params)

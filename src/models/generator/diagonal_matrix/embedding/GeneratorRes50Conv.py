@@ -7,10 +7,11 @@ from torch.nn.utils import spectral_norm
 
 
 class GeneratorRes50Conv(AbstractGenerator):
-    def __init__(self, latent_size, output_shape=(2048, 7, 7)):
+    def __init__(self, latent_size, output_shape=(512, 7, 7)):
         super().__init__()
         self.latent_dim = latent_size
         self.output_shape = output_shape
+        output_shape = (512, 7, 7)
         self.num_elements = output_shape[0] * output_shape[1] * output_shape[2]
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = (self.num_elements, 1)

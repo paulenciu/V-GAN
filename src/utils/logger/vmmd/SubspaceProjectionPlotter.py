@@ -33,7 +33,7 @@ class SubspaceProjectionPlotter(IVMMDLogger):
         sample_indices = np.arange(n_samples)
         x_sample = torch.utils.data.Subset(data, sample_indices)
 
-        n_channels, width, height = data.image_shape
+        n_channels, width, height = data.shape[1:]
 
         fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
         u = self.vmmd.sample_count_subspaces(self.sample_count).to(device).detach()
@@ -63,7 +63,7 @@ class SubspaceProjectionPlotter(IVMMDLogger):
 
         for i in range(1, n_samples + 1):
 
-            image, _ = x_sample[i - 1]
+            image = x_sample[i - 1]
             image = image.to(torch.float32).to(device)
 
             axis[i, 0].imshow(tensor_to_image(image))

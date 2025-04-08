@@ -1,23 +1,25 @@
-import datetime
-
 import numpy as np
 import torch
+import datetime
+
 from src.data.dataset.PreEmbeddedDataset import PreEmbeddedDataset
 from src.data.dataset_loader import load_data
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
-from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
+from src.utils.ImageFlattenerUtility import unflatten_images_3d
 from src.utils.logger.od.EnsembleDetectionLogger import EnsembleDetectionLogger
 from src.utils.logger.od.OutlierDetectionBenchmarkLogger import OutlierDetectionBenchmarkLogger
 from src.utils.logger.od.OutlierDetectionLogger import OutlierDetectionLogger
-from src.vmmd.VMMDEmbedding import VMMDEmbedding
+from src.vmmd.VMMDEmbeddingSpace import VMMDEmbeddingSpace
 from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from sklearn.metrics import roc_auc_score as auc
 from sklearn.metrics import average_precision_score, f1_score
 
-class EmbeddingOutlierDetectionExperiments:
 
-    def __init__(self, vmmd: VMMDEmbedding, od_model: CombinedOutlierDetector, dataset_type, category, standardize_data=False, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
+class EmbeddingSpaceOutlierDetectionExperiment:
+
+    def __init__(self, vmmd: VMMDEmbeddingSpace, od_model: CombinedOutlierDetector, dataset_type, category,
+                 standardize_data=False, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
         self.vmmd = vmmd
         self.od_model = od_model
         self.dataset_type = dataset_type
@@ -28,8 +30,7 @@ class EmbeddingOutlierDetectionExperiments:
         self.vmmd_od = VMMDOD(vmmd)
         self.vmmd_wrapper = VMMDWrapper(vmmd)
         self.od_logger = OutlierDetectionLogger(od_model, self.vmmd_od)
-        self.od_bm_logger = OutlierDetectionBenchmarkLogger(od_model, self.vmmd_od, dataset_type=self.dataset_type,
-                                                            category=self.category)
+
         self.ens_logger = EnsembleDetectionLogger(od_model.ensemble_detector, self.vmmd_od)
         self.image_size_train = (224, 224)
 
@@ -74,9 +75,10 @@ class EmbeddingOutlierDetectionExperiments:
         x_test_embeddings = x_test.embeddings.detach().cpu().numpy()
         y_test = np.array(y_test)
 
-#        self.ens_logger.log(x_test_embeddings, y_test)
+        #        self.ens_logger.log(x_test_embeddings, y_test)
         self.od_logger.log(x_test_embeddings, y_test)
-        decision_scores, descriptions = self.od_model.decision_score_interval(x_test_embeddings, ensemble_weight_start,
+        decision_scores, descriptions = self.od_model.decision_score_interval(x_test_embeddings,
+                                                                              ensemble_weight_start,
                                                                               ensemble_weight_end, step)
 
         od_stats_list = []
