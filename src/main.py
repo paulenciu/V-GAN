@@ -36,16 +36,39 @@ if __name__ == '__main__':
     #launch_all_od_experiments()
     config = [
         VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCCIFAR10,
+            dateset_category="cat",
+            n_subspace_sample=100,
+            batch_size=1024,
+            add_to_title="l2loss",
+            epochs=2000,
+            lr=0.001,
+        ),
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCFMNIST,
+            dateset_category="Trouser",
+            n_subspace_sample=100,
+            batch_size=1024,
+            add_to_title="l2loss",
+            epochs=2000,
+            lr=0.001,
+            image_size_train=(28, 28),
+            image_size_od=(28, 28),
+            image_size_generator=(28, 28),
+        ),
+        VMMDBaseConfiguration(
             dataset_type=DatasetType.MVTEC_AD,
             dateset_category="bottle",
             n_subspace_sample=100,
             batch_size=1024,
-            add_to_title="vit",
+            add_to_title="l2loss",
             epochs=2000,
             lr=0.001,
-            autoencoder=ViTransformer(),
-            image_size_train=(384, 384)
+            image_size_train=(256, 256),
+            image_size_od=(256, 256),
+            image_size_generator=(64, 64),
         ),
+
         # VMMDBaseConfiguration(
         #     dataset_type=DatasetType.OCCCIFAR10,
         #     dateset_category="cat",

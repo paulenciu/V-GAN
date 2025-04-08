@@ -205,8 +205,8 @@ class VMMD(ABC):
 
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
-        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
-
+        #loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
+        l2loss_function = torch.nn.MSELoss()
         total_training_time = 0.0
         snapshot_duration = 0.0
         snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
@@ -228,7 +228,9 @@ class VMMD(ABC):
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
                 embedded_processed_batch = self.encode(processed_batch)
 
-                batch_loss, mmd_loss = loss_function(embeddings, embedded_processed_batch, u_mappings)
+                #batch_loss, mmd_loss = loss_function(embeddings, embedded_processed_batch, u_mappings)
+                batch_loss = l2loss_function(embedded_processed_batch, embeddings)
+                mmd_loss = batch_loss
                 batch_loss.backward()
                 optimizer.step()
 

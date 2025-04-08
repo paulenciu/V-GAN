@@ -1,6 +1,9 @@
 import torch
 import numpy as np
 import torchvision
+from anomalib.data import MVTec, TaskType
+from anomalib.data.utils import ValSplitMode
+from pytorch_lightning.loggers import CometLogger, TensorBoardLogger
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from PIL import Image
@@ -54,7 +57,6 @@ test_dataset = CustomDataset(dataset_type=DatasetType.MVTEC_AD, category="bottle
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-
 def evaluate_model(model, test_loader):
     image_scores = []
     pixel_scores = []
@@ -91,7 +93,9 @@ def run_padim():
         backbone="resnet18",
         layers=["layer1", "layer2", "layer3"]
     )
-    trainer = Trainer(max_epochs=1, accelerator="auto")
+    trainer = Trainer(
+        max_epochs=1,
+        accelerator="cpu")
     trainer.fit(model, train_loader)
     return model
 
@@ -100,7 +104,6 @@ def run_patchcore():
         input_size=input_size,
         backbone="resnet18",
         layers=["layer1", "layer2", "layer3"],
-        coreset_sampling_ratio=0.1
     )
     trainer = Trainer(max_epochs=1, accelerator="auto")
     trainer.fit(model, train_loader)
@@ -118,11 +121,10 @@ def run_cflow():
 
 def run_dfm():
     model = Dfm(
+        input_size=input_size,
         backbone="resnet18",
         layer="layer3",
-        pooling="avg",
         pre_trained=True,
-        n_comps=0.97
     )
     trainer = Trainer(max_epochs=1, accelerator="auto")
     trainer.fit(model, train_loader)
@@ -141,9 +143,9 @@ def run_stfpm():
 models = {
     "PADIM": run_padim(),
     "PatchCore": run_patchcore(),
-    "CFLOW": run_cflow(),
+    #"CFLOW": run_cflow(),
     "DFM": run_dfm(),
-    "STFPM": run_stfpm()
+    #"STFPM": run_stfpm()
 }
 
 if __name__ == "__main__":
