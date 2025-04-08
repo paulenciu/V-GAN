@@ -221,7 +221,7 @@ def pretrained_vmmd_experiment(configs, path_to_pretrained_model):
             epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
             lr=config.lr, penalty=config.penalty, filename=config.filename,
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-            encoder=config.encoder, generator=config.generator
+            autoencoder=config.autoencoder, generator=config.generator
         )
 
         experiement = OutlierDetectionExperiment(

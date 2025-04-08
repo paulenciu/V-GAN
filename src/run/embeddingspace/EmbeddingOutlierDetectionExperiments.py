@@ -34,7 +34,7 @@ class EmbeddingOutlierDetectionExperiments:
         self.image_size_train = (224, 224)
 
     def fit(self):
-        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_train,
+        x_train, _ = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_train,
                             standardize=self.standardize_data)
         self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
         del x_train

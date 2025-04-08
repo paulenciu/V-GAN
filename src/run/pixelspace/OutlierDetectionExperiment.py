@@ -41,7 +41,7 @@ class OutlierDetectionExperiment:
         self.vmmd.fit(dataset=x_train, preprocess_fn=self.preprocessing_fn)
         del x_train
 
-        #self.fit_outlier_detection()
+        self.fit_outlier_detection()
 
     def fit_outlier_detection(self):
         self.vmmd.approx_subspace_dist(subspace_count=self.n_subspace_sample)
@@ -58,7 +58,7 @@ class OutlierDetectionExperiment:
         self.vmmd_od.store_subspaces(subspaces)
 
         # PREPARE DATA FOR OD
-        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
+        x_train, _ = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
                             standardize=self.standardize_data)
         x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
         x_train_flattened = self.preprocessing_fn(x_train_flattened)

@@ -28,7 +28,7 @@ class OutlierDetectionBaselineExperiment:
 
 
     def fit(self):
-        x_train = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
+        x_train, _ = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
                             standardize=self.standardize_data)
         x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
         x_train_flattened = self.preprocessing_fn(x_train_flattened)
