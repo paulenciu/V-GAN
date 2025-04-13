@@ -1,6 +1,7 @@
 from pyod.models.lunar import LUNAR
 
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import GeneratorRes50Conv
 

@@ -38,6 +38,7 @@ class MMDLossL2Penalty(MMDLossPenalty):
         u_l2 = torch.norm(U)
         return self._weight * u_l2
 
+
     def get_stats(self):
         return super().get_stats()
 

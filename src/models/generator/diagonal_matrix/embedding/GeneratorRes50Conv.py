@@ -11,7 +11,7 @@ class GeneratorRes50Conv(AbstractGenerator):
         super().__init__()
         self.latent_dim = latent_size
         self.output_shape = output_shape
-        output_shape = (512, 7, 7)
+        output_shape = (512*4, 7, 7)
         self.num_elements = output_shape[0] * output_shape[1] * output_shape[2]
         self._noise_dim = torch.tensor([latent_size])
         self._img_shape = (self.num_elements, 1)

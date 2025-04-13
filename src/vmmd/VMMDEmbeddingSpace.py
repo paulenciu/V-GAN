@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Union
 import torch
 from collections import defaultdict
+
+from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.RestNetAutoEncoder import ResNetEncoder
 from torch.cuda.amp import autocast, GradScaler
 from torch.utils.checkpoint import checkpoint
 from torch.cuda.amp import GradScaler
@@ -10,7 +12,7 @@ from torch.cuda.amp import GradScaler
 from src.data.IDataset import IDataset
 from sklearn.preprocessing import normalize
 from src.data.dataset.PreEmbeddedDataset import PreEmbeddedDataset
-from src.utils.preprocessing import normalize_features
+from src.utils.preprocessing import normalize_features, no_preprocessing
 from src.vmmd.VMMD import VMMD
 from torch.nn.functional import interpolate
 from torch.utils.data import DataLoader, Dataset
@@ -53,10 +55,15 @@ class VMMDEmbeddingSpace(VMMD):
 
     def _create_mask_frequency_plot(self, count):
         u = self.sample_count_subspaces(count)
-        u_height = int(u.shape[1] / 224)
-        u_width = int(u.shape[1] / u_height)
 
-        u = u.view(-1, 1, u_width, u_height)
+        if isinstance(self.encoder, ResNetEncoder):
+            u_height = int(u.shape[1] / 224)
+            u_width = int(u.shape[1] / u_height)
+
+            u = u.view(-1, 1, u_width, u_height)
+        else:
+            u = u.view(-1, 1, 32, 32)
+
         u = u.repeat(1, 3, 1, 1)  # makes image black / white
         u_agg = u.sum(dim=0)
         return u_agg / u.shape[0]
@@ -107,6 +114,7 @@ class VMMDEmbeddingSpace(VMMD):
             if autoencoder.has_decoder:
                 self.decoder_available = True
                 self.decoder = autoencoder.get_decoder_and_freeze().to(self.device)
+                self.decoder.eval()
 
         self.generator = generator.to(self.device)
         self.generator.eval()
@@ -126,12 +134,13 @@ class VMMDEmbeddingSpace(VMMD):
             pin_memory=torch.cuda.is_available(),
         )
 
-    def fit(self, dataset: IDataset, preprocess_fn=normalize_features, set_encoder_eval=True):
+    def fit(self, dataset: IDataset, preprocess_fn=no_preprocessing, set_encoder_eval=True):
         self.setup_device_and_seed()
         self.encoder = self.encoder.to(self.device)
 
         if self.decoder_available:
-            self.decoder = self.decoder.to(self.device)
+            #self.decoder = self.decoder.to(self.device)
+            self.decoder.eval()
 
         self.generator = self.generator.to(self.device)
 
@@ -142,7 +151,7 @@ class VMMDEmbeddingSpace(VMMD):
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=self.kernel)
         total_training_time = 0.0
-        snapshot_intervals = [int(0.25 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
 
 
         for epoch in range(self.epochs):
@@ -199,5 +208,5 @@ class VMMDEmbeddingSpace(VMMD):
         projection = x_sample * u_subspaces.view(*x_sample.shape)
 
         return projection if is_embedding else interpolate(
-            self.decoder(projection.view(projection.size(0), *self.decoder_input_shape)), size=output_image_size,
+            self.decoder(projection.view(projection.size(0), *self.decoder_input_shape).cpu()), size=output_image_size,
             mode="bilinear")

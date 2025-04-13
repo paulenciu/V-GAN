@@ -18,18 +18,15 @@ class GeneratorRes18(AbstractGenerator):
             latent_size = latent_size.item()
 
         self._noise_dim = torch.tensor([latent_size])
+        self.img_size = 512 * 7 * 7
+        amount_layers = 6
 
         if isinstance(image_shape, int):
             self._img_shape = (image_shape, 1)
-            img_size = int(image_shape / 4)
         else:
             self.image_shape = image_shape
-            img_size = int(image_shape[0] / 4)
-
-        rel_size = int(img_size / latent_size)
+        rel_size = int(self.img_size / latent_size)
         self.latent_size = latent_size
-        self.img_size = 768
-        amount_layers = 6
         self.increase = log(rel_size, amount_layers).real
 
         layers = [self.get_layer(layer) for layer in range(1, amount_layers)]

@@ -66,18 +66,6 @@ class EnsembleOutlierDetector(BaseOutlierDetector):
             ensemble_model.fit(x)
             self.train_times.append(time.time() - fit_time_start)
 
-        #NORMALIZE SCORES USING TRAINING DATA STATISTICS
-        # train_scores = self.ensemble_model.decision_function(x)
-        # train_scores_agg = aggregator_funct(
-        #     train_scores, weights=self.vmmd.proba, type="avg"
-        # )
-        #
-        # self.ens_train_min = np.min(train_scores_agg)
-        # self.ens_train_max = np.max(train_scores_agg)
-        # self.ens_train_score_std = np.std(train_scores_agg)
-        # self.ens_train_max = np.percentile(train_scores_agg, 95)
-        # self.ens_train_score_std = np.std([x for x in train_scores_agg if x <= self.ens_train_max]) + 1e-10
-        # print("Ensemble train score max: ", self.ens_train_max, "Ensemble train score std: ", self.ens_train_score_std)
         self.n_subspaces = subspaces.shape[0]
 
     def decision_score(self, x):

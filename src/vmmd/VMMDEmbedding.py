@@ -107,6 +107,8 @@ class VMMDEmbedding(VMMD):
         if autoencoder is not None:
             self.encoder = autoencoder.get_encoder_and_freeze().to(self.device)
             self.decoder = autoencoder.get_decoder_and_freeze().to(self.device)
+            self.encoder.eval()
+            self.decoder.eval()
 
         self.generator = generator.to(self.device)
         self.generator.eval()
@@ -130,6 +132,7 @@ class VMMDEmbedding(VMMD):
         self.setup_device_and_seed()
         self.encoder = self.encoder.to(self.device)
         self.decoder = self.decoder.to(self.device)
+        self.decoder.eval()
         self.generator = self.generator.to(self.device)
 
         if set_encoder_eval:
@@ -139,7 +142,7 @@ class VMMDEmbedding(VMMD):
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=self.kernel)
         total_training_time = 0.0
-        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(2 * i * self.epochs) for i in range(1, 11)]
 
 
         for epoch in range(self.epochs):

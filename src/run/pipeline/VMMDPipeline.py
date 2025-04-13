@@ -32,10 +32,10 @@ fashionmnist_categories = [
 ]
 
 mvtec_categories = [
-   "bottle",
-   "cable",
-   "capsule",
-    "carpet",
+   # "bottle",
+   # "cable",
+   # "capsule",
+   #  "carpet",
     "grid",
     "hazelnut",
     "leather",
@@ -73,11 +73,10 @@ def launch_vmmd_embedding_space_config(configs):
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
             autoencoder=config.autoencoder, generator=config.generator, kernel=config.kernel
         )
-
         experiement = EmbeddingSpaceOutlierDetectionExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[config.ens_base_estimator],
+                base_estimators=[LOF(), LUNAR(), KNN()],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
@@ -106,7 +105,7 @@ def launch_vmmd_embedding_config(configs):
         experiement = EmbeddingOutlierDetectionExperiments(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[config.ens_base_estimator],
+                base_estimators=[LOF(), LUNAR(), KNN()],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),

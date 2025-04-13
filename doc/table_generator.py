@@ -3,8 +3,6 @@ import ast
 from pathlib import Path
 
 import pandas as pd
-from av.codec import codec_descriptor
-from jsonargparse_tests.conftest import columns
 
 from src.data import dataset_type
 from src.data.dataset_type import DatasetType
