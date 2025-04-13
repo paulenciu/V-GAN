@@ -2,6 +2,7 @@ from pyod.models.feature_bagging import FeatureBagging
 from pyod.models.knn import KNN
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
+from src.run.pixelspace.PODAttentionBaselineExperiment import PODAttentionBaselineExperiment
 from sympy.strategies.branch import canon
 
 from src.data.dataset_type import DatasetType
@@ -142,3 +143,22 @@ def launch_all_baseline_experiments_fs(od_model):
         for exp in exps:
             exp.fit()
             exp.evaluate()
+
+def launch_attention_baseline(configs):
+    for i, config in enumerate(configs):
+        print("RUNNING EXPERIMENT", i, " FROM", len(configs))
+        experiment = PODAttentionBaselineExperiment(
+            dataset_type=config.dataset_type,
+            category=config.dateset_category,
+            image_size_od=config.image_size_od,
+            standardize_data=config.standardize_data,
+            preprocessing_fn=config.preprocessing_fn,
+            od_models=[
+                LUNAR(),
+                LOF(),
+                KNN(),
+            ],
+            exp_date="21-03"
+        )
+        experiment.fit()
+        experiment.evaluate()

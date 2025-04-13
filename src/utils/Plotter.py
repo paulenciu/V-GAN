@@ -111,7 +111,7 @@ def visualise_rotations_of_vmmd(model, n_samples=10, n_masks=10, path_to_experim
     fig, axis = plt.subplots(n_samples, 1 + n_masks, figsize=(5 * (1 + n_masks), 5 * (n_samples)))
 
     u = model.generate_subspaces(n_masks).to(device)
-    big_u, _, _ = calculate_average_u(u.detach())
+    big_u = calculate_average_u(u.detach())
     big_u = big_u.to(torch.float32).to(device)
 
     for i in range(n_samples):
@@ -127,7 +127,7 @@ def visualise_rotations_of_vmmd(model, n_samples=10, n_masks=10, path_to_experim
         image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1)
         ux_data = model.rotate_images(u, image)
 
-        big_u, _, _ = calculate_average_u(u.detach())
+        big_u = calculate_average_u(u.detach())
         big_u = big_u.to(torch.float32).to(device)
 
         for j in range(n_masks):
@@ -206,7 +206,7 @@ def visualise_conv_masking_of_vmmd(model, n_samples=10, method="conv_linear", n_
     else:
         raise NotImplementedError
 
-    big_u, _, _ = calculate_average_u(u.detach())
+    big_u = calculate_average_u(u.detach())
     big_u = big_u.to(torch.float32).to(device)
 
     axis[0, 0].imshow(tensor_to_image(torch.ones(3, 32, 32)))
@@ -263,7 +263,7 @@ def visualise_conv_masking_of_vmmd(model, n_samples=10, method="conv_linear", n_
         else:
             raise NotImplementedError
 
-        big_u, _, _ = calculate_average_u(u.detach())
+        big_u = calculate_average_u(u.detach())
         big_u = big_u.to(torch.float32).to(device)
 
         for j in range(n_masks):

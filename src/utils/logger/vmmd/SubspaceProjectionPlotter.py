@@ -45,7 +45,7 @@ class SubspaceProjectionPlotter(IVMMDLogger):
             fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
 
         u = self.vmmd.sample_count_subspaces(self.sample_count).to(device).detach()
-        average_u, _, _ = calculate_average_u(u, n_masks)
+        average_u = calculate_average_u(u)
         average_u = average_u.to(torch.float32).to(device)
         u = self.vmmd.sample_count_subspaces(n_masks).to(device)
 
