@@ -6,8 +6,8 @@ from pyod.models.lunar import LUNAR
 
 from src.data.dataset_type import DatasetType
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
-from src.run.embeddingspace.EmbeddingOutlierDetectionExperiments import EmbeddingOutlierDetectionExperiments
-from src.run.embeddingspace.EmbeddingSpaceOutlierDetectionExperiment import EmbeddingSpaceOutlierDetectionExperiment
+from src.run.embeddingspace.EODExperiment import EODExperiment
+from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
 from src.run.pixelspace.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
@@ -74,7 +74,7 @@ def launch_vmmd_embedding_space_config(configs):
             autoencoder=config.autoencoder, generator=config.generator, kernel=config.kernel
         )
 
-        experiement = EmbeddingSpaceOutlierDetectionExperiment(
+        experiement = EODEncodedExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
                 base_estimators=[config.ens_base_estimator],
@@ -103,7 +103,7 @@ def launch_vmmd_embedding_config(configs):
             autoencoder=config.autoencoder, generator=config.generator, kernel=config.kernel
         )
 
-        experiement = EmbeddingOutlierDetectionExperiments(
+        experiement = EODExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
                 base_estimators=[config.ens_base_estimator],
@@ -186,7 +186,7 @@ def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
         )
 
         for ens_model in [LUNAR(), LOF(), KNN()]:
-            experiement = EmbeddingOutlierDetectionExperiments(
+            experiement = EODExperiment(
                 vmmd=vmmd,
                 od_model=CombinedOutlierDetector(
                     base_estimators=[ens_model],

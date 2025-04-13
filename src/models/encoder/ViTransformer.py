@@ -6,7 +6,7 @@ from src.models.encoder.AbstractEncoder import AbstractEncoder
 
 class ViTransformer(AbstractEncoder):
 
-    def __init__(self, model="B_16_imagenet1k"):
+    def __init__(self, model="L_16_imagenet1k"):
         super(ViTransformer, self).__init__(has_decoder=False)
         self.encoder = ViT(model, pretrained=True, image_size=224)
         self.encoder.fc = nn.Identity()

@@ -20,7 +20,7 @@ from sklearn.metrics import roc_auc_score as auc
 from sklearn.metrics import average_precision_score, f1_score
 
 
-class EmbeddingSpaceOutlierDetectionExperiment:
+class EODEncodedExperiment:
 
     def __init__(self, vmmd: VMMDEmbeddingSpace, od_model: CombinedOutlierDetector, dataset_type, category,
                  standardize_data=False, preprocessing_fn=lambda x: x, n_subspaces_sample=500):

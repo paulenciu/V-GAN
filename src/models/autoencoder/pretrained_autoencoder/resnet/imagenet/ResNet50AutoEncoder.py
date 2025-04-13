@@ -6,7 +6,7 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNetConfig 
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.RestNetAutoEncoder import ResNetAutoEncoder
 
 
-class ResNet50AutoEncoder(nn.Module):
+class ResNet50AutoEncoder(AbstractEncoder):
     def __init__(self):
         super(ResNet50AutoEncoder, self).__init__(has_decoder=True)
         autoencoder_model_pth = torch.load('../models/caltech256-resnet50.pth', map_location=torch.device('cpu'))
