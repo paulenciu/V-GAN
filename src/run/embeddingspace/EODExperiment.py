@@ -15,7 +15,7 @@ from src.vmmd.outlier_detection.VMMDOD import VMMDOD
 from sklearn.metrics import roc_auc_score as auc
 from sklearn.metrics import average_precision_score, f1_score
 
-class EmbeddingOutlierDetectionExperiments:
+class EODExperiment:
 
     def __init__(self, vmmd: VMMDEmbedding, od_model: CombinedOutlierDetector, dataset_type, category, standardize_data=False, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
         self.vmmd = vmmd

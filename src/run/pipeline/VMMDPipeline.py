@@ -6,8 +6,8 @@ from pyod.models.lunar import LUNAR
 
 from src.data.dataset_type import DatasetType
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
-from src.run.embeddingspace.EmbeddingOutlierDetectionExperiments import EmbeddingOutlierDetectionExperiments
-from src.run.embeddingspace.EmbeddingSpaceOutlierDetectionExperiment import EmbeddingSpaceOutlierDetectionExperiment
+from src.run.embeddingspace.EODExperiment import EODExperiment
+from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
 from src.run.pixelspace.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
@@ -32,10 +32,10 @@ fashionmnist_categories = [
 ]
 
 mvtec_categories = [
-   # "bottle",
-   # "cable",
-   # "capsule",
-   #  "carpet",
+   "bottle",
+   "cable",
+   "capsule",
+    "carpet",
     "grid",
     "hazelnut",
     "leather",
@@ -73,10 +73,11 @@ def launch_vmmd_embedding_space_config(configs):
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
             autoencoder=config.autoencoder, generator=config.generator, kernel=config.kernel
         )
-        experiement = EmbeddingSpaceOutlierDetectionExperiment(
+
+        experiement = EODEncodedExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[LOF(), LUNAR(), KNN()],
+                base_estimators=[config.ens_base_estimator],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
@@ -102,10 +103,10 @@ def launch_vmmd_embedding_config(configs):
             autoencoder=config.autoencoder, generator=config.generator, kernel=config.kernel
         )
 
-        experiement = EmbeddingOutlierDetectionExperiments(
+        experiement = EODExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[LOF(), LUNAR(), KNN()],
+                base_estimators=[config.ens_base_estimator],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
@@ -185,7 +186,7 @@ def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
         )
 
         for ens_model in [LUNAR(), LOF(), KNN()]:
-            experiement = EmbeddingOutlierDetectionExperiments(
+            experiement = EODExperiment(
                 vmmd=vmmd,
                 od_model=CombinedOutlierDetector(
                     base_estimators=[ens_model],

@@ -1,10 +1,14 @@
+from pyod.models.feature_bagging import FeatureBagging
 from pyod.models.knn import KNN
 from pyod.models.lof import LOF
+from pyod.models.lunar import LUNAR
 from sympy.strategies.branch import canon
 
 from src.data.dataset_type import DatasetType
-from src.run.embeddingspace.EmbeddingSpaceOutlierDetectionExperiment import EmbeddingSpaceOutlierDetectionExperiment
-from src.run.pixelspace.OutlierDetectionBaselineExperiment import OutlierDetectionBaselineExperiment
+from src.run.embeddingspace.EODEncodedBaselineExperiment import \
+    EODEncodedBaselineExperiment
+from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
+from src.run.pixelspace.PODBaselineExperiment import PODBaselineExperiment
 from src.utils.preprocessing import normalize_images
 
 fashionmnist_categories = [
@@ -51,10 +55,58 @@ cifar10_classes = [
     "truck"
 ]
 
+def launch_baseline_on_embedding_space(configs):
+    for i, config in enumerate(configs):
+        print("RUNNING EXPERIMENT", i, " FROM", len(configs))
+        baseline_experiments = EODEncodedBaselineExperiment(
+            dataset_type=config.dataset_type,
+            category=config.dateset_category,
+            image_size_od=config.image_size_od,
+            standardize_data=config.standardize_data,
+            preprocessing_fn=config.preprocessing_fn,
+            od_models=[
+                LUNAR(),
+                LOF(),
+                KNN(),
+                FeatureBagging(base_estimator=LUNAR()),
+                FeatureBagging(base_estimator=LOF()),
+                FeatureBagging(base_estimator=KNN()),
+            ],
+            encoder=config.encoder,
+            encoder_name=config.encoder_name,
+        )
+
+        baseline_experiments.fit()
+        baseline_experiments.evaluate()
+
+def launch_baseline_on_embedding(configs):
+    for i, config in enumerate(configs):
+        print("RUNNING EXPERIMENT", i, " FROM", len(configs))
+        baseline_experiments = EODEncodedBaselineExperiment(
+            dataset_type=config.dataset_type,
+            category=config.dateset_category,
+            image_size_od=config.image_size_od,
+            standardize_data=config.standardize_data,
+            preprocessing_fn=config.preprocessing_fn,
+            od_models=[
+                LUNAR(),
+                LOF(),
+                KNN(),
+                FeatureBagging(base_estimator=LUNAR()),
+                FeatureBagging(base_estimator=LOF()),
+                FeatureBagging(base_estimator=KNN()),
+            ],
+            encoder=config.encoder,
+            encoder_name=config.encoder_name,
+        )
+
+        baseline_experiments.fit()
+        baseline_experiments.evaluate()
+
 def launch_baseline_experiment(configs):
     for i, config in enumerate(configs):
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
-        baseline_experiments = OutlierDetectionBaselineExperiment(
+        baseline_experiments = PODBaselineExperiment(
             dataset_type=config.dataset_type,
             category=config.dateset_category,
             image_size_od=config.image_size_od,
@@ -76,7 +128,7 @@ def launch_all_baseline_experiments_fs(od_model):
 
     for dataset_type, categories, image_size_od in configs:
         exps = [
-            OutlierDetectionBaselineExperiment(
+            PODBaselineExperiment(
                 dataset_type=dataset_type,
                 category=category,
                 image_size_od=image_size_od,
