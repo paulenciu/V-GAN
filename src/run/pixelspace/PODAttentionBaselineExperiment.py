@@ -18,7 +18,7 @@ from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
 class PODAttentionBaselineExperiment:
 
-    def __init__(self, dataset_type, category, image_size_od, standardize_data, preprocessing_fn, od_models, root_dir="../experiments/od_baselines/pixelspace/attention", exp_date="21-03"):
+    def __init__(self, dataset_type, category, image_size_od, standardize_data, preprocessing_fn, od_models, root_dir="../experiments/od_baselines/pixelspace/attention/normalized", exp_date="21-03"):
         self.dataset_type = dataset_type
         self.category = category
         self.image_size_od = image_size_od
@@ -39,7 +39,7 @@ class PODAttentionBaselineExperiment:
         x_train = self.vmmd.apply_subspaces_operator(x_train, attention_mask)
 
         x_train = x_train.view(x_train.shape[0], -1).cpu().numpy()
-        x_train = self.preprocessing_fn(x_train)
+        #x_train = self.preprocessing_fn(x_train)
 
         for od_model in self.od_models:
             od_model.fit(x_train)
@@ -54,7 +54,7 @@ class PODAttentionBaselineExperiment:
         x_test = self.vmmd.apply_subspaces_operator(x_test, attention_mask)
 
         x_test = x_test.view(x_test.shape[0], -1).cpu().numpy()
-        x_test = self.preprocessing_fn(x_test)
+        #x_test = self.preprocessing_fn(x_test)
         y_test = np.array(y_test)
 
         for od_model in self.od_models:
@@ -85,7 +85,7 @@ class PODAttentionBaselineExperiment:
         root_dir = Path("../experiments/remote/") / self.exp_date
         model_param_path = None
         for dir_name in os.listdir(root_dir):
-            if dir_name.startswith(self.dataset_type.name) and dir_name.__contains__(self.category):
+            if dir_name.startswith(self.dataset_type.name) and dir_name.__contains__(self.category.split("/")[0]):
                 model_path =  root_dir / dir_name / "models"
                 fname =  f"generator_{len(os.listdir(model_path)) - 1}.pt"
                 model_param_path = model_path / fname

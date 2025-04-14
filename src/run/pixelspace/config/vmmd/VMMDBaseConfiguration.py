@@ -2,6 +2,8 @@ from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 
 from src.models.encoder.IdentityEncoder import IdentityEncoder
+from src.models.generator.diagonal_matrix.embedding.GeneratorRes50V2 import GeneratorRes50V2
+from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelBig import GeneratorOneChannelBig
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
@@ -10,7 +12,7 @@ from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
 class VMMDBaseConfiguration:
 
-    def __init__(self, lr = 0.001,
+    def __init__(self, lr = 0.0001,
                  latent_size = 128,
                  epochs = 2000,
                  batch_size = 1024,
@@ -36,7 +38,10 @@ class VMMDBaseConfiguration:
                  ens_base_estimator=LUNAR(),
                  set_decoder_eval=False):
 
-        self.generator = generator or GeneratorOneChannelSNGN(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
+        #self.generator = generator or GeneratorOneChannelSNGN(latent_size=latent_size, image_shape=(n_channels, *image_size_generator))
+        # self.generator = generator or GeneratorRes50V2(latent_size=latent_size,
+        #                                                       image_shape=(n_channels, *image_size_generator))
+        self.generator = GeneratorOneChannelBig(latent_size = 128, image_shape=(n_channels, *image_size_generator),)
         self.autoencoder = autoencoder
         self.lr = lr
         self.epochs = epochs
