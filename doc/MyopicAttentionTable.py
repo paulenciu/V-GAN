@@ -16,15 +16,15 @@ def print_latex_table(latex_code, metric="auc"):
     modified_code = (
         "\\begin{table*}\n"
         "\\centering\n"
-        "\\caption{Pixel Space " + metric.upper() + "}\n"
-        "\\label{pixel_space" + metric.lower() + "}\n"
+        "\\caption{Myopic Attention " + metric.upper() + "}\n"
+        "\\label{myopic_attention" + metric.lower() + "}\n"
         + latex_code +
         "\\end{table*}"
     )
 
     modified_code = modified_code.replace(
-        r'\begin{tabular}{lllllllllllll}',
-        r'\begin{tabular}{l|ccc|ccc|ccc|c|c|c}'
+        r'\begin{tabular}{llllllllllllllll}',
+        r'\begin{tabular}{l|ccc|ccc|ccc|cc|cc|cc}'
     )
 
     # Center method headers
@@ -36,15 +36,15 @@ def print_latex_table(latex_code, metric="auc"):
 
     for method in ["PADIM", "STFPM", "DFM"]:
         modified_code = modified_code.replace(
-            rf'\multicolumn{{3}}{{r}}{{{method}}}',
-            rf'\multicolumn{{1}}{{c}}{{{method}}}'
+            rf'\multicolumn{{2}}{{r}}{{{method}}}',
+            rf'\multicolumn{{2}}{{c}}{{{method}}}'
         )
 
     print(modified_code)
 
 
 
-class PixelSpaceTable(AbstractTable):
+class MyopicAttentionTable(AbstractTable):
 
     DATASET_CONFIG = [
         (DatasetType.MVTEC_AD, "MVTec AD", mvtec_categories),
@@ -53,20 +53,29 @@ class PixelSpaceTable(AbstractTable):
     ]
 
     METHOD_CONFIG = [
-        ("LUNAR", ["FuS", "FeB", "VGAN"]),
-        ("LOF", ["FuS", "FeB", "VGAN"]),
-        ("KNN", ["FuS", "FeB", "VGAN"]),
-        ("PADIM", ["FuS"]),
-        ("DFM", ["FuS"]),
-        ("STFPM", ["FuS"])
+        ("LUNAR", ["FuS", "FeB", "FuS+A"]),
+        ("LOF", ["FuS", "FeB", "FuS+A"]),
+        ("KNN", ["FuS", "FeB", "FuS+A"]),
+        ("PADIM", ["FuS", "FuS+A"]),
+        ("DFM", ["FuS", "FuS+A"]),
+        ("STFPM", ["FuS", "FuS+A"])
     ]
 
-    def get_fs_baseline_scores(self, dataset_type, category, metric):
-
+    def get_fs_baseline_scores(self, dataset_type, category, metric, att=False):
         # GETTING FS VALUES OF LUNAR, LOF, and KNN
         fs_methods = ["LUNAR", "LOF", "KNN"]
-        root_dir = Path("../experiments/od_baselines/pixelspace") / dataset_type.name / category
-        anomalib_benchmark_file = Path("../experiments/od_baselines/pixelspace") / dataset_type.name / "anomaly_benchmarks.csv"
+
+        if att:
+            root_dir = Path(
+                "../experiments/od_baselines/pixelspace/attention/normalized") / dataset_type.name / category
+            anomalib_benchmark_file = Path(
+                "../experiments/od_baselines/pixelspace/attention/normalized") / dataset_type.name / "anomaly_benchmarks_attention.csv"
+
+        else:
+            root_dir = Path(
+                "../experiments/od_baselines/pixelspace") / dataset_type.name / category
+            anomalib_benchmark_file = Path(
+                "../experiments/od_baselines/pixelspace") / dataset_type.name / "anomaly_benchmarks.csv"
 
         scores = {}
         for fname in os.listdir(root_dir):
@@ -78,7 +87,7 @@ class PixelSpaceTable(AbstractTable):
 
         # GETTING anomalib scores
         fs_methods = ["PADIM", "DFM", "STFPM"]
-        if metric == "auc":
+        if metric == "auc" and dataset_type != DatasetType.OCCCIFAR10:
             anomalib_df = pd.read_csv(anomalib_benchmark_file)
             category_rows = anomalib_df[
                 anomalib_df["category"].str.lower() == category.lower()
@@ -109,22 +118,6 @@ class PixelSpaceTable(AbstractTable):
 
         return {k: "NA" for k in methods}
 
-    def get_vgan_pixel_scores(self, dataset_type, category, metric, date="21-03"):
-        methods = ["LUNAR", "LOF", "KNN"]
-        vgan_scores = {k: "NA" for k in methods}
-
-        root_dir = Path("../experiments/remote/") / date
-        prefix = dataset_type.name + "[" + category.split("/")[0]
-        for fname in os.listdir(root_dir):
-            if fname.startswith(prefix):
-                score_df = pd.read_csv(root_dir / fname / "od_stats_-1.csv")
-                for _, row in score_df.iterrows():
-                    if self.is_fs_model(row):
-                        name, score = self.extract_name_and_score_from_row(row, metric)
-                        score = f"{score:.3f}"
-                        vgan_scores[name] = score
-        return vgan_scores
-
     def generate_table(self, metric="auc"):
 
         cols = [("", "")]
@@ -137,23 +130,22 @@ class PixelSpaceTable(AbstractTable):
         columns = pd.MultiIndex.from_tuples(cols)
         data = []
         for dataset_type, dataset_name, categories in self.DATASET_CONFIG:
-            data.extend([["\\textbf{" + dataset_name +"}"] + [""] * 12])
+            data.extend([["\\textbf{" + dataset_name +"}"] + [""] * 15])
             for category in categories:
                 row = []
-                fus_scores, feb_scores, vgan_scores = self.get_scores_for_category(dataset_type, category, metric)
-                row.append("\\textit{" + category +"}")
+                fus_woatt_scores, feb_scores, fus_watt_scores = self.get_scores_for_category(dataset_type, category, metric)
+                row.append("\\textit{" + category.replace("_", "\_") +"}")
                 for method, spaces in self.METHOD_CONFIG:
                     method_scores_aligned = []
 
                     if "FuS" in spaces:
-                        method_scores_aligned.append(fus_scores.get(method, "NA"))
+                        method_scores_aligned.append(fus_woatt_scores.get(method, "NA"))
 
                     if "FeB" in spaces:
                         method_scores_aligned.append(feb_scores.get(method, "NA"))
 
-                    if "VGAN" in spaces:
-                        method_scores_aligned.append(vgan_scores.get(method, "NA"))
-
+                    if "FuS+A" in spaces:
+                        method_scores_aligned.append(fus_watt_scores.get(method, "NA"))
 
                     ### HIGHLIGHTING BEST SCORES
                     valid_scores = [s for s in method_scores_aligned if s != "NA"]
@@ -176,11 +168,11 @@ class PixelSpaceTable(AbstractTable):
 
 
     def get_scores_for_category(self, dataset_type, category, metric):
-        fs_scores = self.get_fs_baseline_scores(dataset_type, category, metric)
+        fs_woatt_scores = self.get_fs_baseline_scores(dataset_type, category, metric, att=False)
         ens_scores = self.get_ens_baseline_scores(dataset_type, category, metric)
-        vgan_scores = self.get_vgan_pixel_scores(dataset_type, category, metric)
+        fs_watt_scores = self.get_fs_baseline_scores(dataset_type, category, metric, att=True)
 
-        return fs_scores, ens_scores, vgan_scores
+        return fs_woatt_scores, ens_scores, fs_watt_scores
 
 
 

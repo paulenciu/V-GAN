@@ -143,13 +143,13 @@ class VGAN:
     def __weights_init(self, m):
         classname = m.__class__.__name__
         if classname.find('Conv') != -1:
-            m.weight.data.normal_(0.0, 0.02)
+            m.weight.dataset.normal_(0.0, 0.02)
         elif classname.find('BatchNorm') != -1:
-            m.weight.data.normal_(1.0, 0.02)
-            m.bias.data.fill_(0)
+            m.weight.dataset.normal_(1.0, 0.02)
+            m.bias.dataset.fill_(0)
         elif classname.find('Linear') != -1:
-            m.weight.data.normal_(0.0, 0.1)
-            m.bias.data.fill_(0)
+            m.weight.dataset.normal_(0.0, 0.1)
+            m.bias.dataset.fill_(0)
 
     def calculate_gradiant_penalty(self, batch, projected_batch, lambda_gp=1e-7):
         batch_size = batch.size(0)
@@ -228,7 +228,7 @@ class VGAN:
         #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=gen_optimizer, gamma=0.99)
         with torch.no_grad():
             for param in self.detector.encoder_last_layer.parameters():
-                param.data = torch.clamp(param.data, -0.01, 0.01)
+                param.dataset = torch.clamp(param.dataset, -0.01, 0.01)
 
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')

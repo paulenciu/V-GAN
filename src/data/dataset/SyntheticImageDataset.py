@@ -16,7 +16,7 @@ class SyntheticImageDataset(Dataset):
             inlier_category = ["1", "2"]
 
         self.num_samples = 200
-        self.data = []
+        self.dataset = []
         self.labels = []
         self.category = inlier_category
 
@@ -31,7 +31,7 @@ class SyntheticImageDataset(Dataset):
             #     self.data[i] = torch.rand(3, 64, 64)
             #     self.labels[i] = 1  # Set label to 1
 
-        self.image_shape = self.data[0].shape
+        self.image_shape = self.dataset[0].shape
 
     def _generate_inlier_data(self, image_size):
         """
@@ -45,19 +45,19 @@ class SyntheticImageDataset(Dataset):
                 # Upper half white, lower half black
                 image = torch.zeros(3, height, width)
                 image[:, :half_height, :] = 1.0  # Set upper half to white
-                self.data.append(image)
+                self.dataset.append(image)
                 self.labels.append(0)  # Label: 0
 
             if "2" in self.category:
                 # Upper half black, lower half white
                 image = torch.zeros(3, height, width)
                 image[:, half_height:, :] = 1.0  # Set lower half to white
-                self.data.append(image)
+                self.dataset.append(image)
                 self.labels.append(0)  # Label 0
 
 
         # Convert lists to tensors
-        self.data = torch.stack(self.data)
+        self.dataset = torch.stack(self.dataset)
         self.labels = torch.tensor(self.labels, dtype=torch.long)
 
     def __len__(self):
@@ -80,4 +80,4 @@ class SyntheticImageDataset(Dataset):
             tuple: (image, label) where image is a tensor of shape (3, 32, 32),
                    and label is the corresponding label.
         """
-        return self.data[idx], self.labels[idx]
+        return self.dataset[idx], self.labels[idx]

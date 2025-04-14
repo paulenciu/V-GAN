@@ -1,10 +1,14 @@
+import os
 from pathlib import Path
 
+from pyod.models.feature_bagging import FeatureBagging
 from pyod.models.knn import KNN
 from pyod.models.lof import LOF
 from pyod.models.lunar import LUNAR
 
+from src.data.dataset_loader import load_data
 from src.data.dataset_type import DatasetType
+from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
 from src.run.embeddingspace.EODExperiment import EODExperiment
 from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
@@ -14,6 +18,7 @@ from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfigu
 from src.utils.preprocessing import normalize_images, normalize_features
 from src.vmmd.VMMDEmbedding import VMMDEmbedding
 from src.vmmd.VMMDEmbeddingSpace import VMMDEmbeddingSpace
+from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 from src.models.generator.diagonal_matrix.one_channel.GeneratorConv import GeneratorOneChannelConv
 
@@ -62,6 +67,44 @@ cifar10_classes = [
     "truck"
 ]
 
+DATASET_CONFIG = [
+    (DatasetType.MVTEC_AD, mvtec_categories, (256, 256)),
+    (DatasetType.OCCCIFAR10, cifar10_classes, (32, 32)),
+    (DatasetType.FASHION_MNIST, fashionmnist_categories, (28, 28)),
+]
+
+def launch_pval_calculation(exp_date="21-03", count=100):
+
+    root_dir = Path("../experiments/remote") / exp_date
+
+    for dataset_type, categories, image_size in DATASET_CONFIG:
+        for category in categories:
+            vmmd = VMMDDiagonal1Channel(filename="placeholder_name", autoencoder=IdentityEncoder(), generator=None)
+            vmmd_wrapper = VMMDWrapper(vmmd)
+
+            file_path = None
+
+            model_param_path = None
+            for dir_name in os.listdir(root_dir):
+                if dir_name.startswith(dataset_type.name) and dir_name.__contains__(category.split("/")[0]):
+
+                    file_path = root_dir / dir_name
+
+                    model_path = root_dir / dir_name / "models"
+                    fname = f"generator_{len(os.listdir(model_path)) - 1}.pt"
+                    model_param_path = model_path / fname
+
+            if model_param_path is None:
+                raise FileNotFoundError(f"No model found in {root_dir}")
+
+            vmmd_wrapper.load_model(str(model_param_path))
+
+            x_data, _ = load_data(dataset_type=dataset_type, category=category, image_size=image_size)
+            df = vmmd.check_if_myopic(x_data, count=count)
+
+            file_path = file_path / f"pval{count}.csv"
+
+            df.to_csv(file_path, index=False)
 
 def launch_vmmd_embedding_space_config(configs):
     for i, config in enumerate(configs):
@@ -216,7 +259,8 @@ def launch_all_od_experiments():
                 image_size_od=(256,256),
                 preprocessing_fn=normalize_features,
                 standardize_data=False,
-                n_subspace_sample=2,
+                n_subspace_sample=100,
+                ens_base_estimator=None
             )]
 
             launch_vmmd_experiment(config)
@@ -230,7 +274,9 @@ def launch_all_od_experiments():
             image_size_train=(28,28),
             preprocessing_fn=normalize_features,
             standardize_data=False,
-            n_subspace_sample=2
+            n_subspace_sample=100,
+            ens_base_estimator=None
+
         )]
         launch_vmmd_experiment(config)
 
@@ -241,7 +287,8 @@ def launch_all_od_experiments():
             image_size_od=(32,32),
             preprocessing_fn=normalize_features,
             standardize_data=False,
-            n_subspace_sample=2
+            n_subspace_sample=100,
+            ens_base_estimator=None
         )]
 
         launch_vmmd_experiment(config)
@@ -380,7 +427,7 @@ def launch_vmmd_experiment(configs):
                 vmmd=vmmd,
                 od_model=CombinedOutlierDetector(
                     base_estimators=[config.ens_base_estimator],
-                    vmmd=vmmd, max_n_jobs=1,
+                    vmmd=vmmd, max_n_jobs=-1,
                     preprocessing_fn=config.preprocessing_fn
                 ),
                 dataset_type=config.dataset_type,

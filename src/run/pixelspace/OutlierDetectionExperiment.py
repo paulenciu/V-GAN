@@ -60,7 +60,7 @@ class OutlierDetectionExperiment:
         # PREPARE DATA FOR OD
         x_train, _ = load_data(dataset_type=self.dataset_type, category=self.category, image_size=self.image_size_od,
                             standardize=self.standardize_data)
-        x_train_flattened = extract_and_flatten_images_dataset_3d(x_train).to("cpu").numpy()
+        x_train_flattened = x_train.view(x_train.shape[0], -1).cpu().numpy()
         x_train_flattened = self.preprocessing_fn(x_train_flattened)
 
         self.od_model.fit(subspaces, x_train_flattened)
@@ -74,7 +74,7 @@ class OutlierDetectionExperiment:
         # CALCULATE OD SCORES
         x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
                                    image_size=self.image_size_od, standardize=self.standardize_data, train=False)
-        x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
+        x_test_flattened = x_test.view(x_test.shape[0], -1).cpu().numpy()
         x_test_flattened = self.preprocessing_fn(x_test_flattened)
         y_test = np.array(y_test)
 
@@ -88,7 +88,7 @@ class OutlierDetectionExperiment:
         # CALCULATE OD SCORES
         x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
                                    image_size=self.image_size_od, standardize=self.standardize_data, train=False)
-        x_test_flattened = extract_and_flatten_images_dataset_3d(x_test).to("cpu").numpy()
+        x_test_flattened = x_test.view(x_test.shape[0], -1).cpu().numpy()
         x_test_flattened = self.preprocessing_fn(x_test_flattened)
         y_test = np.array(y_test)
 

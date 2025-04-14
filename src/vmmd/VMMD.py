@@ -94,10 +94,10 @@ class VMMD(ABC):
         count = min(count, len(x_data))
         results = []
 
-        n_channels, height, width = x_data.image_shape
+        n_channels, height, width = x_data.shape[1:]
 
         with torch.no_grad():
-            x_sample = next(iter(DataLoader(x_data, batch_size=count)))[0].to(self.device)
+            x_sample = next(iter(DataLoader(x_data, batch_size=count))).to(self.device)
             noise = torch.randn(count, *self.generator.noise_dim, device=self.device)
             u_mappings = self.generator.sample_subspace_masks(noise)
 
@@ -106,23 +106,11 @@ class VMMD(ABC):
             x_embeddings = self.encode(x_sample)
             ux_embeddings = self.encode(ux_sample)
 
-
-
-
-        # x_data = extract_and_flatten_images_dataset_3d(x_data).to("cpu")
-        # x_sample = torch.Tensor(pd.DataFrame(x_data).sample(count).to_numpy()).to(self.device)
-        # x_sample = x_sample.view(-1, n_channels, height, width)
-        #
-        # u_mappings = self.sample_count_subspaces(count).to(torch.float32)
-        # ux_sample = self.apply_subspaces_operator(x_sample, u_mappings)
-        #
-        # x_sample_embedded = self.encode(x_sample)
-        # ux_sample_embedded = self.encode(ux_sample)
-
         if type(bandwidth) == float:
             bandwidth = [bandwidth]
 
         mmd_loss = MMDLossConstrained()
+
         mmd_loss.forward(x_embeddings, ux_embeddings, u_mappings * 1)
         self.bandwidth = mmd_loss.bandwidth
 
@@ -168,10 +156,10 @@ class VMMD(ABC):
         return optimizer, scheduler
 
     def setup_data_loader(self, dataset, preprocess_fn=normalize_features, **preprocess_kwargs):
-        n_channels, height, width = dataset.image_shape
-        flattened_images = extract_and_flatten_images_dataset_3d(dataset).cpu()
+        n_channels, height, width = dataset.shape[1:]
+        flattened_images = dataset.view(dataset.shape[0], -1).cpu().numpy()
         x_flattened_preprocessed = torch.from_numpy(
-            preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).float()
+            preprocess_fn(flattened_images, **preprocess_kwargs)).float()
         unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
         pre_embedded_dataset = PreEmbeddedDataset(unflattened_images, self.encoder, self.device)
         return DataLoader(
@@ -181,21 +169,9 @@ class VMMD(ABC):
             pin_memory=torch.cuda.is_available(),
         )
 
-    # def setup_data_loader(self, dataset, n_channels, height, width, preprocess_fn=normalize_features,
-    #                       **preprocess_kwargs):
-    #     flattened_images = extract_and_flatten_images_dataset_3d(dataset).to("cpu")
-    #     x_flattened_preprocessed = torch.from_numpy(preprocess_fn(flattened_images.numpy(), **preprocess_kwargs)).to(torch.float32)
-    #     unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
-    #     return DataLoader(
-    #         unflattened_images,
-    #         batch_size=self.batch_size,
-    #         shuffle=True,
-    #         pin_memory=torch.cuda.is_available(),
-    #     )
-
     def fit(self, dataset: IDataset, preprocess_fn=normalize_features):
 
-        n_channels, width, height = dataset.image_shape
+        n_channels, width, height = dataset.shape[1:]
         assert width == height, "Error, need square input images."
 
         self.setup_device_and_seed()
@@ -205,11 +181,11 @@ class VMMD(ABC):
 
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
-        #loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
-        l2loss_function = torch.nn.MSELoss()
+
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
         total_training_time = 0.0
         snapshot_duration = 0.0
-        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.5 * i * self.epochs) for i in range(1, 11)]
 
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')
@@ -228,8 +204,7 @@ class VMMD(ABC):
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
                 embedded_processed_batch = self.encode(processed_batch)
 
-                #batch_loss, mmd_loss = loss_function(embeddings, embedded_processed_batch, u_mappings)
-                batch_loss = l2loss_function(embedded_processed_batch, embeddings)
+                batch_loss, mmd_loss = loss_function(embeddings, embedded_processed_batch, u_mappings)
                 mmd_loss = batch_loss
                 batch_loss.backward()
                 optimizer.step()

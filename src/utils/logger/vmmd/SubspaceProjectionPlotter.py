@@ -39,7 +39,7 @@ class SubspaceProjectionPlotter(IVMMDLogger):
 
         n_channels, width, height = data.shape[1:]
 
-        if not isinstance(self.vmmd, VMMDEmbeddingSpace) or self.vmmd.decoder_available:
+        if isinstance(self.vmmd, VMMDEmbeddingSpace) and self.vmmd.decoder_available:
             fig, axis = plt.subplots(n_samples + 1, 3 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
         else:
             fig, axis = plt.subplots(n_samples + 1, 2 + n_masks, figsize=(5 * (2 + n_masks), 5 * (n_samples + 1)))
@@ -52,13 +52,9 @@ class SubspaceProjectionPlotter(IVMMDLogger):
         if isinstance(self.vmmd, VMMDEmbeddingSpace) and self.vmmd.decoder_available:
             u = torch.cat([torch.ones(1, u.shape[1]).to(u.device), u])
             n_masks += 1
-            shift = 1
-        else:
-            shift = 0
 
         axis[0, 0].imshow(tensor_to_image(torch.ones(n_channels, height, width)))
         axis[0, 0].axis("off")
-
 
         if isinstance(self.vmmd, VMMDEmbedding) or isinstance(self.vmmd, VMMDEmbeddingSpace):
             u_height = int(u.shape[1] / 224)
@@ -86,14 +82,15 @@ class SubspaceProjectionPlotter(IVMMDLogger):
                 axis[i, 0].set_title(f"Original", fontsize=fontsize)
 
             axis[i, 0].axis("off")
+            u = self.vmmd.sample_count_subspaces(n_masks).to(device)
 
-            if not isinstance(self.vmmd, VMMDEmbeddingSpace) or self.vmmd.decoder_available:
-                u = self.vmmd.sample_count_subspaces(n_masks).to(device)
+            if isinstance(self.vmmd, VMMDEmbeddingSpace) and self.vmmd.decoder_available:
                 u = torch.cat([torch.ones(1, u.shape[1]).to(u.device), u])
                 image = image.unsqueeze(0).repeat(n_masks + 1, 1, 1, 1).to(device)
                 ux_data = self.vmmd.apply_subspaces_operator(image, u).to(device).detach()
             else:
-                break
+                image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1).to(device)
+                ux_data = self.vmmd.apply_subspaces_operator(image, u).to(device).detach()
 
             for j in range(n_masks):
                 axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
