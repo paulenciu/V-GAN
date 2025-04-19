@@ -10,7 +10,7 @@ from src.run.embeddingspace.EODEncodedBaselineExperiment import \
     EODEncodedBaselineExperiment
 from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
 from src.run.pixelspace.PODBaselineExperiment import PODBaselineExperiment
-from src.utils.preprocessing import normalize_images
+from src.utils.preprocessing import normalize_images, no_preprocessing
 
 fashionmnist_categories = [
     "T-shirt/top",
@@ -59,26 +59,30 @@ cifar10_classes = [
 def launch_baseline_on_embedding_space(configs):
     for i, config in enumerate(configs):
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
-        baseline_experiments = EODEncodedBaselineExperiment(
-            dataset_type=config.dataset_type,
-            category=config.dateset_category,
-            image_size_od=config.image_size_od,
-            standardize_data=config.standardize_data,
-            preprocessing_fn=config.preprocessing_fn,
-            od_models=[
-                LUNAR(),
-                LOF(),
-                KNN(),
-                FeatureBagging(base_estimator=LUNAR()),
-                FeatureBagging(base_estimator=LOF()),
-                FeatureBagging(base_estimator=KNN()),
-            ],
-            encoder=config.encoder,
-            encoder_name=config.encoder_name,
-        )
+        for method in [
+            LUNAR(),
+            LOF() ,
+            KNN(),
+            FeatureBagging(base_estimator=LOF(), n_estimators=10),
+            FeatureBagging(base_estimator=LUNAR(),  n_estimators=10),
+            FeatureBagging(base_estimator=KNN(),  n_estimators=10)
+                       ]:
+            print("RUNNING ", method.__class__.__name__.upper())
+            baseline_experiments = EODEncodedBaselineExperiment(
+                dataset_type=config.dataset_type,
+                category=config.dateset_category,
+                image_size_od=config.image_size_od,
+                standardize_data=config.standardize_data,
+                preprocessing_fn=config.preprocessing_fn,
+                od_models=[
+                    method
+                ],
+                encoder=config.encoder,
+                encoder_name=config.encoder_name,
+            )
 
-        baseline_experiments.fit()
-        baseline_experiments.evaluate()
+            baseline_experiments.fit()
+            baseline_experiments.evaluate()
 
 def launch_baseline_on_embedding(configs):
     for i, config in enumerate(configs):
@@ -134,8 +138,9 @@ def launch_all_baseline_experiments_fs(od_model):
                 category=category,
                 image_size_od=image_size_od,
                 standardize_data=False,
-                preprocessing_fn=normalize_images,
                 od_model=od_model,
+                preprocessing_fn=no_preprocessing,
+                root_dir="../experiments/od_baselines/pixelspace/unnormalized",
             )
             for category in categories
         ]

@@ -12,51 +12,56 @@ from src.data.dataset_type import DatasetType
 from src.run.pipeline.BaselinePipeline import mvtec_categories, cifar10_classes, fashionmnist_categories
 
 
-def print_latex_table(latex_code, model, metric="auc"):
+def print_latex_table(latex_code, metric="auc"):
     modified_code = (
         "\\begin{table*}\n"
         "\\centering\n"
-        "\\caption{Encoded Space - " + model.upper().replace("_", "\_") + " " + metric.upper() + " Score}\n"
+        "\\caption{Pixel Space with Distances " + metric.upper() + "}\n"
         "\\label{pixel_space" + metric.lower() + "}\n"
         + latex_code +
         "\\end{table*}"
     )
 
     modified_code = modified_code.replace(
-        r'\begin{tabular}{llllllllll}',
-        r'\begin{tabular}{l|ccc|ccc|ccc}'
+        r'\begin{tabular}{llllllllllllll}',
+        r'\begin{tabular}{l|ccc|ccc|ccc|c|c|c|c}'
     )
 
     # Center method headers
     for method in ["LUNAR", "LOF", "KNN"]:
         modified_code = modified_code.replace(
             rf'\multicolumn{{3}}{{r}}{{{method}}}',
-            rf'\multicolumn{{3}}{{c}}{{{method}}}'
+            rf'\multicolumn{{3}}{{c|}}{{{method}}}'
         )
 
     print(modified_code)
 
 
 
-class EncSpaceTable(AbstractTable):
+class PixelSpaceWithDistanceTable(AbstractTable):
 
     DATASET_CONFIG = [
         (DatasetType.MVTEC_AD, "MVTec AD", mvtec_categories),
-        #(DatasetType.OCCCIFAR10, "Cifar10", cifar10_classes),
-        #(DatasetType.OCCFMNIST, "FashionMNIST", fashionmnist_categories)
+        (DatasetType.OCCCIFAR10, "Cifar10", cifar10_classes),
+        (DatasetType.OCCFMNIST, "FashionMNIST", fashionmnist_categories)
     ]
 
     METHOD_CONFIG = [
         ("LUNAR", ["FuS", "FeB", "VGAN"]),
         ("LOF", ["FuS", "FeB", "VGAN"]),
         ("KNN", ["FuS", "FeB", "VGAN"]),
+        ("PADIM", ["FuS"]),
+        ("DFM", ["FuS"]),
+        ("STFPM", ["FuS"]),
+        ("MSD", [""])
     ]
 
-    def get_fs_baseline_scores(self, dataset_type, category, metric, model):
+    def get_fs_baseline_scores(self, dataset_type, category, metric):
 
         # GETTING FS VALUES OF LUNAR, LOF, and KNN
         fs_methods = ["LUNAR", "LOF", "KNN"]
-        root_dir = Path("../experiments/od_baselines/embeddingspace") / model / dataset_type.name / category
+        root_dir = Path("../experiments/od_baselines/pixelspace") / dataset_type.name / category
+        anomalib_benchmark_file = Path("../experiments/od_baselines/pixelspace") / dataset_type.name / "anomaly_benchmarks.csv"
 
         scores = {}
         for fname in os.listdir(root_dir):
@@ -66,10 +71,25 @@ class EncSpaceTable(AbstractTable):
                 score = score_df[metric.upper()].values[0]
                 scores[method_name] = (f"{score:.3f}")
 
+        # GETTING anomalib scores
+        fs_methods = ["PADIM", "DFM", "STFPM"]
+        if metric == "auc":
+            anomalib_df = pd.read_csv(anomalib_benchmark_file)
+            category_rows = anomalib_df[
+                anomalib_df["category"].str.lower() == category.lower()
+                ]
+            for method_name in fs_methods:
+                model_row = category_rows[category_rows["model"].str.lower() == method_name.lower()]
+                score = model_row["auroc"].values[0]
+                scores[method_name] = (f"{score:.3f}")
+        else:
+            for method_name in fs_methods:
+                scores[method_name] = "NA"
+
         return scores
 
-    def get_ens_baseline_scores(self, dataset_type, category, metric, model):
-        root_dir = Path("../experiments/od_baselines/embeddingspace") / model / dataset_type.name / category
+    def get_ens_baseline_scores(self, dataset_type, category, metric):
+        root_dir = Path("../experiments/od_baselines/pixelspace") / dataset_type.name / category
         methods = ["LUNAR", "LOF", "KNN"]
         scores = {}
         for fname in os.listdir(root_dir):
@@ -78,40 +98,33 @@ class EncSpaceTable(AbstractTable):
 
                 for method_name in methods:
                     row = score_df[score_df["OD Method"].str.lower() == method_name.lower()]
-
-                    if row.empty:
-                        scores[method_name] = "NA"
-                    else:
-                        scores[method_name]= f"{row[metric.upper()].values[0]:.3f}"
+                    scores[method_name]= f"{row[metric.upper()].values[0]:.3f}"
 
                 return scores
 
         return {k: "NA" for k in methods}
 
-    def get_vgan_pixel_scores(self, dataset_type, category, metric, date="09-04", model="L_16_VIT"):
+    def get_vgan_pixel_scores(self, dataset_type, category, metric, date="21-03", ens_weight=0.7):
         methods = ["LUNAR", "LOF", "KNN"]
         vgan_scores = {k: "NA" for k in methods}
-        suffix = ""
-        if model == "resnet18":
-            suffix = "_r18"
-        elif model == "resnet50":
-            suffix = "_r50"
-        elif model == "L_16_VIT":
-            suffix = "vit"
+        vgan_distance_score = "NA"
 
         root_dir = Path("../experiments/remote/") / date
         prefix = dataset_type.name + "[" + category.split("/")[0]
         for fname in os.listdir(root_dir):
-            if fname.__contains__(prefix) and fname.endswith(suffix):
-                score_df = pd.read_csv(root_dir / fname / "od_stats_-1.csv")
-                for _, row in score_df.iterrows():
+            if fname.startswith(prefix):
+                ens_score_df = pd.read_csv(root_dir / fname / "od_stats_-1.csv")
+                for _, row in ens_score_df.iterrows():
                     if self.is_fs_model(row):
                         name, score = self.extract_name_and_score_from_row(row, metric)
                         score = f"{score:.3f}"
                         vgan_scores[name] = score
-        return vgan_scores
 
-    def generate_table(self, metric="auc", model="L_16_VIT", date="09-04"):
+                distance_score_df = pd.read_csv(root_dir / fname / "od_stats_distance.csv")
+                vgan_distance_score = f"{distance_score_df[metric.upper()].values[0]:.3f}"
+        return vgan_scores, vgan_distance_score
+
+    def generate_table(self, metric="auc"):
 
         cols = [("", "")]
 
@@ -123,11 +136,12 @@ class EncSpaceTable(AbstractTable):
         columns = pd.MultiIndex.from_tuples(cols)
         data = []
         for dataset_type, dataset_name, categories in self.DATASET_CONFIG:
-            data.extend([["\\textbf{" + dataset_name +"}"] + [""] * 9])
+            data.extend([["\\textbf{" + dataset_name +"}"] + [""] * 13])
             for category in categories:
                 row = []
-                fus_scores, feb_scores, vgan_scores = self.get_scores_for_category(dataset_type, category, metric, model, date)
+                fus_scores, feb_scores, vgan_scores, vgan_distance_score = self.get_scores_for_category(dataset_type, category, metric)
                 row.append("\\textit{" + category.replace("_", "\_") +"}")
+
                 for method, spaces in self.METHOD_CONFIG:
                     method_scores_aligned = []
 
@@ -140,6 +154,8 @@ class EncSpaceTable(AbstractTable):
                     if "VGAN" in spaces:
                         method_scores_aligned.append(vgan_scores.get(method, "NA"))
 
+                    if method == "MSD":
+                        method_scores_aligned.append(vgan_distance_score or "NA")
 
                     ### HIGHLIGHTING BEST SCORES
                     valid_scores = [s for s in method_scores_aligned if s != "NA"]
@@ -157,15 +173,18 @@ class EncSpaceTable(AbstractTable):
                 data.append(row)
 
         df = pd.DataFrame(data, columns=columns, index=None)
-        print_latex_table(df.to_latex(index=False), metric=metric, model=model)
+        print_latex_table(df.to_latex(index=False), metric=metric)
 
 
-    def get_scores_for_category(self, dataset_type, category, metric, model, date):
-        fs_scores = self.get_fs_baseline_scores(dataset_type, category, metric, model)
-        ens_scores = self.get_ens_baseline_scores(dataset_type, category, metric, model)
-        vgan_scores = self.get_vgan_pixel_scores(dataset_type, category, metric, date=date, model=model)
 
-        return fs_scores, ens_scores, vgan_scores
+    def get_scores_for_category(self, dataset_type, category, metric):
+        fs_scores = self.get_fs_baseline_scores(dataset_type, category, metric)
+        ens_scores = self.get_ens_baseline_scores(dataset_type, category, metric)
+        vgan_scores, vgan_distance_score = self.get_vgan_pixel_scores(
+            dataset_type=dataset_type, category=category, metric=metric)
+
+        return fs_scores, ens_scores, vgan_scores, vgan_distance_score
+
 
 
     def extract_method_name(self, to_extract_from, to_search_in):
@@ -173,3 +192,4 @@ class EncSpaceTable(AbstractTable):
             if method.lower() in to_search_in.lower():
                 return method
         return None
+
