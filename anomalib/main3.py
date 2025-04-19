@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import seaborn as sns
 import torch
@@ -10,8 +12,12 @@ from anomalib.models import Padim, Dfm
 from matplotlib import pyplot as plt
 from src.data.dataset_loader import load_data
 from src.data.dataset_type import DatasetType
+from src.models.encoder.IdentityEncoder import IdentityEncoder
+from src.utils.BigUBuilder import calculate_average_u
 from src.utils.preprocessing import normalize_images
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
+from src.vmmd.VMMDWrapper import VMMDWrapper
+from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
 
 from torchvision.transforms.v2 import Transform
 from anomalib.data.utils import DownloadInfo, Split, TestSplitMode, ValSplitMode, download_and_extract
@@ -31,6 +37,23 @@ from anomalib.data import AnomalibDataModule
 from anomalib.data.utils import Split, ValSplitMode, TestSplitMode
 from torchvision.transforms.v2 import Transform
 
+def create_attention_mask(dataset_type, category, exp_date="21-03"):
+    root_dir = Path("../experiments/remote/") / exp_date
+    vmmd = VMMDDiagonal1Channel(filename="placeholder_name", autoencoder=IdentityEncoder(), generator=None)
+    vmmd_wrapper = VMMDWrapper(vmmd)
+    model_param_path = None
+    for dir_name in os.listdir(root_dir):
+        if dir_name.startswith(dataset_type.name) and dir_name.__contains__(category.split("/")[0]):
+            model_path =  root_dir / dir_name / "models"
+            fname =  f"generator_{len(os.listdir(model_path)) - 1}.pt"
+            model_param_path = model_path / fname
+    if model_param_path is None:
+        raise FileNotFoundError(f"No model found in {root_dir}")
+
+    vmmd_wrapper.load_model(str(model_param_path))
+    u = vmmd.sample_count_subspaces(count=500)
+    u_avg = calculate_average_u(u)
+    return u_avg, vmmd
 
 class CifarAnomalibDataModule(AnomalibDataModule):
 
@@ -128,6 +151,11 @@ class CifarDataset(AnomalibDataset):
             images, labels = load_data(dataset_type=DatasetType.OCCCIFAR10, category=category, image_size=(32, 32))
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
+
+            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCCIFAR10, category=category)
+            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            images = vmmd.apply_subspaces_operator(images, attention_mask)
+
             flattened_images = images.view(images.size(0), -1).cpu()
             x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
             images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
@@ -143,6 +171,10 @@ class CifarDataset(AnomalibDataset):
             images, labels =  load_data(dataset_type=DatasetType.OCCCIFAR10, category=category, image_size=(32, 32), train=False)
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
+
+            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCCIFAR10, category=category)
+            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            images = vmmd.apply_subspaces_operator(images, attention_mask)
 
             flattened_images = images.view(images.size(0), -1).cpu()
             x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
@@ -211,6 +243,11 @@ class FashionDataset(AnomalibDataset):
             images, labels = load_data(dataset_type=DatasetType.OCCFMNIST, category=category, image_size=(28, 28))
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
+
+            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCFMNIST, category=category)
+            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            images = vmmd.apply_subspaces_operator(images, attention_mask)
+
             flattened_images = images.view(images.size(0), -1).cpu()
             x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
             images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
@@ -226,6 +263,10 @@ class FashionDataset(AnomalibDataset):
             images, labels =  load_data(dataset_type=DatasetType.OCCFMNIST, category=category, image_size=(28, 28), train=False)
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
+
+            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCFMNIST, category=category)
+            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            images = vmmd.apply_subspaces_operator(images, attention_mask)
 
             flattened_images = images.view(images.size(0), -1).cpu()
             x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
@@ -355,12 +396,12 @@ class MVTecDataset(AnomalibDataset):
     def make_samples(self, split: str | Split = None, category: str | None = None) -> list[str]:
         if split==Split.TRAIN:
             images, labels = load_data(dataset_type=DatasetType.MVTEC_AD, category=category, image_size=(256, 256))
-            transformation = torchvision.transforms.Compose([
-                torchvision.transforms.PILToTensor(),
-                torchvision.transforms.Resize((256,256)),
-            ])
-            images = torch.stack([transformation(Image.open(image_path).convert('RGB')) for image_path in images])
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
+
+            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.MVTEC_AD, category=category)
+            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            images = vmmd.apply_subspaces_operator(images, attention_mask)
+
             flattened_images = images.view(images.size(0), -1).cpu()
             x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
             images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
@@ -373,14 +414,12 @@ class MVTecDataset(AnomalibDataset):
 
         elif split==Split.TEST:
             images, labels =  load_data(dataset_type=DatasetType.MVTEC_AD, category=category, image_size=(256, 256), train=False)
-
-            transformation = torchvision.transforms.Compose([
-                torchvision.transforms.PILToTensor(),
-                torchvision.transforms.Resize((256, 256)),
-            ])
-
-            images = torch.stack([transformation(Image.open(image_path).convert('RGB')) for image_path in images])
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
+
+            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.MVTEC_AD, category=category)
+            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            images = vmmd.apply_subspaces_operator(images, attention_mask)
+
             flattened_images = images.view(images.size(0), -1).cpu()
             x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
             images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
@@ -646,29 +685,21 @@ if __name__ == "__main__":
     #""Cflow"
     models = ["Padim", "Dfm", "Stfpm"]
     datasets = [
-        DatasetType.MVTEC_AD,
-        #DatasetType.OCCFMNIST,
+        #DatasetType.MVTEC_AD,
+        DatasetType.OCCFMNIST,
         #DatasetType.OCCCIFAR10,
     ]
 
-    # Run benchmarks
     results = run_benchmarks(models, datasets, root_dir)
 
-    # Save and display results
-    results.to_csv("anomaly_benchmarks_mvtec.csv", index=False)
-    print("\nFinal Results:")
-    print(results.groupby(["dataset", "model"])[["auroc", "f1_score"]].mean())
+    results.to_csv("anomaly_benchmarks_attention_fmnist.csv", index=False)
 
-    plt.figure(figsize=(15, 8))
-    sns.barplot(
-        data=results,
-        x="model",
-        y="auroc",
-        hue="dataset",
-        errorbar=None
-    )
-    plt.title("AUROC Comparison Across Models and Datasets")
-    plt.ylim(0.5, 1.0)
-    plt.tight_layout()
-    plt.savefig("benchmark_results.png")
-    plt.show()
+    datasets = [
+        #DatasetType.MVTEC_AD,
+        #DatasetType.OCCFMNIST,
+        DatasetType.OCCCIFAR10,
+    ]
+
+    results = run_benchmarks(models, datasets, root_dir)
+
+    results.to_csv("anomaly_benchmarks_attention_cifar10.csv", index=False)
