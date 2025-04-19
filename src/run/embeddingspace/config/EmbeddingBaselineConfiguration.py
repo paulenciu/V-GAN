@@ -27,7 +27,7 @@ class EmbeddingBaselineConfiguration:
                 dataset_type=None,
                 dateset_category=None,
                 ens_base_estimator=LUNAR(),
-                encoder_name=""
+                encoder_name="resnet18"
                 ):
 
         self.encoder = encoder
