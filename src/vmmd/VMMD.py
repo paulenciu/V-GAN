@@ -6,6 +6,7 @@ from typing import Union
 import torch
 from collections import defaultdict
 
+from torch.optim import Adadelta
 from torch.profiler import profile
 
 from src.data.IDataset import IDataset
@@ -146,12 +147,13 @@ class VMMD(ABC):
             torch.mps.manual_seed(self.seed)
 
     def setup_optimizer_and_scheduler(self):
-        optimizer = torch.optim.Adam(
-            self.generator.parameters(),
-            lr=self.lr,
-            betas=(0.5, 0.9),
-            weight_decay=self.weight_decay
-        )
+        # optimizer = torch.optim.Adam(
+        #     self.generator.parameters(),
+        #     lr=self.lr,
+        #     betas=(0.5, 0.9),
+        #     weight_decay=self.weight_decay
+        # )
+        optimizer = Adadelta(self.generator.parameters(), lr=self.lr)
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
         return optimizer, scheduler
 

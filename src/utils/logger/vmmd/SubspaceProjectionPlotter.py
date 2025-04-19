@@ -56,12 +56,15 @@ class SubspaceProjectionPlotter(IVMMDLogger):
         axis[0, 0].imshow(tensor_to_image(torch.ones(n_channels, height, width)))
         axis[0, 0].axis("off")
 
-        if isinstance(self.vmmd, VMMDEmbedding) or isinstance(self.vmmd, VMMDEmbeddingSpace):
+        if isinstance(self.vmmd, VMMDEmbedding) or (isinstance(self.vmmd, VMMDEmbeddingSpace) and self.vmmd.decoder_available):
             u_height = int(u.shape[1] / 224)
             u_width = int(u.shape[1] / u_height)
 
             u = u.view(-1, 1, u_width, u_height)
             u = u.repeat(1, 3, 1, 1) #makes image black / white
+
+        elif isinstance(self.vmmd, VMMDEmbeddingSpace):
+            u = u.view(-1, 1, 32, 32).repeat(1, 3, 1, 1)
 
         for i in range(n_masks):
             axis[0, i + 1].imshow(tensor_to_image(u[i].detach()))
@@ -84,10 +87,14 @@ class SubspaceProjectionPlotter(IVMMDLogger):
             axis[i, 0].axis("off")
             u = self.vmmd.sample_count_subspaces(n_masks).to(device)
 
-            if isinstance(self.vmmd, VMMDEmbeddingSpace) and self.vmmd.decoder_available:
-                u = torch.cat([torch.ones(1, u.shape[1]).to(u.device), u])
-                image = image.unsqueeze(0).repeat(n_masks + 1, 1, 1, 1).to(device)
-                ux_data = self.vmmd.apply_subspaces_operator(image, u).to(device).detach()
+            if isinstance(self.vmmd, VMMDEmbeddingSpace):
+
+                if self.vmmd.decoder_available:
+                    u = torch.cat([torch.ones(1, u.shape[1]).to(u.device), u])
+                    image = image.unsqueeze(0).repeat(n_masks + 1, 1, 1, 1).to(device)
+                    ux_data = self.vmmd.apply_subspaces_operator(image, u).to(device).detach()
+                else:
+                    break
             else:
                 image = image.unsqueeze(0).repeat(n_masks, 1, 1, 1).to(device)
                 ux_data = self.vmmd.apply_subspaces_operator(image, u).to(device).detach()
