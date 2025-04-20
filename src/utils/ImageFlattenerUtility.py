@@ -9,8 +9,4 @@ def extract_and_flatten_images_dataset_3d(dataset: torch.utils.data.Dataset):
     return torch.stack(flattened_images)
 
 def unflatten_images_3d(flattened_dataset: torch.Tensor, channels: int, height: int, width: int):
-    reshaped_images = []
-    for flattened_image in flattened_dataset:
-        image_3d = flattened_image.view(channels, height, width)
-        reshaped_images.append(image_3d)
-    return torch.stack(reshaped_images)
+    return flattened_dataset.view(-1, channels, height, width)

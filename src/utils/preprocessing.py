@@ -4,13 +4,16 @@ import torch
 from sklearn.preprocessing import normalize
 
 def normalize_features(images):
-    return normalize(images, axis=0)
+    return normalize(images, axis=0, copy=False)
 
 def no_preprocessing(images):
     return images
 
 def normalize_images(images):
-    return normalize(images, axis=1)
+    return normalize(images, axis=1, copy=False)
+
+def invert_colors(images):
+    return 1.0 - images
 
 def min_max_scaling(x):
     max_x = np.max(x)

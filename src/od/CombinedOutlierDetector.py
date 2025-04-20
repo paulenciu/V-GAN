@@ -41,16 +41,24 @@ class CombinedOutlierDetector(BaseOutlierDetector):
 
         print("Ensemble Outlier Detector Fit")
         self.ensemble_detector.fit(subspaces, x_train)
+        print("[----------DONE-----------]")
+
 
         print("Distance Outlier Detector Fit")
         self.distance_detector.fit(subspaces, x_train)
+        print("[-----------DONE-----------]")
+
 
         self.fit_time = time.time() - fit_start
         return self
 
     def decision_score_interval(self, x_test, ensemble_weight_start, ensemble_weight_end, step):
+        print("Aggregate Ensemble Decision Score")
         ensemble_scores = self.ensemble_detector.decision_score_agg(x_test)
+        print("[-----------DONE-----------]")
+        print("Aggregate Distance Decision Score")
         distance_scores = self.distance_detector.decision_score(x_test)
+        print("[-----------DONE-----------]")
 
         decision_scores_list = []
         description_list = []

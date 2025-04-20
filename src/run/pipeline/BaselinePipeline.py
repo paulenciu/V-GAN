@@ -18,11 +18,11 @@ fashionmnist_categories = [
     "Pullover",
     "Dress",
     "Coat",
-    "Sandal",
-    "Shirt",
-    "Sneaker",
-    "Bag",
-    "Ankle boot"
+    # "Sandal",
+    # "Shirt",
+    # "Sneaker",
+    # "Bag",
+    # "Ankle boot"
 ]
 
 mvtec_categories = [
@@ -59,26 +59,32 @@ cifar10_classes = [
 def launch_baseline_on_embedding_space(configs):
     for i, config in enumerate(configs):
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
-        baseline_experiments = EODEncodedBaselineExperiment(
-            dataset_type=config.dataset_type,
-            category=config.dateset_category,
-            image_size_od=config.image_size_od,
-            standardize_data=config.standardize_data,
-            preprocessing_fn=config.preprocessing_fn,
-            od_models=[
-                LUNAR(),
-                LOF(),
-                KNN(),
-                FeatureBagging(base_estimator=LUNAR()),
-                FeatureBagging(base_estimator=LOF()),
-                FeatureBagging(base_estimator=KNN()),
-            ],
-            encoder=config.encoder,
-            encoder_name=config.encoder_name,
-        )
+        for method in [
+            LUNAR(),
+            LOF() ,
+            KNN(),
+            FeatureBagging(base_estimator=LOF(), n_estimators=10),
+            FeatureBagging(base_estimator=LUNAR(),  n_estimators=10),
+            FeatureBagging(base_estimator=KNN(),  n_estimators=10)
+                       ]:
+            print("RUNNING ", method.__class__.__name__.upper())
+            baseline_experiments = EODEncodedBaselineExperiment(
+                dataset_type=config.dataset_type,
+                category=config.dateset_category,
+                image_size_od=config.image_size_od,
+                standardize_data=config.standardize_data,
+                preprocessing_fn=config.preprocessing_fn,
+                od_models=[
+                    method
+                ],
+                encoder=config.encoder,
+                encoder_name=config.encoder_name,
+            )
 
-        baseline_experiments.fit()
-        baseline_experiments.evaluate()
+            baseline_experiments.fit()
+            baseline_experiments.evaluate()
+
+
 
 def launch_baseline_on_embedding(configs):
     for i, config in enumerate(configs):

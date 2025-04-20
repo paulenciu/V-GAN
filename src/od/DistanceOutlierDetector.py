@@ -17,12 +17,10 @@ class DistanceOutlierDetector(BaseOutlierDetector):
 
     def fit(self, subspaces, x_train):
         self.subspaces = subspaces
-        train_decision_scores = self.decision_score(x_train)
-        self.train_score_max = np.percentile(train_decision_scores, 95)
-        self.train_score_std = np.std([x for x in train_decision_scores if x <= self.train_score_max]) + 1e-10
+        #train_decision_scores = self.decision_score(x_train)
+        #self.train_score_max = np.percentile(train_decision_scores, 95)
+        #self.train_score_std = np.std([x for x in train_decision_scores if x <= self.train_score_max]) + 1e-10
 
-        # self.train_score_max = np.max(train_decision_scores)
-        # self.train_score_std = np.std(train_decision_scores) + 1e-10
 
     def decision_score(self, x_test):
         decision_time_start = time.time()
@@ -45,11 +43,12 @@ class DistanceOutlierDetector(BaseOutlierDetector):
         return self.decision_scores
 
     def scale_scores(self, x):
-
-        if self.train_score_max is None:
-            return x
-
-        return torch.nn.functional.sigmoid((x - self.train_score_max) / self.train_score_std)
+        return x
+        #
+        # if self.train_score_max is None:
+        #     return x
+        #
+        # return torch.nn.functional.sigmoid((x - self.train_score_max) / self.train_score_std)
 
 
     def get_model_description(self):

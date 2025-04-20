@@ -11,6 +11,7 @@ from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3
 from src.utils.Plotter import tensor_to_image
 from src.utils.logger.od.EnsembleDetectionLogger import EnsembleDetectionLogger
 from src.utils.logger.od.OutlierDetectionBenchmarkLogger import OutlierDetectionBenchmarkLogger
+from src.utils.preprocessing import no_preprocessing
 from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.utils.logger.od.OutlierDetectionLogger import OutlierDetectionLogger
 from src.vmmd.outlier_detection.VMMDOD import VMMDOD
@@ -20,7 +21,7 @@ from sklearn.metrics import average_precision_score, f1_score
 
 class OutlierDetectionExperiment:
 
-    def __init__(self, vmmd, od_model: CombinedOutlierDetector, dataset_type, category, image_size_train, standardize_data=False, image_size_od=None, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
+    def __init__(self, vmmd, od_model: CombinedOutlierDetector, dataset_type, category, image_size_train, standardize_data=False, image_size_od=None, preprocessing_fn=no_preprocessing, n_subspaces_sample=500):
         self.vmmd = vmmd
         self.vmmd_od = VMMDOD(vmmd)
         self.vmmd_wrapper = VMMDWrapper(vmmd)

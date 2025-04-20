@@ -1,3 +1,4 @@
+import gc
 import time
 import numpy as np
 import random
