@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from datetime import datetime
 from pathlib import Path
@@ -20,7 +22,7 @@ class VMMDOD:
         fig.savefig(file_path, format="pdf", bbox_inches="tight")
 
 
-    def store_od_stats(self, stats: dict, run_number: int):
+    def store_od_stats(self, stats: dict, run_number: int | str):
         print("Stats: ", stats)
         path_to_directory = Path(self.vmmd.path_to_directory)
 

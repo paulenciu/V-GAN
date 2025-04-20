@@ -87,7 +87,7 @@ class MyopicAttentionTable(AbstractTable):
 
         # GETTING anomalib scores
         fs_methods = ["PADIM", "DFM", "STFPM"]
-        if metric == "auc" and dataset_type != DatasetType.OCCCIFAR10:
+        if metric == "auc" and dataset_type:
             anomalib_df = pd.read_csv(anomalib_benchmark_file)
             category_rows = anomalib_df[
                 anomalib_df["category"].str.lower() == category.lower()

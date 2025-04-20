@@ -10,7 +10,7 @@ from src.run.embeddingspace.EODEncodedBaselineExperiment import \
     EODEncodedBaselineExperiment
 from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
 from src.run.pixelspace.PODBaselineExperiment import PODBaselineExperiment
-from src.utils.preprocessing import normalize_images
+from src.utils.preprocessing import normalize_images, no_preprocessing
 
 fashionmnist_categories = [
     "T-shirt/top",
@@ -18,11 +18,11 @@ fashionmnist_categories = [
     "Pullover",
     "Dress",
     "Coat",
-    # "Sandal",
-    # "Shirt",
-    # "Sneaker",
-    # "Bag",
-    # "Ankle boot"
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "Bag",
+    "Ankle boot"
 ]
 
 mvtec_categories = [
@@ -140,8 +140,9 @@ def launch_all_baseline_experiments_fs(od_model):
                 category=category,
                 image_size_od=image_size_od,
                 standardize_data=False,
-                preprocessing_fn=normalize_images,
                 od_model=od_model,
+                preprocessing_fn=no_preprocessing,
+                root_dir="../experiments/od_baselines/pixelspace/unnormalized",
             )
             for category in categories
         ]

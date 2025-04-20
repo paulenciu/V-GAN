@@ -10,6 +10,7 @@ from src.data.dataset_loader import load_data
 from src.data.dataset_type import DatasetType
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
+from src.od.DistanceOutlierDetector import DistanceOutlierDetector
 from src.run.embeddingspace.EODExperiment import EODExperiment
 from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
 from src.run.pixelspace.OutlierDetectionExperiment import OutlierDetectionExperiment
@@ -120,7 +121,7 @@ def launch_vmmd_embedding_space_config(configs):
         experiement = EODEncodedExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[config.ens_base_estimator],
+                base_estimators=[LUNAR(), LOF(), KNN()],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
@@ -163,15 +164,16 @@ def launch_vmmd_embedding_config(configs):
         experiement.fit()
         experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
 
-def rerun_od_experiments():
-    root_dir = Path("../experiments/remote/12-03/")
+def rerun_od_experiments(exp_date="21-03"):
+    root_dir = Path("../experiments/remote") / exp_date
     for mvtec_category in mvtec_categories:
         prefix = str(DatasetType.MVTEC_AD.name) + "[" + str(mvtec_category) + "]"
 
         for dir in root_dir.iterdir():
             if dir.stem.startswith(prefix):
 
-                config = [VMMDBaseConfiguration(
+                config = [
+                    VMMDBaseConfiguration(
                     dataset_type=DatasetType.MVTEC_AD,
                     dateset_category=mvtec_category,
                     image_size_od=(256,256),
@@ -182,7 +184,7 @@ def rerun_od_experiments():
 
                 path_to_generator =  str(dir / "models" / "generator_1.pt")
 
-                pretrained_vmmd_experiment(config, path_to_generator)
+                pretrained_vmmd_experiment(config, path_to_generator, run_number=1)
 
     for fashionmnist_category in fashionmnist_categories:
         prefix = str(DatasetType.OCCFMNIST.name) + "[" + str(fashionmnist_category) + "]"
@@ -197,9 +199,9 @@ def rerun_od_experiments():
                     n_subspace_sample=100
                 )]
 
-                path_to_generator = str(dir / "models" / "generator_1.pt")
+                path_to_generator = str(dir / "models" / "generator_1.pt", )
 
-                pretrained_vmmd_experiment(config, path_to_generator)
+                pretrained_vmmd_experiment(config, path_to_generator, run_number=1)
 
     for cifar_category in cifar10_classes:
         prefix = str(DatasetType.OCCCIFAR10.name) + "[" + str(cifar_category) + "]"
@@ -215,7 +217,7 @@ def rerun_od_experiments():
                 )]
 
                 path_to_generator = str(dir / "models" / "generator_1.pt")
-                pretrained_vmmd_experiment(config, path_to_generator)
+                pretrained_vmmd_experiment(config, path_to_generator, run_number=1)
 
 def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
     for i, config in enumerate(configs):
@@ -248,6 +250,22 @@ def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
 
 def launch_all_od_experiments():
     configs = [VMMDTestConfiguration()]
+
+    for fashionmnist_category in fashionmnist_categories:
+        config = [VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCFMNIST,
+            dateset_category=fashionmnist_category,
+            image_size_od=(28,28),
+            image_size_generator=(28,28),
+            image_size_train=(28,28),
+            preprocessing_fn=normalize_features,
+            standardize_data=False,
+            n_subspace_sample=100,
+            ens_base_estimator=None
+
+        )]
+        launch_vmmd_experiment(config)
+
     launch_vmmd_experiment(configs)
     for mvtec_category in mvtec_categories:
             config = [
@@ -265,21 +283,6 @@ def launch_all_od_experiments():
 
             launch_vmmd_experiment(config)
 
-    for fashionmnist_category in fashionmnist_categories:
-        config = [VMMDBaseConfiguration(
-            dataset_type=DatasetType.OCCFMNIST,
-            dateset_category=fashionmnist_category,
-            image_size_od=(28,28),
-            image_size_generator=(28,28),
-            image_size_train=(28,28),
-            preprocessing_fn=normalize_features,
-            standardize_data=False,
-            n_subspace_sample=100,
-            ens_base_estimator=None
-
-        )]
-        launch_vmmd_experiment(config)
-
     for cifar_category in cifar10_classes:
         config = [VMMDBaseConfiguration(
             dataset_type=DatasetType.OCCCIFAR10,
@@ -293,8 +296,85 @@ def launch_all_od_experiments():
 
         launch_vmmd_experiment(config)
 
+def rerun_od_distance_experiments(exp_date="21-03"):
+    root_dir = Path("../experiments/remote") / exp_date
+    for mvtec_category in mvtec_categories:
+        prefix = str(DatasetType.MVTEC_AD.name) + "[" + str(mvtec_category) + "]"
 
-def pretrained_vmmd_experiment(configs, path_to_pretrained_model):
+        for dir in root_dir.iterdir():
+            if dir.stem.startswith(prefix):
+
+                config = [VMMDBaseConfiguration(
+                    dataset_type=DatasetType.MVTEC_AD,
+                    dateset_category=mvtec_category,
+                    image_size_od=(256,256),
+                    preprocessing_fn=normalize_images,
+                    standardize_data=False,
+                    n_subspace_sample=100
+                )]
+
+                path_to_generator =  str(dir / "models" / "generator_1.pt")
+
+                pretrained_vmmd_distance_experiment(config, path_to_generator, run_number="distance")
+
+    for fashionmnist_category in fashionmnist_categories:
+        prefix = str(DatasetType.OCCFMNIST.name) + "[" + str(fashionmnist_category) + "]"
+        for dir in root_dir.iterdir():
+            if dir.stem.startswith(prefix):
+                config = [VMMDBaseConfiguration(
+                    dataset_type=DatasetType.OCCFMNIST,
+                    dateset_category=fashionmnist_category,
+                    image_size_od=(28,28),
+                    preprocessing_fn=normalize_images,
+                    standardize_data=False,
+                    n_subspace_sample=100
+                )]
+
+                path_to_generator = str(dir / "models" / "generator_1.pt", )
+
+                pretrained_vmmd_distance_experiment(config, path_to_generator, run_number="distance")
+
+    for cifar_category in cifar10_classes:
+        prefix = str(DatasetType.OCCCIFAR10.name) + "[" + str(cifar_category) + "]"
+        for dir in root_dir.iterdir():
+            if dir.stem.startswith(prefix):
+                config = [VMMDBaseConfiguration(
+                    dataset_type=DatasetType.OCCCIFAR10,
+                    dateset_category=cifar_category,
+                    image_size_od=(32,32),
+                    preprocessing_fn=normalize_images,
+                    standardize_data=False,
+                    n_subspace_sample=100
+                )]
+
+                path_to_generator = str(dir / "models" / "generator_1.pt")
+                pretrained_vmmd_distance_experiment(config, path_to_generator, run_number="distance")
+
+def pretrained_vmmd_distance_experiment(configs, path_to_pretrained_model, run_number=1):
+    for i, config in enumerate(configs):
+        vmmd = VMMDDiagonal1Channel(
+            epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
+            lr=config.lr, penalty=config.penalty, filename=config.filename,
+            batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
+            autoencoder=config.autoencoder, generator=config.generator
+        )
+
+        if config.ens_base_estimator:
+            experiement = OutlierDetectionExperiment(
+                vmmd=vmmd,
+                od_model=DistanceOutlierDetector(config.preprocessing_fn),
+                dataset_type=config.dataset_type,
+                category=config.dateset_category,
+                image_size_train=config.image_size_train,
+                image_size_od=config.image_size_od,
+                standardize_data=config.standardize_data,
+                preprocessing_fn=config.preprocessing_fn,
+                n_subspaces_sample=config.n_subspace_sample
+            )
+            experiement.fit_pretrained_model(path_to_pretrained_model)
+            experiement.evaluate(run_number=run_number)
+
+def pretrained_vmmd_experiment(configs, path_to_pretrained_model, run_number=1):
     for i, config in enumerate(configs):
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
 
@@ -305,24 +385,41 @@ def pretrained_vmmd_experiment(configs, path_to_pretrained_model):
             autoencoder=config.autoencoder, generator=config.generator
         )
 
-        experiement = OutlierDetectionExperiment(
-            vmmd=vmmd,
-            od_model=CombinedOutlierDetector(
-                base_estimators=[config.ens_base_estimator],
-                vmmd=vmmd, max_n_jobs=-1,
-                preprocessing_fn=config.preprocessing_fn
-            ),
-            dataset_type=config.dataset_type,
-            category=config.dateset_category,
-            image_size_train=config.image_size_train,
-            image_size_od=config.image_size_od,
-            standardize_data=config.standardize_data,
-            preprocessing_fn=config.preprocessing_fn,
-            n_subspaces_sample=config.n_subspace_sample
-        )
+        if config.ens_base_estimator:
+            experiement = OutlierDetectionExperiment(
+                vmmd=vmmd,
+                od_model=CombinedOutlierDetector(
+                    base_estimators=[config.ens_base_estimator],
+                    vmmd=vmmd, max_n_jobs=-1,
+                    preprocessing_fn=config.preprocessing_fn
+                ),
+                dataset_type=config.dataset_type,
+                category=config.dateset_category,
+                image_size_train=config.image_size_train,
+                image_size_od=config.image_size_od,
+                standardize_data=config.standardize_data,
+                preprocessing_fn=config.preprocessing_fn,
+                n_subspaces_sample=config.n_subspace_sample
+            )
+        else:
+            experiement = OutlierDetectionExperiment(
+                vmmd=vmmd,
+                od_model=CombinedOutlierDetector(
+                    base_estimators=[LUNAR(), LOF(), KNN()],
+                    vmmd=vmmd, max_n_jobs=-1,
+                    preprocessing_fn=config.preprocessing_fn
+                ),
+                dataset_type=config.dataset_type,
+                category=config.dateset_category,
+                image_size_train=config.image_size_train,
+                image_size_od=config.image_size_od,
+                standardize_data=config.standardize_data,
+                preprocessing_fn=config.preprocessing_fn,
+                n_subspaces_sample=config.n_subspace_sample
+            )
 
         experiement.fit_pretrained_model(path_to_pretrained_model)
-        experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+        experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0, run_number=run_number)
 
 def run_all_vmmd_od_benchmark():
     root_dir = Path("../experiments/remote/21-03/")

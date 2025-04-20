@@ -12,6 +12,10 @@ class AbstractTable(ABC):
     def generate_table(self, metric="auc"):
         pass
 
+    def is_comb_model(self, row, ens_weight):
+        od_model = row["OD Method"]
+        od_dict = ast.literal_eval(od_model)
+        return round(od_dict["Ensemble Description"]["ensemble weight"], 1) == ens_weight
 
     def is_fs_model(self, row):
         od_model = row["OD Method"]

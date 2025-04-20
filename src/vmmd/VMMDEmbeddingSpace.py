@@ -151,7 +151,7 @@ class VMMDEmbeddingSpace(VMMD):
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
         loss_function = MMDLossConstrained(penalty=self.penalty, kernel=self.kernel)
         total_training_time = 0.0
-        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.5 * i * self.epochs) for i in range(1, 11)]
 
 
         for epoch in range(self.epochs):
@@ -209,4 +209,4 @@ class VMMDEmbeddingSpace(VMMD):
 
         return projection if is_embedding else interpolate(
             self.decoder(projection.view(projection.size(0), *self.decoder_input_shape).cpu()), size=output_image_size,
-            mode="bilinear")
+            mode="bilinear") if self.decoder_available else None

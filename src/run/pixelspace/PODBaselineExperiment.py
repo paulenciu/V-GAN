@@ -1,4 +1,5 @@
 import datetime
+from os import mkdir
 from pathlib import Path
 
 import numpy as np
@@ -54,6 +55,7 @@ class PODBaselineExperiment:
             combined_data = pd.concat([existing_data, od_stats], ignore_index=True)
             combined_data.to_csv(file_path, index=False)
         else:
+            os.makedirs(path_to_dir, exist_ok=True)
             od_stats.to_csv(file_path, index=False)
 
     def calculate_od_stats(self,y_test, decision_scores):
