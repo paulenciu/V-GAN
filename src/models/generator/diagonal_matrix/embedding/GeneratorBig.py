@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from src.models.generator.AbstractGenerator import AbstractGenerator
 from src.models.Generator import UpperSoftmax1D
+from torch.nn.utils.parametrizations import spectral_norm
 
 
 class GeneratorBig(AbstractGenerator):
@@ -22,7 +23,6 @@ class GeneratorBig(AbstractGenerator):
             nn.Linear(latent_size, 2 * latent_size),
             nn.BatchNorm1d(2 * latent_size),
             nn.LeakyReLU(),
-
 
             nn.Linear(2 * latent_size, 4 * latent_size),
             nn.BatchNorm1d(4 * latent_size),

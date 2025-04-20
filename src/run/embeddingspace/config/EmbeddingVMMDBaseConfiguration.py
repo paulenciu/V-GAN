@@ -1,13 +1,14 @@
 from pyod.models.lunar import LUNAR
 
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet18AutoEncoder import ResNet18AutoEncoder
+from src.models.generator.diagonal_matrix.embedding.GOCCNN import GOCCNN
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import GeneratorRes50Conv
 
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelV4Softmax import GeneratorOneChannelV4Softmax
 from src.utils.preprocessing import normalize_images_col_softmax, normalize_features, normalize_images, no_preprocessing
-from src.vmmd.MMDLossConstrained import RBF
+from src.vmmd.MMDLossConstrained import RBF, MixtureRQLinear
 from src.utils.preprocessing import no_preprocessing
 from src.vmmd.penalty.MMDLossPenalty import MMDLossNoPenalty
 
@@ -16,7 +17,7 @@ class EmbeddingVMMDBaseConfiguration:
 
     def __init__(self, lr = 0.001,
                 latent_size = 128,
-                epochs = 2000,
+                epochs = 4000,
                 batch_size = 1024,
                 store_stats = True,
                 penalty = MMDLossNoPenalty(),
@@ -37,10 +38,10 @@ class EmbeddingVMMDBaseConfiguration:
                 add_to_title: str=None,
                 ens_base_estimator=LUNAR(),
                 set_decoder_eval=True,
-                kernel = RBF()
+                kernel = MixtureRQLinear()
                 ):
 
-        self.generator = generator or GeneratorRes50Conv(latent_size=latent_size)
+        self.generator = generator
         self.autoencoder = autoencoder
         self.lr = lr
         self.epochs = epochs
