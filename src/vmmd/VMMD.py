@@ -6,6 +6,9 @@ from typing import Union
 import torch
 from collections import defaultdict
 
+from src.utils.utils import morphological_erosion
+from src.utils.utils import batch_crop_and_resize_softmax, rgb_to_ycbcr, large_sobel
+from torch.optim.adadelta import Adadelta
 from torch.optim import Adadelta
 from torch.profiler import profile
 
@@ -39,7 +42,7 @@ class VMMD(ABC):
     """
 
     def __init__(self, filename, autoencoder, generator: AbstractGenerator, batch_size=500, epochs=30, lr=0.007, momentum=0.99, seed=None, weight_decay=0.04,
-                 path_to_directory= Path(os.getcwd()).parent / "experiments" / "local", penalty=MMDLossNoPenalty()):
+                 path_to_directory= Path(os.getcwd()).parent / "experiments" / "local", penalty=MMDLossNoPenalty(), kernel=RBF()):
         self.autoencoder = autoencoder
         self.generator = None
         self.penalty = penalty
@@ -59,6 +62,7 @@ class VMMD(ABC):
         self.device = torch.device('cuda:0' if torch.cuda.is_available(
         ) else 'mps:0' if torch.backends.mps.is_available() else 'cpu')
         self.logger_subscriber: list[IVMMDLogger] = []
+        self.kernel = kernel
 
     @abstractmethod
     def sample_count_subspaces(self, count):
@@ -95,13 +99,10 @@ class VMMD(ABC):
         count = min(count, len(x_data))
         results = []
 
-        n_channels, height, width = x_data.shape[1:]
-
         with torch.no_grad():
             x_sample = next(iter(DataLoader(x_data, batch_size=count))).to(self.device)
             noise = torch.randn(count, *self.generator.noise_dim, device=self.device)
             u_mappings = self.generator.sample_subspace_masks(noise)
-
             ux_sample = self.apply_subspaces_operator(x_sample, u_mappings)
 
             x_embeddings = self.encode(x_sample)
@@ -110,7 +111,7 @@ class VMMD(ABC):
         if type(bandwidth) == float:
             bandwidth = [bandwidth]
 
-        mmd_loss = MMDLossConstrained()
+        mmd_loss = MMDLossConstrained(kernel=self.kernel)
 
         mmd_loss.forward(x_embeddings, ux_embeddings, u_mappings * 1)
         self.bandwidth = mmd_loss.bandwidth
@@ -119,6 +120,7 @@ class VMMD(ABC):
         print("Bw: ", bw)
         mmd = tts.MMDStatistic(count, count)
         _, distances = mmd(x_embeddings, ux_embeddings, alphas=[bw], ret_matrix=True)
+        distances = distances.to(torch.float32)
         pval = mmd.pval(distances)
         results.append(pval)
         print("Count: ", count, "PVal: ", pval)
@@ -147,19 +149,19 @@ class VMMD(ABC):
             torch.mps.manual_seed(self.seed)
 
     def setup_optimizer_and_scheduler(self):
-        # optimizer = torch.optim.Adam(
-        #     self.generator.parameters(),
-        #     lr=self.lr,
-        #     betas=(0.5, 0.9),
-        #     weight_decay=self.weight_decay
-        # )
-        optimizer = Adadelta(self.generator.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(
+            self.generator.parameters(),
+            lr=self.lr,
+            betas=(0.5, 0.9),
+            weight_decay=self.weight_decay
+        )
+        #optimizer = Adadelta(self.generator.parameters(), lr=self.lr)
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
         return optimizer, scheduler
 
     def setup_data_loader(self, dataset, preprocess_fn=normalize_features, **preprocess_kwargs):
         n_channels, height, width = dataset.shape[1:]
-        flattened_images = dataset.view(dataset.shape[0], -1).cpu().numpy()
+        flattened_images = dataset.clone().view(dataset.shape[0], -1).cpu().numpy()
         x_flattened_preprocessed = torch.from_numpy(
             preprocess_fn(flattened_images, **preprocess_kwargs)).float()
         unflattened_images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
@@ -184,10 +186,10 @@ class VMMD(ABC):
         optimizer, scheduler = self.setup_optimizer_and_scheduler()
         data_loader = self.setup_data_loader(dataset, preprocess_fn=preprocess_fn)
 
-        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=MixtureRQLinear())
+        loss_function = MMDLossConstrained(penalty=self.penalty, kernel=self.kernel)
         total_training_time = 0.0
         snapshot_duration = 0.0
-        snapshot_intervals = [int(0.5 * i * self.epochs) for i in range(1, 11)]
+        snapshot_intervals = [int(0.1 * i * self.epochs) for i in range(1, 11)]
 
         for epoch in range(self.epochs):
             print(f'\rEpoch {epoch} of {self.epochs}')
@@ -203,10 +205,40 @@ class VMMD(ABC):
                 noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
                 u_mappings = self.generator.sample_subspace_masks(noise)
 
+                batch_clone = batch.clone().detach()
+                #batch_clone = torch.nn.functional.pad(batch_clone, (2, 2, 2, 2), mode='replicate')  # for 5×5 kernel
+                batch_clone = torch.nn.functional.pad(batch_clone, (1, 1, 1, 1), mode='replicate')  # for 5×5 kernel
+
+                # Sobel X
+                sobel_x = torch.tensor([
+                                           [[[-1., 0., 1.],
+                                             [-2., 0., 2.],
+                                             [-1., 0., 1.]]]
+                                       ] * 3).to(self.device)
+
+                # Sobel Y
+                sobel_y = sobel_x.transpose(-1, -2)
+
+                # Sobel gradients
+                grad_x = torch.nn.functional.conv2d(batch_clone, sobel_x, padding=0, groups=3)
+                grad_y = torch.nn.functional.conv2d(batch_clone, sobel_y, padding=0, groups=3)
+                sobel_mag = torch.sqrt(grad_x ** 2 + grad_y ** 2)
+                sobel_mag = torch.abs(sobel_mag)
+                sobel_mag = torch.mean(sobel_mag, dim=1).unsqueeze(1).repeat(1, 3, 1, 1)
+
+                mask = torch.greater(sobel_mag, 0.0)
+
+                # erosion_mask = morphological_erosion(mask, kernel_size=9)
+
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
+
+
+                batch = batch * mask
+                processed_batch = processed_batch * mask
+                embedding = self.encode(batch)
                 embedded_processed_batch = self.encode(processed_batch)
 
-                batch_loss, mmd_loss = loss_function(embeddings, embedded_processed_batch, u_mappings)
+                batch_loss, mmd_loss = loss_function(embedding, embedded_processed_batch, u_mappings)
                 mmd_loss = batch_loss
                 batch_loss.backward()
                 optimizer.step()

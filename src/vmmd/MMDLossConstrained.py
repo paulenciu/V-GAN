@@ -55,6 +55,46 @@ class RationalQuadratic(nn.Module):
         L2_distances = torch.cdist(X, X) ** 2
         return (1 + L2_distances / (2 * self.alpha)) ** (-self.alpha)
 
+class MixtureRQ(nn.Module):
+
+    def get_bandwidth(self, L2_distances):
+        n_samples = L2_distances.shape[0]
+        self.bandwidth = L2_distances.data.sum() / (n_samples ** 2 - n_samples)
+        return L2_distances.data.sum() / (n_samples ** 2 - n_samples)
+
+    def __init__(self, alphas=[0.2, 0.5, 1.0, 2.0, 5]):
+        """
+        Mixture of Rational Quadratic Kernels with a Linear Kernel.
+
+        Args:
+            alphas (list of float): List of alpha values for the RQ kernels.
+                                   Each alpha corresponds to a different RQ kernel.
+            linear_weight (float): Weight for the linear kernel.
+        """
+        super().__init__()
+        self.alphas = alphas
+
+    def forward(self, X):
+        """
+        Compute the mixture of RQ kernels and linear kernel.
+
+        Args:
+            X (torch.Tensor): Input tensor of shape (n_samples, n_features).
+
+        Returns:
+            torch.Tensor: Combined kernel matrix of shape (n_samples, n_samples).
+        """
+        L2_distances = torch.cdist(X, X) ** 2
+        self.bandwidth = self.get_bandwidth(L2_distances)
+
+        rq_kernels = []
+        for alpha in self.alphas:
+            rq_kernel = (1 + L2_distances / (2 * alpha)) ** (-alpha)
+            rq_kernels.append(rq_kernel)
+
+        rq_mixture = torch.sum(torch.stack(rq_kernels), dim=0)
+
+        return rq_mixture
 
 class MixtureRQLinear(nn.Module):
 
@@ -107,7 +147,7 @@ class MMDLossConstrained(nn.Module):
     Constrained loss by the number of features selected
     '''
 
-    def     __init__(self, kernel=RBF(), penalty=MMDLossNoPenalty()):
+    def __init__(self, kernel=RBF(), penalty=MMDLossNoPenalty()):
         super().__init__()
         self.kernel = kernel
         self.penalty = penalty
