@@ -1,3 +1,4 @@
+import gc
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +23,7 @@ from sklearn.metrics import average_precision_score, f1_score
 
 class EODEncodedExperiment:
 
-    def __init__(self, vmmd: VMMDEmbeddingSpace, od_model: CombinedOutlierDetector, dataset_type, category,
+    def __init__(self, vmmd: VMMDEmbeddingSpace, od_model, dataset_type, category,
                  standardize_data=False, preprocessing_fn=lambda x: x, n_subspaces_sample=500):
         self.vmmd = vmmd
         self.od_model = od_model
@@ -62,28 +63,38 @@ class EODEncodedExperiment:
         x_train = torch.from_numpy(self.preprocessing_fn(x_train)).float()
         x_train = unflatten_images_3d(x_train, n_channels, height, width)
         x_train = PreEmbeddedDataset(x_train, self.vmmd.encoder, "cpu")
-        self.od_model.fit(subspaces=subspaces, x_train=x_train.embeddings.detach().cpu().numpy())
-        del x_train
+        x_train_embeddings = x_train.embeddings.detach().cpu().numpy()
+        self.od_model.fit(subspaces=subspaces, x_train=x_train_embeddings)
+
+        del x_train, x_train_embeddings
 
     def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step):
+        gc.collect()
         # CALCULATE OD SCORES
+        print("Loading test data")
         x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
                                    image_size=self.image_size_train, standardize=self.standardize_data, train=False)
-
+        print("Done")
         n_channels, height, width = x_test.shape[1:]
         x_test_flattened = x_test.view(x_test.shape[0], -1).cpu().numpy()
+
+        print("preprocessing the data")
         x_test_flattened = torch.from_numpy(self.preprocessing_fn(x_test_flattened))
         x_test = unflatten_images_3d(x_test_flattened, n_channels, height, width)
+        print("Done")
+        print("embedding the data")
         x_test = PreEmbeddedDataset(x_test, self.vmmd.encoder, "cpu")
+        print("done with embedding data")
         x_test_embeddings = x_test.embeddings.detach().cpu().numpy()
+        print("copying embedding tensor")
+
+        del x_test, x_test_flattened
+
         y_test = np.array(y_test)
 
-        #        self.ens_logger.log(x_test_embeddings, y_test)
-        self.od_logger.log(x_test_embeddings, y_test)
         decision_scores, descriptions = self.od_model.decision_score_interval(x_test_embeddings,
                                                                               ensemble_weight_start,
                                                                               ensemble_weight_end, step)
-
         od_stats_list = []
 
         for i, ds in enumerate(decision_scores):

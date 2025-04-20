@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 class SyntheticImageDataset(Dataset):
 
-    def __init__(self, root_dir, inlier_category=None, transform=None, train=True, image_size=(64, 64), normalize=False):
+    def __init__(self, root_dir, inlier_category=None, transform=None, train=True, image_size=(224, 224), normalize=False):
         """
         Initialize the data.
 

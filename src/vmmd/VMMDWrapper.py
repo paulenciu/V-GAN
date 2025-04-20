@@ -25,7 +25,7 @@ class VMMDWrapper:
         if len(logger) == 0:
             self.vmmd.add_logger_subscriber(TrainingLogger(vmmd, base_dir=base_dir))
             #self.vmmd.add_logger_subscriber(GradiantPlotter(vmmd))
-            self.vmmd.add_logger_subscriber(SubspaceDistributionPlotter(vmmd, base_dir=base_dir))
+            #self.vmmd.add_logger_subscriber(SubspaceDistributionPlotter(vmmd, base_dir=base_dir))
             self.vmmd.add_logger_subscriber(SubspaceProjectionPlotter(vmmd, base_dir=base_dir))
         else:
             for logger in logger:

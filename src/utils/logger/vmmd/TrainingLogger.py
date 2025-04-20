@@ -166,5 +166,5 @@ class TrainingLogger(IVMMDLogger):
 
     def __update_model_parms(self, run_number=0):
         pass
-        # torch.save(self.vmmd.generator.state_dict(),
-        #            self.path_to_model_params / f'generator_{run_number}.pt')
+        torch.save(self.vmmd.generator.state_dict(),
+                   self.path_to_model_params / f'generator_{run_number}.pt')

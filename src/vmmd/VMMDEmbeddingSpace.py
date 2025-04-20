@@ -80,7 +80,7 @@ class VMMDEmbeddingSpace(VMMD):
             embeddings = self.encode(x_sample)
 
             noise = torch.randn(count, *self.generator.noise_dim, device=self.device)
-            u_mappings = self.generator.sample_subspace_masks(noise)
+            u_mappings = self.generator.sample_subspace_masks(noise, mode="test")
 
             processed_embeddings = embeddings * u_mappings
 
@@ -165,7 +165,7 @@ class VMMDEmbeddingSpace(VMMD):
                 optimizer.zero_grad()
 
                 noise = torch.randn(images.size(0), *self.generator.noise_dim, device=self.device)
-                u_mappings = self.generator.sample_subspace_masks(noise).view(images.size(0), -1)
+                u_mappings = self.generator.sample_subspace_masks(noise)
 
                 processed_embedding = self.apply_subspaces_operator(embeddings, u_mappings, is_embedding=True)
 

@@ -129,7 +129,7 @@ def launch_vmmd_embedding_space_config(configs):
             category=config.dateset_category,
             standardize_data=config.standardize_data,
             preprocessing_fn=config.preprocessing_fn,
-            n_subspaces_sample=config.n_subspace_sample
+            n_subspaces_sample=config.n_subspace_sample,
         )
 
         experiement.fit()
@@ -150,9 +150,10 @@ def launch_vmmd_embedding_config(configs):
         experiement = EODExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[config.ens_base_estimator],
-                vmmd=vmmd, max_n_jobs=1,
-                preprocessing_fn=config.preprocessing_fn
+                    vmmd=vmmd,
+                    preprocessing_fn=config.preprocessing_fn,
+                    base_estimators=[LUNAR(), LOF(), KNN()],
+                    max_n_jobs=4
             ),
             dataset_type=config.dataset_type,
             category=config.dateset_category,
@@ -275,12 +276,11 @@ def launch_all_od_experiments():
                 image_size_generator=(64, 64),
                 image_size_train=(256,256),
                 image_size_od=(256,256),
-                preprocessing_fn=normalize_features,
                 standardize_data=False,
+                preprocessing_fn=normalize_features,
                 n_subspace_sample=100,
-                ens_base_estimator=None
+                ens_base_estimator=None,
             )]
-
             launch_vmmd_experiment(config)
 
     for cifar_category in cifar10_classes:
@@ -516,7 +516,7 @@ def launch_vmmd_experiment(configs):
             epochs=config.epochs, seed=config.seed, path_to_directory=config.path_to_directory,
             lr=config.lr, penalty=config.penalty, filename=config.filename,
             batch_size=config.batch_size, momentum=config.momentum, weight_decay=config.weight_decay,
-            autoencoder=config.autoencoder, generator=config.generator
+            autoencoder=config.autoencoder, generator=config.generator, kernel=config.kernel
         )
 
         if config.ens_base_estimator is not None:
@@ -539,22 +539,21 @@ def launch_vmmd_experiment(configs):
             experiement.fit()
             experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
         else:
-            for ens_model in [LUNAR(), LOF(), KNN()]:
-                experiement = OutlierDetectionExperiment(
-                    vmmd=vmmd,
-                    od_model=CombinedOutlierDetector(
-                        base_estimators=[ens_model],
-                        vmmd=vmmd, max_n_jobs=-1,
-                        preprocessing_fn=config.preprocessing_fn
-                    ),
-                    dataset_type=config.dataset_type,
-                    category=config.dateset_category,
-                    image_size_train=config.image_size_train,
-                    image_size_od=config.image_size_od,
-                    standardize_data=config.standardize_data,
-                    preprocessing_fn=config.preprocessing_fn,
-                    n_subspaces_sample=config.n_subspace_sample
-                )
+            experiement = OutlierDetectionExperiment(
+                vmmd=vmmd,
+                od_model=CombinedOutlierDetector(
+                    base_estimators=[LUNAR(), LOF(), KNN()],
+                    vmmd=vmmd, max_n_jobs=-1,
+                    preprocessing_fn=config.preprocessing_fn
+                ),
+                dataset_type=config.dataset_type,
+                category=config.dateset_category,
+                image_size_train=config.image_size_train,
+                image_size_od=config.image_size_od,
+                standardize_data=config.standardize_data,
+                preprocessing_fn=config.preprocessing_fn,
+                n_subspaces_sample=config.n_subspace_sample
+            )
 
-                experiement.fit()
-                experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+            experiement.fit()
+            experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
