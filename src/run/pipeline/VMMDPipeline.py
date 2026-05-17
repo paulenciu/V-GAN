@@ -8,15 +8,18 @@ from pyod.models.lunar import LUNAR
 
 from src.data.dataset_loader import load_data
 from src.data.dataset_type import DatasetType
+from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet18AutoEncoder import ResNet18AutoEncoder
 from src.models.encoder.IdentityEncoder import IdentityEncoder
+from src.models.encoder.ViTransformer import ViTransformer
 from src.od.CombinedOutlierDetector import CombinedOutlierDetector
 from src.od.DistanceOutlierDetector import DistanceOutlierDetector
 from src.run.embeddingspace.EODExperiment import EODExperiment
 from src.run.embeddingspace.EODEncodedExperiment import EODEncodedExperiment
+from src.run.embeddingspace.config.EmbeddingVMMDBaseConfiguration import EmbeddingVMMDBaseConfiguration
 from src.run.pixelspace.OutlierDetectionExperiment import OutlierDetectionExperiment
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
-from src.utils.preprocessing import normalize_images, normalize_features
+from src.utils.preprocessing import normalize_images, normalize_features, no_preprocessing
 from src.vmmd.VMMDEmbedding import VMMDEmbedding
 from src.vmmd.VMMDEmbeddingSpace import VMMDEmbeddingSpace
 from src.vmmd.VMMDWrapper import VMMDWrapper
@@ -121,7 +124,7 @@ def launch_vmmd_embedding_space_config(configs):
         experiement = EODEncodedExperiment(
             vmmd=vmmd,
             od_model=CombinedOutlierDetector(
-                base_estimators=[LUNAR(), LOF(), KNN()],
+                base_estimators=[LUNAR(), LOF()],
                 vmmd=vmmd, max_n_jobs=1,
                 preprocessing_fn=config.preprocessing_fn
             ),
@@ -133,7 +136,7 @@ def launch_vmmd_embedding_space_config(configs):
         )
 
         experiement.fit()
-        experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+        experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0, run_number=1)
 
 
 def launch_vmmd_embedding_config(configs):
@@ -167,42 +170,25 @@ def launch_vmmd_embedding_config(configs):
 
 def rerun_od_experiments(exp_date="21-03"):
     root_dir = Path("../experiments/remote") / exp_date
-    for mvtec_category in mvtec_categories:
-        prefix = str(DatasetType.MVTEC_AD.name) + "[" + str(mvtec_category) + "]"
-
-        for dir in root_dir.iterdir():
-            if dir.stem.startswith(prefix):
-
-                config = [
-                    VMMDBaseConfiguration(
-                    dataset_type=DatasetType.MVTEC_AD,
-                    dateset_category=mvtec_category,
-                    image_size_od=(256,256),
-                    preprocessing_fn=normalize_images,
-                    standardize_data=False,
-                    n_subspace_sample=100
-                )]
-
-                path_to_generator =  str(dir / "models" / "generator_1.pt")
-
-                pretrained_vmmd_experiment(config, path_to_generator, run_number=1)
-
-    for fashionmnist_category in fashionmnist_categories:
-        prefix = str(DatasetType.OCCFMNIST.name) + "[" + str(fashionmnist_category) + "]"
-        for dir in root_dir.iterdir():
-            if dir.stem.startswith(prefix):
-                config = [VMMDBaseConfiguration(
-                    dataset_type=DatasetType.OCCFMNIST,
-                    dateset_category=fashionmnist_category,
-                    image_size_od=(28,28),
-                    preprocessing_fn=normalize_images,
-                    standardize_data=False,
-                    n_subspace_sample=100
-                )]
-
-                path_to_generator = str(dir / "models" / "generator_1.pt", )
-
-                pretrained_vmmd_experiment(config, path_to_generator, run_number=1)
+    # for mvtec_category in mvtec_categories:
+    #     prefix = str(DatasetType.MVTEC_AD.name) + "[" + str(mvtec_category) + "]"
+    #
+    #     for dir in root_dir.iterdir():
+    #         if dir.stem.startswith(prefix):
+    #
+    #             config = [
+    #                 VMMDBaseConfiguration(
+    #                 dataset_type=DatasetType.MVTEC_AD,
+    #                 dateset_category=mvtec_category,
+    #                 image_size_od=(256,256),
+    #                 preprocessing_fn=normalize_images,
+    #                 standardize_data=False,
+    #                 n_subspace_sample=100
+    #             )]
+    #
+    #             path_to_generator =  str(dir / "models" / "generator_1.pt")
+    #
+    #             pretrained_vmmd_experiment(config, path_to_generator, run_number=1)
 
     for cifar_category in cifar10_classes:
         prefix = str(DatasetType.OCCCIFAR10.name) + "[" + str(cifar_category) + "]"
@@ -218,9 +204,97 @@ def rerun_od_experiments(exp_date="21-03"):
                 )]
 
                 path_to_generator = str(dir / "models" / "generator_1.pt")
-                pretrained_vmmd_experiment(config, path_to_generator, run_number=1)
+                pretrained_vmmd_experiment(config, path_to_generator, run_number="unnormalized")
 
-def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
+    for fashionmnist_category in fashionmnist_categories:
+        prefix = str(DatasetType.OCCFMNIST.name) + "[" + str(fashionmnist_category) + "]"
+        for dir in root_dir.iterdir():
+            if dir.stem.startswith(prefix):
+                config = [VMMDBaseConfiguration(
+                    dataset_type=DatasetType.OCCFMNIST,
+                    dateset_category=fashionmnist_category,
+                    image_size_od=(28, 28),
+                    preprocessing_fn=normalize_images,
+                    standardize_data=False,
+                    n_subspace_sample=100
+                )]
+
+                path_to_generator = str(dir / "models" / "generator_1.pt", )
+
+                pretrained_vmmd_experiment(config, path_to_generator, run_number="unnormalized")
+
+
+def rerun_od_experiments_in_embedding_space(exp_date="26-04", run_number=1, method="r18"):
+
+    autoencoder = None
+    if method == "r18":
+        autoencoder = ResNet18AutoEncoder()
+    elif method == "vit":
+        autoencoder = ViTransformer()
+    else:
+        raise RuntimeError(f"Unknown method {method}")
+
+    root_dir = Path("../experiments/remote") / exp_date
+    # for mvtec_category in mvtec_categories:
+    #
+    #     prefix = "embedding_" + str(DatasetType.MVTEC_AD.name) + "[" + str(mvtec_category) + "]"
+    #
+    #     for dir in root_dir.iterdir():
+    #         if dir.stem.startswith(prefix) and dir.suffix.endswith(method):
+    #
+    #             config = [
+    #                 EmbeddingVMMDBaseConfiguration(
+    #                 dataset_type=DatasetType.MVTEC_AD,
+    #                 dateset_category=mvtec_category,
+    #                 preprocessing_fn=no_preprocessing,
+    #                 standardize_data=False,
+    #                 n_subspace_sample=100,
+    #                 ens_base_estimator=None,
+    #                 autoencoder=autoencoder
+    #             )]
+    #
+    #             path_to_generator =  str(dir / "models" / "generator_1.pt")
+    #
+    #             pretrained_vmmd_embedding_experiment(config, path_to_generator, run_number=run_number)
+    #
+    # for cifar_category in cifar10_classes:
+    #     prefix = "embedding_" + str(DatasetType.OCCCIFAR10.name) + "[" + str(cifar_category) + "]"
+    #     for dir in root_dir.iterdir():
+    #         if dir.stem.startswith(prefix) and dir.suffix.endswith(method):
+    #             config = [
+    #                 EmbeddingVMMDBaseConfiguration(
+    #                 dataset_type=DatasetType.OCCCIFAR10,
+    #                 dateset_category=cifar_category,
+    #                 preprocessing_fn=no_preprocessing,
+    #                 standardize_data=False,
+    #                 n_subspace_sample=60,
+    #                 ens_base_estimator=None,
+    #                 autoencoder=autoencoder
+    #             )]
+    #
+    #             path_to_generator = str(dir / "models" / "generator_1.pt")
+    #             pretrained_vmmd_embedding_experiment(config, path_to_generator, run_number=run_number)
+
+    for fashionmnist_category in fashionmnist_categories:
+        prefix = "embedding_" + str(DatasetType.OCCFMNIST.name) + "[" + str(fashionmnist_category) + "]"
+        for dir in root_dir.iterdir():
+            if dir.stem.startswith(prefix) and dir.suffix.endswith(method):
+                config = [
+                    EmbeddingVMMDBaseConfiguration(
+                    dataset_type=DatasetType.OCCFMNIST,
+                    dateset_category=fashionmnist_category,
+                    preprocessing_fn=no_preprocessing,
+                    standardize_data=False,
+                    n_subspace_sample=50,
+                    ens_base_estimator=None,
+                    autoencoder=autoencoder
+                )]
+
+                path_to_generator = str(dir / "models" / "generator_1.pt", )
+
+                pretrained_vmmd_embedding_experiment(config, path_to_generator, run_number=run_number)
+
+def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model, run_number=1):
     for i, config in enumerate(configs):
         print("RUNNING EXPERIMENT", i, " FROM", len(configs))
 
@@ -231,7 +305,7 @@ def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
             autoencoder=config.autoencoder, generator=config.generator
         )
 
-        for ens_model in [LUNAR(), LOF(), KNN()]:
+        for ens_model in [LUNAR(), LOF()]:
             experiement = EODExperiment(
                 vmmd=vmmd,
                 od_model=CombinedOutlierDetector(
@@ -247,7 +321,7 @@ def pretrained_vmmd_embedding_experiment(configs, path_to_pretrained_model):
             )
 
             experiement.fit_pretrained_model(path_to_pretrained_model)
-            experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0)
+            experiement.evaluate_interval(ensemble_weight_start=0, ensemble_weight_end=1, step=1.0 / 10.0, run_number=run_number)
 
 def launch_all_od_experiments():
     configs = [VMMDTestConfiguration()]

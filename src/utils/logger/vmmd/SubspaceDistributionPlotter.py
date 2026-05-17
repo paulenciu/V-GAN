@@ -4,7 +4,6 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 from src.utils.TensorConverter import tensor_to_image
-from src.utils.utils import ycbcr_to_rgb
 from src.vmmd import VMMD
 from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
 

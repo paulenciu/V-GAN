@@ -61,7 +61,7 @@ class EODExperiment:
         self.od_model.fit(subspaces=subspaces, x_train=x_train.embeddings.detach().cpu().numpy())
         del x_train
 
-    def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step):
+    def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step, run_number):
         # CALCULATE OD SCORES
         x_test, y_test = load_data(dataset_type=self.dataset_type, category=self.category,
                                    image_size=self.image_size_train, standardize=self.standardize_data, train=False)
@@ -84,7 +84,7 @@ class EODExperiment:
         for i, ds in enumerate(decision_scores):
             od_stats = self.calculate_od_stats(y_test, ds)
             od_stats["OD Method"] = descriptions[i]
-            self.vmmd_od.store_od_stats(od_stats, run_number=-1)
+            self.vmmd_od.store_od_stats(od_stats, run_number=run_number)
             od_stats_list.append(od_stats)
 
     def fit_pretrained_model(self, path_to_generator: str):

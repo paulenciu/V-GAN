@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.11 (vgan-forked)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (V-GAN)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.14 (V-GAN)" project-jdk-type="Python SDK" />
 </project>

@@ -17,7 +17,7 @@ class EmbeddingVMMDBaseConfiguration:
 
     def __init__(self, lr = 0.001,
                 latent_size = 128,
-                epochs = 4000,
+                epochs = 2000,
                 batch_size = 1024,
                 store_stats = True,
                 penalty = MMDLossNoPenalty(),

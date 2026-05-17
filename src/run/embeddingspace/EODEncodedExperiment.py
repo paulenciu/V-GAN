@@ -68,7 +68,7 @@ class EODEncodedExperiment:
 
         del x_train, x_train_embeddings
 
-    def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step):
+    def evaluate_interval(self, ensemble_weight_start, ensemble_weight_end, step, run_number=1):
         gc.collect()
         # CALCULATE OD SCORES
         print("Loading test data")
@@ -100,7 +100,7 @@ class EODEncodedExperiment:
         for i, ds in enumerate(decision_scores):
             od_stats = self.calculate_od_stats(y_test, ds)
             od_stats["OD Method"] = descriptions[i]
-            self.vmmd_od.store_od_stats(od_stats, run_number=-1)
+            self.vmmd_od.store_od_stats(od_stats, run_number=run_number)
             od_stats_list.append(od_stats)
 
     def fit_pretrained_model(self, path_to_generator: str):

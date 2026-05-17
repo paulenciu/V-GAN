@@ -26,7 +26,8 @@ class MVTecADDataset(IDataset):
         if normalize:
             transform = transforms.Compose([
                 transform,
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+               transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[1, 1, 1])
             ])
 
         self.transform = transform
@@ -82,15 +83,12 @@ class MVTecADDataset(IDataset):
             image (torch.Tensor): Transformed image.
             label (int): Label of the image (0 for normal, 1 for defective).
         """
-        # Load the image
         image_path = self.image_files[idx]
         image = Image.open(image_path).convert('RGB')
 
-        # Apply transformations (if any)
         if self.transform:
             image = self.transform(image)
 
-        # Get the label
         label = self.labels[idx]
 
         return image, label

@@ -14,7 +14,7 @@ from src.data.dataset_loader import load_data
 from src.data.dataset_type import DatasetType
 from src.models.encoder.IdentityEncoder import IdentityEncoder
 from src.utils.BigUBuilder import calculate_average_u
-from src.utils.preprocessing import normalize_images
+from src.utils.preprocessing import normalize_images, no_preprocessing
 from src.utils.ImageFlattenerUtility import extract_and_flatten_images_dataset_3d, unflatten_images_3d
 from src.vmmd.VMMDWrapper import VMMDWrapper
 from src.vmmd.model.VMMDDiagonal1Channel import VMMDDiagonal1Channel
@@ -37,7 +37,7 @@ from anomalib.data import AnomalibDataModule
 from anomalib.data.utils import Split, ValSplitMode, TestSplitMode
 from torchvision.transforms.v2 import Transform
 
-def create_attention_mask(dataset_type, category, exp_date="21-03"):
+def create_attention_mask(dataset_type, category, exp_date="26-04"):
     root_dir = Path("../experiments/remote/") / exp_date
     vmmd = VMMDDiagonal1Channel(filename="placeholder_name", autoencoder=IdentityEncoder(), generator=None)
     vmmd_wrapper = VMMDWrapper(vmmd)
@@ -152,13 +152,13 @@ class CifarDataset(AnomalibDataset):
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
 
-            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCCIFAR10, category=category)
-            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
-            images = vmmd.apply_subspaces_operator(images, attention_mask)
+            #attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCCIFAR10, category=category)
+            #attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            #images = vmmd.apply_subspaces_operator(images, attention_mask)
 
-            flattened_images = images.view(images.size(0), -1).cpu()
-            x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
-            images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
+            #flattened_images = images.view(images.size(0), -1).cpu()
+            #x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
+            #images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
 
 
             samples_list = [("", "train", "good", "image.png") for _ in range(len(images))]
@@ -172,13 +172,13 @@ class CifarDataset(AnomalibDataset):
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
 
-            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCCIFAR10, category=category)
-            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
-            images = vmmd.apply_subspaces_operator(images, attention_mask)
+            #attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCCIFAR10, category=category)
+            #attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            #images = vmmd.apply_subspaces_operator(images, attention_mask)
 
-            flattened_images = images.view(images.size(0), -1).cpu()
-            x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
-            images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
+            #flattened_images = images.view(images.size(0), -1).cpu()
+            #x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
+            #images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
 
             samples_list = [("", "test", "good", "image.png") if y == 0 else ("", "test", "defect", "image.png") for y in range(len(labels))]
             samples = pd.DataFrame(samples_list, columns=["path", "split", "label", "image_path"])
@@ -244,13 +244,13 @@ class FashionDataset(AnomalibDataset):
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
 
-            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCFMNIST, category=category)
-            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
-            images = vmmd.apply_subspaces_operator(images, attention_mask)
+            #attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCFMNIST, category=category)
+            #attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            #images = vmmd.apply_subspaces_operator(images, attention_mask)
 
-            flattened_images = images.view(images.size(0), -1).cpu()
-            x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
-            images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
+            #flattened_images = images.view(images.size(0), -1).cpu()
+            #x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
+            #images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
 
 
             samples_list = [("", "train", "good", "image.png") for _ in range(len(images))]
@@ -264,13 +264,13 @@ class FashionDataset(AnomalibDataset):
 
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
 
-            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCFMNIST, category=category)
-            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
-            images = vmmd.apply_subspaces_operator(images, attention_mask)
+            #attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.OCCFMNIST, category=category)
+            #attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            #images = vmmd.apply_subspaces_operator(images, attention_mask)
 
-            flattened_images = images.view(images.size(0), -1).cpu()
-            x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
-            images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
+            #flattened_images = images.view(images.size(0), -1).cpu()
+            #x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
+            #images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
 
             samples_list = [("", "test", "good", "image.png") if y == 0 else ("", "test", "defect", "image.png") for y in range(len(labels))]
             samples = pd.DataFrame(samples_list, columns=["path", "split", "label", "image_path"])
@@ -398,12 +398,14 @@ class MVTecDataset(AnomalibDataset):
             images, labels = load_data(dataset_type=DatasetType.MVTEC_AD, category=category, image_size=(256, 256))
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
 
-            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.MVTEC_AD, category=category)
-            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
-            images = vmmd.apply_subspaces_operator(images, attention_mask)
+            #attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.MVTEC_AD, category=category)
+            #attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            #images = vmmd.apply_subspaces_operator(images, attention_mask)
 
             flattened_images = images.view(images.size(0), -1).cpu()
-            x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
+            x_flattened_preprocessed = torch.from_numpy(no_preprocessing(flattened_images.numpy())).float()
+
+            #x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
             images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
 
             samples_list = [("", "train", "good", "image.png") for _ in range(len(images))]
@@ -414,15 +416,16 @@ class MVTecDataset(AnomalibDataset):
 
         elif split==Split.TEST:
             images, labels =  load_data(dataset_type=DatasetType.MVTEC_AD, category=category, image_size=(256, 256), train=False)
+
             n_channels, height, width = images[0].shape[0], images[0].shape[1], images[0].shape[2]
 
-            attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.MVTEC_AD, category=category)
-            attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
-            images = vmmd.apply_subspaces_operator(images, attention_mask)
+            #attention_mask, vmmd = create_attention_mask(dataset_type=DatasetType.MVTEC_AD, category=category)
+            #attention_mask = attention_mask.unsqueeze(0).repeat(images.shape[0], 1, 1, 1)
+            #images = vmmd.apply_subspaces_operator(images, attention_mask)
 
-            flattened_images = images.view(images.size(0), -1).cpu()
-            x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
-            images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
+            # flattened_images = images.view(images.size(0), -1).cpu()
+            # x_flattened_preprocessed = torch.from_numpy(normalize_images(flattened_images.numpy())).float()
+            # images = unflatten_images_3d(x_flattened_preprocessed, n_channels, height, width)
 
             samples_list = [("", "test", "good", "image.png") if y == 0 else ("", "test", "defect", "image.png") for y in range(len(labels))]
             samples = pd.DataFrame(samples_list, columns=["path", "split", "label", "image_path"])
@@ -601,6 +604,7 @@ def setup_results(models: List[str], datasets: List[DatasetType]) -> pd.DataFram
         "test_time",
         "auroc",
         "f1_score",
+        "prauc"
     ]
 
     return pd.DataFrame(
@@ -656,7 +660,7 @@ def run_benchmarks(models: List[str], datasets: List[DatasetType], root_dir: Pat
 
         # Training
         start_time = time.time()
-        engine = Engine(accelerator="auto")
+        engine = Engine(accelerator="auto", max_epochs=100)
         engine.fit(model=model, datamodule=datamodule)
         train_time = time.time() - start_time
 
@@ -671,6 +675,7 @@ def run_benchmarks(models: List[str], datasets: List[DatasetType], root_dir: Pat
         results_df.loc[idx, "auroc"] = metrics["image_AUROC"]
         results_df.loc[idx, "f1_score"] = metrics["image_F1Score"]
 
+
         # Cleanup
         del model, datamodule, engine
         torch.cuda.empty_cache()
@@ -684,6 +689,19 @@ if __name__ == "__main__":
     root_dir = Path("../datasets")
     #""Cflow"
     models = ["Padim", "Dfm", "Stfpm"]
+    #models = ["Cflow"]
+
+    datasets = [
+        DatasetType.MVTEC_AD,
+        #DatasetType.OCCFMNIST,
+        #DatasetType.OCCCIFAR10,
+    ]
+
+    results = run_benchmarks(models, datasets, root_dir)
+
+    results.to_csv("2_anomaly_benchmarks_mvtecad.csv", index=False)
+
+
     datasets = [
         #DatasetType.MVTEC_AD,
         DatasetType.OCCFMNIST,
@@ -692,7 +710,7 @@ if __name__ == "__main__":
 
     results = run_benchmarks(models, datasets, root_dir)
 
-    results.to_csv("anomaly_benchmarks_attention_fmnist.csv", index=False)
+    results.to_csv("2_anomaly_benchmarks_fmnist.csv", index=False)
 
     datasets = [
         #DatasetType.MVTEC_AD,
@@ -702,4 +720,5 @@ if __name__ == "__main__":
 
     results = run_benchmarks(models, datasets, root_dir)
 
-    results.to_csv("anomaly_benchmarks_attention_cifar10.csv", index=False)
+    results.to_csv("2_anomaly_benchmarks_cifar10.csv", index=False)
+

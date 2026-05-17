@@ -20,3 +20,7 @@ git clone git@github.com:josipd/torch-two-sample.git
 cd torch-two-sample
 pip install .
 ```
+When using uv, after installing torch-two-sample, to avoid uv deleting it use the command:
+```
+uv sync --inexact
+```

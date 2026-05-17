@@ -20,18 +20,24 @@ class GeneratorBig(AbstractGenerator):
         image_size = math.prod(self._img_shape)
 
         self.layers = nn.Sequential(
-            nn.Linear(latent_size, 2 * latent_size),
+
+            #nn.Linear(latent_size, 2 * latent_size),
+            spectral_norm(nn.Linear(latent_size, 2 * latent_size)),
             nn.BatchNorm1d(2 * latent_size),
             nn.LeakyReLU(),
 
-            nn.Linear(2 * latent_size, 4 * latent_size),
+            spectral_norm(nn.Linear(2 * latent_size, 4 * latent_size)),
+            #nn.Linear(2 * latent_size, 4 * latent_size),
             nn.BatchNorm1d(4 * latent_size),
             nn.LeakyReLU(),
 
-            nn.Linear(4 * latent_size, 8 * latent_size),
+            spectral_norm(nn.Linear(4 * latent_size, 8 * latent_size)),
+            #nn.Linear(4 * latent_size, 8 * latent_size),
             nn.BatchNorm1d(8 * latent_size),
             nn.LeakyReLU(),
-            nn.Linear(8 * latent_size, image_size)
+
+            spectral_norm(nn.Linear(8 * latent_size, image_size)),
+            #nn.Linear(8 * latent_size, image_size)
 
         )
         self.upper_softmax = UpperSoftmax1D()
@@ -46,7 +52,7 @@ class GeneratorBig(AbstractGenerator):
         if mode == "train":
             self.train()
             x = self.forward(noise, mode)
-            x = self.softmax(x)
+            x = self.upper_softmax(x)
             return x
         else:
             self.eval()

@@ -13,13 +13,13 @@ from src.run.pixelspace.PODBaselineExperiment import PODBaselineExperiment
 from src.utils.preprocessing import normalize_images, no_preprocessing
 
 fashionmnist_categories = [
-    "T-shirt/top",
-    "Trouser",
-    "Pullover",
-    "Dress",
-    "Coat",
-    "Sandal",
-    "Shirt",
+    # "T-shirt/top",
+    #  "Trouser",
+    # "Pullover",
+    # "Dress",
+    # "Coat",
+    # "Sandal",
+    # "Shirt",
     "Sneaker",
     "Bag",
     "Ankle boot"
@@ -44,11 +44,11 @@ mvtec_categories = [
 ]
 
 cifar10_classes = [
-    "airplane",
-    "automobile",
-    "bird",
-    "cat",
-    "deer",
+    # "airplane",
+    # "automobile",
+    # "bird",
+    # "cat",
+    # "deer",
     "dog",
     "frog",
     "horse",

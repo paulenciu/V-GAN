@@ -3,9 +3,6 @@ import torch
 import math
 import torchvision.transforms.functional as TF
 
-# Example: Convert RGB to YCbCr and use chrominance (Cb, Cr)
-import cv2
-
 import torch
 import numpy as np
 import scipy.ndimage
@@ -21,53 +18,6 @@ def large_sobel(size=5, axis=0):
     else:
         kernel = scipy.ndimage.gaussian_filter1d(yy, sigma=1.5, order=1, axis=axis)
     return torch.tensor(kernel, dtype=torch.float32)
-
-
-
-def rgb_to_ycbcr(images, normalize_y=False):
-    """
-    images: (B, 3, H, W), values in [0,1]
-    Returns: (B, 3, H, W) tensor with Y, Cr, Cb channels, optionally normalized Y
-    """
-    B, _, H, W = images.shape
-    images_np = (images.permute(0, 2, 3, 1).cpu().numpy() * 255).astype(np.uint8)  # (B, H, W, 3)
-
-    ycbcr_list = []
-    for img in images_np:
-        ycbcr = cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)  # Y, Cr, Cb
-        ycbcr_list.append(ycbcr)
-
-    ycbcr_np = np.stack(ycbcr_list)  # (B, H, W, 3)
-    ycbcr_tensor = torch.tensor(ycbcr_np).permute(0, 3, 1, 2).float() / 255.0  # (B, 3, H, W)
-
-    if normalize_y:
-        y = ycbcr_tensor[:, 0:1]  # Y channel
-        y = (y - 0.5) / 0.5       # Normalize Y to [-1, 1]
-        ycbcr_tensor = torch.cat([y, ycbcr_tensor[:, 1:]], dim=1)
-
-    return ycbcr_tensor.to(images.device)
-
-
-import cv2
-import numpy as np
-import torch
-
-def ycbcr_to_rgb(ycbcr_tensor):
-    """
-    ycbcr_tensor: (B, 3, H, W) with Y, Cr, Cb in [0, 1]
-    Returns: (B, 3, H, W) RGB tensor in [0, 1]
-    """
-    B, _, H, W = ycbcr_tensor.shape
-    ycbcr_np = (ycbcr_tensor * 255).permute(0, 2, 3, 1).cpu().numpy().astype(np.uint8)
-
-    rgb_list = []
-    for ycrcb in ycbcr_np:
-        rgb = cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2RGB)
-        rgb_list.append(rgb)
-
-    rgb_np = np.stack(rgb_list)  # (B, H, W, 3)
-    rgb_tensor = torch.tensor(rgb_np).permute(0, 3, 1, 2).float() / 255.0  # (B, 3, H, W)
-    return rgb_tensor.to(ycbcr_tensor.device)
 
 
 def batch_crop_and_resize_softmax(softmax_batch, threshold=0.05):

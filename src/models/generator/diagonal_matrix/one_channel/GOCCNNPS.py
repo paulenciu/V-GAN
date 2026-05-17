@@ -13,7 +13,13 @@ class GOCCNNPS(AbstractGenerator):
 
     def __init__(self, latent_size, image_shape):
         super().__init__()
-        self._noise_dim = torch.tensor([latent_size, 1, 1])
+
+        if torch.is_tensor(latent_size):
+            self._noise_dim = latent_size
+            latent_size = latent_size[0].item()
+        else:
+            self._noise_dim = torch.tensor([latent_size, 1, 1])
+
         self._img_shape = image_shape
         h, w = image_shape[1], image_shape[2]
         assert h == w, "Image must be square"
@@ -59,6 +65,7 @@ class GOCCNNPS(AbstractGenerator):
         )
 
         self.output_layer = nn.Sequential(
+            #spectral_norm(nn.Linear(64 * 64 * 1, 64 * 64 * 1)),
             spectral_norm(nn.Linear(64 * 64 * 1, self._img_shape[1]*self._img_shape[2])),
             nn.Tanh()
         )

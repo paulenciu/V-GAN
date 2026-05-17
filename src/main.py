@@ -1,5 +1,6 @@
 import torch
 import os
+import gc
 
 from pyod.models.feature_bagging import FeatureBagging
 from pyod.models.knn import KNN
@@ -16,12 +17,17 @@ from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet1
     PyTorchResNet18AutoEncoder
 from src.models.autoencoder.pretrained_autoencoder.resnet.pytorch.PyTorchResNet50AutoEncoder import \
     PyTorchResNet50AutoEncoder
+from src.models.generator.diagonal_matrix.embedding.GOCCNN import GOCCNN
+
 from src.models.encoder.ViTransformer import ViTransformer
+from src.models.encoder.CLIP import CLIP
+
 from src.models.generator.diagonal_matrix.embedding.GeneratorBig import GeneratorBig
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes18 import GeneratorRes18
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50Conv import GeneratorRes50Conv
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50ConvV2 import GeneratorRes50ConvV2
 from src.models.generator.diagonal_matrix.embedding.GeneratorRes50V2 import GeneratorRes50V2
+from src.models.generator.diagonal_matrix.one_channel.GOCCNNPS2 import GOCCNNPS2
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
 from src.run.embeddingspace.config.EmbeddingBaselineConfiguration import EmbeddingBaselineConfiguration
 
@@ -32,12 +38,12 @@ from src.run.pipeline.BaselinePipeline import launch_baseline_experiment, launch
 from src.run.pipeline.VMMDPipeline import pretrained_vmmd_embedding_experiment, launch_vmmd_experiment, \
     run_all_vmmd_od_benchmark, run_vmmd_od_benchmark, launch_vmmd_embedding_config, pretrained_vmmd_experiment, \
     launch_vmmd_embedding_space_config, launch_pval_calculation, launch_all_od_experiments, rerun_od_experiments, \
-    rerun_od_distance_experiments, pretrained_vmmd_distance_experiment
+    rerun_od_distance_experiments, pretrained_vmmd_distance_experiment, rerun_od_experiments_in_embedding_space
 from src.run.pixelspace.config.vmmd.VMMDBaseConfiguration import VMMDBaseConfiguration
 from src.run.pixelspace.config.vmmd.VMMDTestConfiguration import VMMDTestConfiguration
 from src.utils.Plotter import plot_ens_dis_comparison
 from src.utils.preprocessing import normalize_images, normalize_features
-from src.vmmd.MMDLossConstrained import MixtureRQLinear, RBF
+from src.vmmd.MMDLossConstrained import MixtureRQLinear, RBF, MixtureRQ
 from src.vmmd.penalty.MMDLossPenalty import MMDLossL2Penalty
 
 
@@ -54,4 +60,17 @@ def configure_environment():
 
 if __name__ == '__main__':
     configure_environment()
-    generate_conover_iman_table()
+
+    launch_vmmd_experiment([
+        VMMDBaseConfiguration(
+            dataset_type=DatasetType.OCCFMNIST,
+            dateset_category="Trouser",
+            image_size_od=(224, 224),
+            image_size_generator=(56, 56),
+            image_size_train=(224, 224),
+            autoencoder=PyTorchResNet18AutoEncoder(),
+            ens_base_estimator=None,
+            batch_size=700,
+            latent_size=100
+        )
+    ])

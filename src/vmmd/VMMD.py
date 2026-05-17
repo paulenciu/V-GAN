@@ -6,8 +6,6 @@ from typing import Union
 import torch
 from collections import defaultdict
 
-from src.utils.utils import morphological_erosion
-from src.utils.utils import batch_crop_and_resize_softmax, rgb_to_ycbcr, large_sobel
 from torch.optim.adadelta import Adadelta
 from torch.optim import Adadelta
 from torch.profiler import profile
@@ -205,36 +203,10 @@ class VMMD(ABC):
                 noise = torch.randn(batch.size(0), *self.generator.noise_dim, device=self.device)
                 u_mappings = self.generator.sample_subspace_masks(noise)
 
-                batch_clone = batch.clone().detach()
-                #batch_clone = torch.nn.functional.pad(batch_clone, (2, 2, 2, 2), mode='replicate')  # for 5×5 kernel
-                batch_clone = torch.nn.functional.pad(batch_clone, (1, 1, 1, 1), mode='replicate')  # for 5×5 kernel
-
-                # Sobel X
-                sobel_x = torch.tensor([
-                                           [[[-1., 0., 1.],
-                                             [-2., 0., 2.],
-                                             [-1., 0., 1.]]]
-                                       ] * 3).to(self.device)
-
-                # Sobel Y
-                sobel_y = sobel_x.transpose(-1, -2)
-
-                # Sobel gradients
-                grad_x = torch.nn.functional.conv2d(batch_clone, sobel_x, padding=0, groups=3)
-                grad_y = torch.nn.functional.conv2d(batch_clone, sobel_y, padding=0, groups=3)
-                sobel_mag = torch.sqrt(grad_x ** 2 + grad_y ** 2)
-                sobel_mag = torch.abs(sobel_mag)
-                sobel_mag = torch.mean(sobel_mag, dim=1).unsqueeze(1).repeat(1, 3, 1, 1)
-
-                mask = torch.greater(sobel_mag, 0.0)
-
-                # erosion_mask = morphological_erosion(mask, kernel_size=9)
 
                 processed_batch = self.apply_subspaces_operator(batch, u_mappings)
 
-
-                batch = batch * mask
-                processed_batch = processed_batch * mask
+                processed_batch = processed_batch
                 embedding = self.encode(batch)
                 embedded_processed_batch = self.encode(processed_batch)
 
@@ -256,7 +228,7 @@ class VMMD(ABC):
                 self.notify_logging_subscriber(dataset, epoch)
                 snapshot_duration = time.time() - snapshot_start
 
-            scheduler.step()
+            #scheduler.step()
             print(f"Average loss in the epoch: {generator_loss}")
             self.train_history["generator_loss"].append(generator_loss)
             self.train_history["mmd_loss"].append(mmd_loss_avg)

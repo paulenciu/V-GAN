@@ -9,7 +9,6 @@ from matplotlib import pyplot as plt
 import torchvision.transforms.functional
 from src.utils.BigUBuilder import calculate_average_u
 from src.utils.TensorConverter import tensor_to_image
-from src.utils.utils import ycbcr_to_rgb, rgb_to_ycbcr, large_sobel, morphological_erosion
 from src.vmmd import VMMD
 from src.utils.logger.vmmd.IVMMDLogger import IVMMDLogger
 from src.vmmd.VMMDEmbedding import VMMDEmbedding
@@ -168,7 +167,7 @@ class SubspaceProjectionPlotter(IVMMDLogger):
             sobel_mag = torch.mean(sobel_mag, dim=0).unsqueeze(0).repeat(3, 1, 1)
             mask = torch.greater(sobel_mag, 0.0)
 
-            image = image * mask
+            #image = image * mask
 
             axis[i, 0].imshow(tensor_to_image(image))
 
@@ -211,8 +210,8 @@ class SubspaceProjectionPlotter(IVMMDLogger):
                 sobel_mag = torch.mean(sobel_mag, dim=0).unsqueeze(0).repeat(3, 1, 1)
                 mask = torch.greater(sobel_mag, 0.0)
                 ux_clone = ux_data[j] * mask
-                axis[i, j + 1].imshow(tensor_to_image(ux_clone))
-                #axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
+                #axis[i, j + 1].imshow(tensor_to_image(ux_clone))
+                axis[i, j + 1].imshow(tensor_to_image(ux_data[j]))
                 axis[i, j + 1].axis("off")
 
             big_u_image = self.vmmd.apply_subspaces_operator(u_subspaces=average_u.unsqueeze(0), x_sample=image[0]).squeeze(0)

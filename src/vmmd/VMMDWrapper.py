@@ -12,6 +12,9 @@ from src.utils.logger.vmmd.SubspaceDistributionPlotter import SubspaceDistributi
 from src.utils.logger.vmmd.SubspaceProjectionPlotter import SubspaceProjectionPlotter
 from src.utils.logger.vmmd.TrainingLogger import TrainingLogger
 from src.models.generator.diagonal_matrix.one_channel.GeneratorOneChannelSNGN import GeneratorOneChannelSNGN
+from src.models.generator.diagonal_matrix.one_channel.GOCCNNPS import GOCCNNPS
+from src.models.generator.diagonal_matrix.embedding.GeneratorBig import GeneratorBig
+
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet50AutoEncoder import ResNet50AutoEncoder
 from src.models.autoencoder.pretrained_autoencoder.resnet.imagenet.ResNet18AutoEncoder import ResNet18AutoEncoder
 
@@ -79,7 +82,7 @@ class VMMDWrapper:
     def __init_directory_paths(self):
         path_to_directory = Path(self.vmmd.path_to_directory)
         if not path_to_directory.exists():
-            os.mkdir(path_to_directory)
+            os.makedirs(path_to_directory, exist_ok=True)
 
         current_date = datetime.now().strftime("%d-%m")
 
